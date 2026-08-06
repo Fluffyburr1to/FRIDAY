@@ -59,7 +59,7 @@ exists.
 
 | Deliverable | Notes |
 |---|---|
-| Node 22, pnpm, git configured on your Mac | **Not yet installed** — verified during this Bible's authoring |
+| Node 24 LTS, pnpm, git configured on your Mac | ✅ Node 24.19.0 installed 2026-08-06 |
 | Repository pushed to GitHub, private | |
 | pnpm workspaces + Turborepo | |
 | TypeScript strict config, Biome, dependency-cruiser | [Chapter 30](30-coding-standards.md) |

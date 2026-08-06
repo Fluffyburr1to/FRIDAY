@@ -220,7 +220,7 @@ Full reasoning and alternatives in [Chapter 02](02-technology-stack.md). This is
 | Layer | Choice | One-line reason |
 |---|---|---|
 | Language | **TypeScript 5.x (strict)** | One language everywhere; types shared end to end |
-| Runtime | **Node.js 22 LTS** | Boring, long-supported, best-in-class for I/O coordination |
+| Runtime | **Node.js 24 LTS** | Boring, long-supported, best-in-class for I/O coordination |
 | Package manager | **pnpm workspaces** | Fast, strict about dependencies, built for monorepos |
 | Build orchestration | **Turborepo** | Caches work; keeps 10-minute builds at 20 seconds |
 | Schemas & validation | **Zod** | One schema definition becomes types, validation, and API docs |

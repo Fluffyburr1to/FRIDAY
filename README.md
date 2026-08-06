@@ -95,7 +95,7 @@ Full map: [Chapter 03 — Repository Structure](docs/01-bible/03-repository-stru
 | | |
 |---|---|
 | Language | TypeScript (strict), everywhere |
-| Runtime | Node.js 22 LTS |
+| Runtime | Node.js 24 LTS |
 | Data | SQLite + Drizzle + sqlite-vec |
 | API | tRPC (internal), OpenAPI (external, later) |
 | Interface | React + Vite + Tailwind + Radix |

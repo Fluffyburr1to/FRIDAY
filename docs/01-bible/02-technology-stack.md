@@ -34,7 +34,7 @@ into a thousand files.
 | Layer | Recommendation | Version target |
 |---|---|---|
 | Language | TypeScript, strict mode | 5.6+ |
-| Runtime | Node.js LTS | 22.x → 24.x |
+| Runtime | Node.js LTS | 24.x (active LTS) |
 | Package manager | pnpm | 9.x |
 | Build orchestration | Turborepo | 2.x |
 | Schema & validation | Zod | 3.x |
@@ -154,7 +154,8 @@ never the whole stack.
 
 ### Recommendation
 
-Node.js 22 LTS now, tracking LTS releases thereafter. Version pinned in `.nvmrc` and enforced in CI.
+Node.js 24 LTS (the current active LTS), tracking LTS releases thereafter. Version pinned in
+`.nvmrc` and enforced in CI.
 
 ### Why
 
