@@ -1,0 +1,55 @@
+# CODEOWNERS — who must review what
+#
+# GitHub requires review from the listed owner before merging changes to these
+# paths. This is the mechanism that keeps FRIDAY's safety-critical components
+# under human control as the project grows.
+#
+# Everything is owned by the project owner today. This file exists now because
+# it is the mechanism that will matter when that is no longer true — and
+# because it makes the load-bearing paths visible as a list.
+#
+# See docs/01-bible/32-branch-strategy.md
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Default — everything
+# ─────────────────────────────────────────────────────────────────────────────
+
+*                                   @OWNER
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Constitutional — never delegable, never modifiable by FRIDAY
+# ─────────────────────────────────────────────────────────────────────────────
+
+/docs/00-foundation/                @OWNER
+/tests/constitutional/              @OWNER
+/packages/guardian/policies/        @OWNER
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Safety-critical — owner review required
+# ─────────────────────────────────────────────────────────────────────────────
+
+/packages/guardian/                 @OWNER
+/packages/model-router/             @OWNER
+/packages/contracts/                @OWNER
+/packages/audit/                    @OWNER
+/packages/storage/                  @OWNER
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline and infrastructure — the enforcement layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+/.github/                           @OWNER
+/infra/                             @OWNER
+/CODEOWNERS                         @OWNER
+/CLAUDE.md                          @OWNER
+/SECURITY.md                        @OWNER
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Architecture record
+# ─────────────────────────────────────────────────────────────────────────────
+
+/docs/01-bible/                     @OWNER
+/docs/adr/                          @OWNER
+
+# NOTE: replace @OWNER with the GitHub username once the repository is created.
+# CI verifies that no placeholder remains before branch protection is enabled.

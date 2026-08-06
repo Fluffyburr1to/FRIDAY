@@ -1,0 +1,84 @@
+# ─── Secrets — never commit ──────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.mobileprovision
+secrets/
+**/credentials.json
+
+# ─── FRIDAY's data — never commit ────────────────────────────────────────────
+# Her databases contain the owner's life. They belong on disk and in encrypted
+# backups, never in version control.
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+data/
+archive/
+exports/
+backups/
+
+# ─── Local models — large binaries ───────────────────────────────────────────
+models/
+*.gguf
+*.onnx
+*.bin
+
+# ─── Build output ────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.turbo/
+*.tsbuildinfo
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ─── Test and coverage ───────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# ─── Editors ─────────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# ─── Temporary ───────────────────────────────────────────────────────────────
+tmp/
+temp/
+.cache/
+*.tmp
+
+# ─── Local overrides ─────────────────────────────────────────────────────────
+config.local.toml
+*.local.json
