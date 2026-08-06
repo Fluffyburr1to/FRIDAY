@@ -38,7 +38,11 @@ const SKIP_DIRS = new Set([
 
 /** Directories exempt from the README rule, with the reason. */
 const README_EXEMPT = new Set([
-  '.github/ISSUE_TEMPLATE', // has one, but keep the exemption documented
+  '.github/ISSUE_TEMPLATE',
+  // GitHub parses EVERY file in .github/workflows/ as a workflow definition.
+  // A README.md there is treated as a broken workflow. Its documentation
+  // lives at .github/WORKFLOWS.md instead.
+  '.github/workflows',
 ])
 
 const problems = []
