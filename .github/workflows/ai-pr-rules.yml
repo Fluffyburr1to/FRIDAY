@@ -1,0 +1,150 @@
+# Rules for AI-authored pull requests.
+#
+# You decided: FRIDAY may propose, test, and explain — and you approve every
+# merge. This workflow is what makes that approval MEANINGFUL rather than
+# ceremonial.
+#
+# The size cap is the control worth defending hardest. A 2,000-line diff will
+# not be genuinely reviewed — not by you, not by anyone. Forcing FRIDAY to
+# decompose her work into reviewable pieces is what keeps human oversight real
+# over years.
+#
+# The forbidden paths are the ones that, if FRIDAY could change them, would
+# mean she is not actually constrained: the rules governing her authorization,
+# the founding documents, the tests asserting those guarantees, and this
+# pipeline itself.
+#
+# Reference: docs/01-bible/27-cicd-pipeline.md
+#            docs/01-bible/31-git-workflow.md
+
+name: AI-Authored PR Rules
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  enforce:
+    name: Enforce AI contribution limits
+    runs-on: ubuntu-latest
+    # Only applies to FRIDAY's own branches.
+    if: startsWith(github.head_ref, 'friday/')
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Label as ai-authored
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Provenance stays visible forever. Five years from now, the
+            // history still shows which changes FRIDAY proposed.
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['ai-authored'],
+            })
+
+      - name: Forbidden paths
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # These are not "requires extra review." They are rejected outright.
+          forbidden='^(docs/00-foundation/|packages/guardian/policies/|tests/constitutional/|\.github/workflows/|CODEOWNERS$|CLAUDE\.md$)'
+
+          violations=$(echo "$changed" | grep -E "$forbidden" || true)
+          if [ -n "$violations" ]; then
+            echo "::error::This PR touches paths FRIDAY may never modify:"
+            echo "$violations" | while read -r f; do echo "::error::  $f"; done
+            echo ""
+            echo "A system that can change the rules governing it is not governed."
+            echo "See docs/01-bible/27-cicd-pipeline.md"
+            exit 1
+          fi
+          echo "No forbidden paths touched."
+
+      - name: Size cap — 400 lines, 15 files
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          base=origin/${{ github.base_ref }}
+
+          # Documentation and lockfiles do not count toward the review burden.
+          lines=$(git diff --numstat "$base"...HEAD \
+                  | grep -vE '\.(md|lock)$|pnpm-lock\.yaml' \
+                  | awk '{ added += $1; removed += $2 } END { print added + removed + 0 }')
+          files=$(git diff --name-only "$base"...HEAD \
+                  | grep -vE '\.(md|lock)$|pnpm-lock\.yaml' | wc -l | tr -d ' ')
+
+          echo "Changed: $lines lines across $files files (excluding docs and lockfiles)"
+
+          fail=0
+          if [ "$lines" -gt 400 ]; then
+            echo "::error::$lines changed lines exceeds the 400-line cap."
+            echo "::error::Split this into smaller pull requests."
+            echo "::error::A diff the owner will not read is not a diff they reviewed."
+            fail=1
+          fi
+          if [ "$files" -gt 15 ]; then
+            echo "::error::$files files exceeds the 15-file cap."
+            fail=1
+          fi
+          exit $fail
+
+      - name: Required PR sections
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || ''
+            const missing = []
+
+            // Written for someone who does not read code. Without this, the
+            // owner cannot evaluate the change at all.
+            if (!/##\s*What changed/i.test(body)) missing.push('"What changed" — in plain language')
+            if (!/##\s*Why/i.test(body)) missing.push('"Why"')
+            if (!/##\s*Risk/i.test(body)) missing.push('"Risk"')
+            if (!/##\s*Constitutional review/i.test(body)) missing.push('"Constitutional review"')
+
+            // Principle 3: trust is earned by admitting uncertainty. A PR
+            // claiming no risk is a PR that has not been thought about.
+            const uncertainty = /uncertain|not sure|unsure|judgment call|I might be wrong|did not test|didn't test/i
+            if (!uncertainty.test(body)) {
+              missing.push(
+                'an explicit statement of what you are uncertain about ' +
+                '(Principle 3 — trust is earned by admitting uncertainty)'
+              )
+            }
+
+            if (missing.length) {
+              core.setFailed(
+                'This AI-authored PR is missing required content:\n  - ' +
+                missing.join('\n  - ') +
+                '\n\nSee CONTRIBUTING.md'
+              )
+            }
+
+      - name: No self-approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Branch protection also enforces this. Belt and braces, because
+            // it is the property that makes the whole arrangement safe.
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            })
+            const author = context.payload.pull_request.user.login
+            const selfApproved = reviews.data.some(
+              (r) => r.user.login === author && r.state === 'APPROVED'
+            )
+            if (selfApproved) {
+              core.setFailed('FRIDAY cannot approve her own pull request.')
+            }

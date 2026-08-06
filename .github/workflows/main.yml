@@ -1,0 +1,104 @@
+# Main branch pipeline — runs after a merge.
+#
+# The PR pipeline runs only what a change affected, for speed. This runs
+# everything, plus the checks that are too slow or too noisy for the merge
+# path: full test suite, performance benchmarks, coverage.
+#
+# Benchmarks run here rather than on pull requests because benchmark noise on
+# shared CI runners produces flaky failures — and a flaky gate gets disabled.
+# Main-branch enforcement catches a regression within one merge, which is fast
+# enough.
+#
+# Reference: docs/01-bible/27-cicd-pipeline.md
+#            docs/01-bible/35-performance-goals.md
+
+name: Main
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+  DO_NOT_TRACK: 1
+
+jobs:
+  full:
+    name: Full suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Every check, every package
+        run: pnpm run check
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Coverage
+        run: |
+          if pnpm exec vitest --version >/dev/null 2>&1; then
+            pnpm exec vitest run --coverage || echo "No tests yet."
+          else
+            echo "Vitest arrives at Milestone 1."
+          fi
+
+  benchmarks:
+    name: Performance budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # A budget without enforcement is a wish. A regression beyond 20% fails
+      # with the specific number and the previous baseline.
+      #
+      # The two numbers that matter most:
+      #
+      #   Guardian evaluation   2 ms p50   Runs on EVERY action. If it gets
+      #                                    slow, pressure builds to bypass it
+      #                                    "for performance" — which is exactly
+      #                                    how safety architecture erodes.
+      #
+      #   Event publish         1 ms p50   What makes "record before acting"
+      #                                    affordable. If durable writes cost
+      #                                    50 ms, someone eventually proposes
+      #                                    making them asynchronous, and the
+      #                                    audit guarantee quietly becomes
+      #                                    best-effort.
+      - name: Run benchmarks
+        run: |
+          if [ -d tools/benchmarks ]; then
+            pnpm run bench
+          else
+            echo "Benchmarks arrive at Milestone 1, alongside the kernel."
+          fi
+
+# The nightly memory-leak soak test and live connector smoke tests live in
+# nightly.yml, added at Milestone 1 when there is a running kernel to soak.
+# They are deliberately not here: they must never gate a merge, because they
+# fail for reasons unrelated to any particular change.

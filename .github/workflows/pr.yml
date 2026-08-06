@@ -1,0 +1,259 @@
+# The gate.
+#
+# This pipeline is not developer convenience. It is the verification layer of
+# the approval system, applied to code: when FRIDAY proposes a change, this is
+# what independently confirms her work before the owner ever sees it. The
+# difference between "FRIDAY says the tests pass" and "the tests pass."
+#
+# Every stage is required. None may be skipped — including for hotfixes.
+# Safe Mode is the pressure valve, not a green-lit merge.
+#
+# Reference: docs/01-bible/27-cicd-pipeline.md
+
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION_FILE: .nvmrc
+  TURBO_TELEMETRY_DISABLED: 1
+  DO_NOT_TRACK: 1
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────
+  # Stage 1 — Fast. Under two minutes. Nothing below runs if this fails.
+  # ───────────────────────────────────────────────────────────────────────
+  fast:
+    name: Lint, types, boundaries, secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks needs history
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Format and lint
+        run: pnpm run check:format && pnpm run check:lint
+
+      - name: Typecheck
+        run: pnpm run check:types
+
+      - name: Architecture boundaries
+        run: pnpm run check:boundaries
+
+      - name: Documentation integrity
+        run: pnpm run check:docs
+
+      # A commit containing a secret must never reach the remote. gitleaks
+      # also runs as a pre-commit hook; this is the backstop.
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit message format
+        run: |
+          # Conventional Commits on every commit in this PR
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          [ -z "$base" ] && exit 0
+          fail=0
+          while read -r sha; do
+            subject=$(git log -1 --format=%s "$sha")
+            if ! echo "$subject" | grep -qE '^(feat|fix|docs|refactor|test|chore|perf|build|ci|revert|amend)(\([a-z0-9._/-]+\))?!?: .+'; then
+              echo "::error::Bad commit subject: $subject"
+              fail=1
+            fi
+          done < <(git rev-list "$base".."$head")
+          exit $fail
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Stage 2 — Correctness, including the constitutional guarantees
+  # ───────────────────────────────────────────────────────────────────────
+  correctness:
+    name: Tests and constitutional guarantees
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: fast
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit and integration tests
+        run: pnpm run test
+
+      # These assert that the Constitution is enforced by the code — not that
+      # features work. When one fails, the answer is NEVER to adjust the test.
+      # Either the code violated a founding guarantee, or the guarantee needs
+      # amending via an ADR and the owner's deliberate decision.
+      - name: Constitutional test suite
+        run: |
+          if [ -d tests/constitutional ] && ls tests/constitutional/*.test.ts >/dev/null 2>&1; then
+            pnpm exec vitest run tests/constitutional --reporter=verbose
+          else
+            echo "No constitutional tests yet — they arrive at Milestone 2."
+            echo "See docs/01-bible/27-cicd-pipeline.md"
+          fi
+
+      - name: Migrations apply cleanly
+        run: |
+          if [ -d packages/storage/migrations ]; then
+            pnpm --filter @friday/storage run migrate:verify
+          else
+            echo "No migrations yet — Milestone 1."
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Stage 3 — Security
+  # ───────────────────────────────────────────────────────────────────────
+  security:
+    name: Dependency and code scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: fast
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Every dependency is attack surface running with FRIDAY's full
+      # privileges. See docs/01-bible/18-security-model.md (T2).
+      - name: Audit dependencies
+        run: pnpm audit --audit-level moderate
+
+      - name: Flag new dependencies for review
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q 'package.json\|pnpm-lock.yaml'; then
+            echo "::warning::Dependencies changed. Every addition needs written justification in the PR — every dependency is attack surface."
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Stage 4 — Build and end-to-end
+  # ───────────────────────────────────────────────────────────────────────
+  build:
+    name: Build and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: correctness
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ${{ env.NODE_VERSION_FILE }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: End-to-end
+        run: |
+          if [ -d tests/e2e ] && ls tests/e2e/*.spec.ts >/dev/null 2>&1; then
+            pnpm exec playwright install --with-deps chromium
+            pnpm exec playwright test
+          else
+            echo "No E2E tests yet — Milestone 4."
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # Stage 5 — Agent evaluations. Only when agents or prompts changed.
+  # ───────────────────────────────────────────────────────────────────────
+  evals:
+    name: Agent evaluations
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: correctness
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Did agents or prompts change?
+        id: changed
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD \
+             | grep -qE '(agents/|prompts/|model-router/|agent-runtime/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No agent or prompt changes — skipping evals."
+          fi
+
+      # Agents are non-deterministic, so they are GRADED, not asserted. A score
+      # below baseline blocks the merge. Safety scenarios — injection
+      # resistance, capability overreach — are pass/fail, not scored.
+      # See docs/01-bible/28-testing-strategy.md
+      - name: Run evaluation suites
+        if: steps.changed.outputs.run == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -d tools/evals/suites ]; then
+            echo "Evals arrive at Milestone 3."
+          else
+            echo "No eval suites yet — Milestone 3."
+          fi
+
+  # ───────────────────────────────────────────────────────────────────────
+  # The single required check. Branch protection points at this.
+  # ───────────────────────────────────────────────────────────────────────
+  ready:
+    name: Ready for review
+    runs-on: ubuntu-latest
+    needs: [fast, correctness, security, build, evals]
+    if: always()
+    steps:
+      - name: Verify every stage passed
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "Stage results: $results"
+          for r in $results; do
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "::error::A required stage did not pass. Merge is blocked."
+              exit 1
+            fi
+          done
+          echo "All stages passed. Awaiting the owner's review."

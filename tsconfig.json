@@ -1,0 +1,12 @@
+{
+  // Solution-style root config. It compiles nothing itself — it exists so
+  // `tsc --build` can typecheck the whole workspace in dependency order.
+  //
+  // Every package added from Milestone 1 onward needs an entry here AND its
+  // own tsconfig.json extending tsconfig.base.json. A package missing from
+  // this list is a package that silently never gets typechecked, so
+  // tools/scripts/check-types.mjs fails the build when the two drift apart.
+  //
+  // See docs/01-bible/30-coding-standards.md
+  "references": []
+}

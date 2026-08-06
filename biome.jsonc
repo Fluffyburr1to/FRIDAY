@@ -1,0 +1,109 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": ["**", "!**/dist", "!**/coverage", "!**/node_modules", "!**/.turbo", "!**/*.gguf"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    }
+  },
+  "json": {
+    "formatter": { "enabled": true },
+    "parser": { "allowComments": true }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+
+      "suspicious": {
+        "preset": "recommended",
+        "noExplicitAny": "error",
+        "noDoubleEquals": "error",
+        "noEmptyBlockStatements": "error",
+        "useAwait": "error",
+        "noVar": "error",
+
+        // ALL console methods are banned, not just log. console.error also
+        // bypasses the logger's redaction layer, and a leaked credential in
+        // stderr is exactly as bad as one in stdout.
+        // Use @friday/telemetry. See docs/01-bible/22-logging-standards.md
+        "noConsole": "error"
+      },
+
+      "correctness": {
+        "preset": "recommended",
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "useExhaustiveDependencies": "error"
+      },
+
+      "complexity": {
+        "preset": "recommended",
+        "noForEach": "off",
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": { "maxAllowedComplexity": 15 }
+        }
+      },
+
+      "style": {
+        "preset": "recommended",
+        "useNamingConvention": "off",
+        "noNonNullAssertion": "error",
+        "useConst": "error",
+        "useNodejsImportProtocol": "error"
+      },
+
+      "nursery": {
+        // Every promise awaited or explicitly voided. A floating promise
+        // swallows its error silently — which in a system that must record
+        // everything before acting is a correctness problem, not a style one.
+        "noFloatingPromises": "error"
+      },
+
+      // `biome migrate` set these three to "none", which would silently
+      // disable them. Accessibility in particular is not optional: Chapter 06
+      // commits to WCAG 2.2 AA, and a founding document about respect and
+      // service cannot ship an unusable interface.
+      "security": { "preset": "recommended" },
+      "a11y": { "preset": "recommended" },
+      "performance": { "preset": "recommended" }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.test.ts", "**/*.test.tsx", "**/tests/**"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noExplicitAny": "off" },
+          "style": { "noNonNullAssertion": "off" }
+        }
+      }
+    },
+    {
+      // Build and maintenance scripts are terminal tools. Printing IS their
+      // job, and they never touch user data — so the logger requirement,
+      // which exists to prevent accidental leaks in the running system, does
+      // not apply. This exception is scoped to tools/ and nothing else.
+      "includes": ["tools/scripts/**", "tools/**/*.mjs"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noConsole": "off" }
+        }
+      }
+    }
+  ]
+}

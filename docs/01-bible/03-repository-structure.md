@@ -43,7 +43,7 @@ friday/
 ├── pnpm-workspace.yaml          Declares where workspace packages live
 ├── turbo.json                   Task pipeline and caching rules
 ├── tsconfig.base.json           Compiler settings inherited by every package
-├── biome.json                   Lint and format rules
+├── biome.jsonc                  Lint and format rules (jsonc — the rules carry reasoning)
 ├── .dependency-cruiser.cjs      Architectural boundary rules — enforced in CI
 ├── .nvmrc                       Pinned Node version
 ├── .gitignore

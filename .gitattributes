@@ -1,0 +1,16 @@
+# Normalize line endings — LF in the repository, always
+* text=auto eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.gguf binary
+*.onnx binary
+*.woff2 binary
+
+# Generated — collapse in diffs
+pnpm-lock.yaml linguist-generated=true -diff
+
+# Documentation drives this repository; count it as such
+docs/** linguist-documentation=false

@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "FRIDAY base configuration",
+  "docs": "docs/01-bible/30-coding-standards.md",
+
+  "compilerOptions": {
+    // ── Target and modules ──────────────────────────────────────────────
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
+
+    // ── Maximum strictness ──────────────────────────────────────────────
+    // These catch an AI assistant's mistakes before the owner ever sees
+    // them. That is the highest-value property of the type system in this
+    // project. Relaxing any of these trades away the main safety net.
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": true,
+    "alwaysStrict": true,
+
+    // `array[0]` is typed as possibly undefined — because it is. This is
+    // the setting people disable first and should not.
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": false,
+
+    // ── Emit ────────────────────────────────────────────────────────────
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "removeComments": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+
+    // ── Interop ─────────────────────────────────────────────────────────
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+
+  "exclude": ["node_modules", "dist", "coverage"]
+}

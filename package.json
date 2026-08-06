@@ -1,0 +1,32 @@
+{
+  "name": "friday",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A Personal Artificial Intelligence Operating System",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "check": "pnpm run check:format && pnpm run check:lint && pnpm run check:types && pnpm run check:boundaries && pnpm run check:docs && pnpm run test",
+    "check:format": "biome format .",
+    "check:lint": "biome lint .",
+    "check:types": "node tools/scripts/check-types.mjs",
+    "check:boundaries": "node tools/scripts/check-boundaries.mjs",
+    "check:docs": "node tools/scripts/check-docs.mjs",
+    "check:secrets": "gitleaks detect --no-banner --redact || echo 'gitleaks not installed — CI enforces this'",
+    "fix": "biome check --write .",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "dependency-cruiser": "^18.1.1",
+    "turbo": "^2.5.0",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,20 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'departments/*'
+  - 'connectors/*'
+  - 'tools/*'
+# pnpm blocks dependency install scripts by default — a good default, since an
+# install script runs arbitrary code with your privileges (supply chain, T2).
+# Each exception is an explicit decision recorded here.
+allowBuilds:
+  # Biome's postinstall downloads the native binary for this platform. It is
+  # published by the Biome team with npm provenance and the package is our
+  # linter, so it is already trusted to read every source file.
+  '@biomejs/biome': true
+
+# Departments and connectors are workspace members so they can be developed,
+# tested, and type-checked alongside the kernel — while dependency-cruiser
+# enforces that they may not import each other.
+#
+# See docs/01-bible/04-monorepo-vs-multirepo.md
