@@ -14,42 +14,40 @@
 # Default — everything
 # ─────────────────────────────────────────────────────────────────────────────
 
-*                                   @OWNER
+*                                   @Fluffyburr1to
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constitutional — never delegable, never modifiable by FRIDAY
 # ─────────────────────────────────────────────────────────────────────────────
 
-/docs/00-foundation/                @OWNER
-/tests/constitutional/              @OWNER
-/packages/guardian/policies/        @OWNER
+/docs/00-foundation/                @Fluffyburr1to
+/tests/constitutional/              @Fluffyburr1to
+/packages/guardian/policies/        @Fluffyburr1to
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Safety-critical — owner review required
 # ─────────────────────────────────────────────────────────────────────────────
 
-/packages/guardian/                 @OWNER
-/packages/model-router/             @OWNER
-/packages/contracts/                @OWNER
-/packages/audit/                    @OWNER
-/packages/storage/                  @OWNER
+/packages/guardian/                 @Fluffyburr1to
+/packages/model-router/             @Fluffyburr1to
+/packages/contracts/                @Fluffyburr1to
+/packages/audit/                    @Fluffyburr1to
+/packages/storage/                  @Fluffyburr1to
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Pipeline and infrastructure — the enforcement layer
 # ─────────────────────────────────────────────────────────────────────────────
 
-/.github/                           @OWNER
-/infra/                             @OWNER
-/CODEOWNERS                         @OWNER
-/CLAUDE.md                          @OWNER
-/SECURITY.md                        @OWNER
+/.github/                           @Fluffyburr1to
+/infra/                             @Fluffyburr1to
+/CODEOWNERS                         @Fluffyburr1to
+/CLAUDE.md                          @Fluffyburr1to
+/SECURITY.md                        @Fluffyburr1to
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Architecture record
 # ─────────────────────────────────────────────────────────────────────────────
 
-/docs/01-bible/                     @OWNER
-/docs/adr/                          @OWNER
+/docs/01-bible/                     @Fluffyburr1to
+/docs/adr/                          @Fluffyburr1to
 
-# NOTE: replace @OWNER with the GitHub username once the repository is created.
-# CI verifies that no placeholder remains before branch protection is enabled.
