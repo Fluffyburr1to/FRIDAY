@@ -17,26 +17,40 @@ Template: [`0000-template.md`](0000-template.md).
 
 ## Index
 
-Seed ADRs — to be written at Milestone 0, extracting the decisions already reasoned through in the
-Project Bible so each is individually addressable.
+The seed ADRs extract the decisions already reasoned through in the Project Bible, so each is
+individually addressable and can be superseded on its own rather than as part of a chapter.
 
-| # | Title | Status | Bible chapter |
-|---|---|---|---|
-| [0001](.) | TypeScript everywhere | planned | [02](../01-bible/02-technology-stack.md) |
-| [0002](.) | Monorepo with pnpm and Turborepo | planned | [04](../01-bible/04-monorepo-vs-multirepo.md) |
-| [0003](.) | SQLite as the primary datastore | planned | [09](../01-bible/09-database-design.md) |
-| [0004](.) | Event-sourced core with a SQLite-backed bus | planned | [10](../01-bible/10-event-bus.md) |
-| [0005](.) | The Guardian as the sole authorization point | planned | [19](../01-bible/19-approval-system.md) |
-| [0006](.) | Capability-based authorization, not RBAC | planned | [17](../01-bible/17-authentication-authorization.md) |
-| [0007](.) | No agent framework — build the runtime | planned | [11](../01-bible/11-agent-framework.md) |
-| [0008](.) | Model Router; no vendor named in core | planned | [02](../01-bible/02-technology-stack.md) |
-| [0009](.) | Tauri for desktop and mobile shells | planned | [07](../01-bible/07-desktop-strategy.md) |
-| [0010](.) | Departments communicate only via events | planned | [13](../01-bible/13-department-architecture.md) |
-| [0011](.) | Plan engine as a durable state machine, not a loop | planned | [12](../01-bible/12-chief-of-staff.md) |
-| [0012](.) | Standing grants must expire | planned | [19](../01-bible/19-approval-system.md) |
-| [0013](.) | Local-only speech processing | planned | [25](../01-bible/25-voice-architecture.md) |
-| [0014](.) | Human approval on every merge | planned | [31](../01-bible/31-git-workflow.md) |
-| [0015](.) | Local-only observability | planned | [29](../01-bible/29-monitoring-observability.md) |
+| # | Title | Status | Reverse | Bible |
+|---|---|---|---|---|
+| [0001](0001-typescript-everywhere.md) | TypeScript across the entire stack | accepted | high | [02](../01-bible/02-technology-stack.md) |
+| [0002](0002-monorepo.md) | Single monorepo with pnpm and Turborepo | accepted | medium | [04](../01-bible/04-monorepo-vs-multirepo.md) |
+| [0003](0003-sqlite.md) | SQLite as the primary datastore | accepted | medium | [09](../01-bible/09-database-design.md) |
+| [0004](0004-event-sourced-core.md) | Event-sourced core with a SQLite-backed bus | accepted | high | [10](../01-bible/10-event-bus.md) |
+| [0005](0005-guardian-sole-authorization.md) | The Guardian as the sole authorization point | accepted | high | [19](../01-bible/19-approval-system.md) |
+| [0006](0006-capability-based-authorization.md) | Capability tokens rather than RBAC | accepted | med-high | [17](../01-bible/17-authentication-authorization.md) |
+| [0007](0007-no-agent-framework.md) | Build the agent runtime rather than adopt a framework | accepted | medium | [11](../01-bible/11-agent-framework.md) |
+| [0008](0008-model-router.md) | Vendor-neutral Model Router | accepted | low | [02](../01-bible/02-technology-stack.md) |
+| [0009](0009-tauri-shells.md) | Tauri 2 for the desktop and mobile shells | accepted | **low** | [07](../01-bible/07-desktop-strategy.md) |
+| [0010](0010-departments-communicate-via-events.md) | Departments communicate only via events | accepted | low | [13](../01-bible/13-department-architecture.md) |
+| [0011](0011-plan-engine-state-machine.md) | Plan engine as a durable state machine, not a loop | accepted | medium | [12](../01-bible/12-chief-of-staff.md) |
+| [0012](0012-standing-grants-expire.md) | Every standing grant must expire | accepted | low* | [19](../01-bible/19-approval-system.md) |
+| [0013](0013-local-only-speech.md) | Speech processing is local-only | accepted | low* | [25](../01-bible/25-voice-architecture.md) |
+| [0014](0014-human-approval-every-merge.md) | FRIDAY proposes; the owner approves every merge | accepted | low* | [31](../01-bible/31-git-workflow.md) |
+| [0015](0015-local-only-observability.md) | Observability is local-only | accepted | low* | [29](../01-bible/29-monitoring-observability.md) |
+
+\* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
+guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
+promises, and requires a new ADR making that explicit — never a quiet edit.
+
+### Where the real risk sits
+
+Two entries are worth watching more than the rest:
+
+- **0011 (plan engine)** — Temporal is genuinely the stronger tool and we chose to build a small
+  version instead. That is the most defensible-but-arguable call in the set.
+- **0009 (Tauri)** — the only decision resting on a technology whose maturity is unproven for our
+  case. It is also the cheapest to reverse, which is why it was an acceptable bet. The M7 spike is
+  the checkpoint.
 
 ---
 
