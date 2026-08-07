@@ -14,9 +14,10 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import ts from 'typescript'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const SCOPES = ['apps', 'packages', 'departments', 'connectors', 'tools']
@@ -52,8 +53,23 @@ if (projects.length === 0) {
 // a package missing from "references" is a package that silently never gets
 // typechecked, which is exactly the kind of quiet gap this project cannot
 // afford.
-const solution = JSON.parse(readFileSync(join(ROOT, 'tsconfig.json'), 'utf8'))
-const referenced = new Set((solution.references ?? []).map((r) => r.path.replace(/^\.\//, '')))
+// Parsed with TypeScript's own reader rather than JSON.parse, because every
+// config file in this repository carries its reasoning in comments and JSONC
+// is not JSON.
+const solutionPath = join(ROOT, 'tsconfig.json')
+const solution = ts.parseConfigFileTextToJson(
+  solutionPath,
+  readFileSync(solutionPath, 'utf8'),
+).config
+
+if (!solution) {
+  console.error(`types — could not parse ${solutionPath}`)
+  process.exit(1)
+}
+
+const referenced = new Set(
+  (solution.references ?? []).map((r) => r.path.replace(/^\.\//, '').replace(/\/$/, '')),
+)
 const missing = projects.filter((p) => !referenced.has(p))
 
 if (missing.length > 0) {
@@ -66,12 +82,22 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
-const result = spawnSync('tsc', ['--build'], { cwd: ROOT, stdio: 'inherit', shell: false })
-
-if (result.error) {
-  console.error('types — tsc failed to run:', result.error.message)
-  process.exit(1)
+function run(label, args) {
+  const result = spawnSync('tsc', args, { cwd: ROOT, stdio: 'inherit', shell: false })
+  if (result.error) {
+    console.error(`types — tsc failed to run (${label}):`, result.error.message)
+    process.exit(1)
+  }
+  if (result.status !== 0) process.exit(result.status ?? 1)
 }
-if (result.status !== 0) process.exit(result.status ?? 1)
 
-console.log(`types ok — ${projects.length} package(s)`)
+// Pass 1 — every package's src/, in dependency order, emitting declarations.
+run('sources', ['--build'])
+
+// Pass 2 — every test file in the workspace, under the same strict settings.
+// Tests are deliberately outside the build graph (see tsconfig.tests.json), so
+// without this they would be the one place in the repository where a type
+// error could reach main.
+run('tests', ['--noEmit', '--project', 'tsconfig.tests.json'])
+
+console.log(`types ok — ${projects.length} package(s), plus test files`)

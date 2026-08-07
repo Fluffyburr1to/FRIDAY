@@ -11,23 +11,32 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "check": "pnpm run check:format && pnpm run check:lint && pnpm run check:types && pnpm run check:boundaries && pnpm run check:docs && pnpm run test",
+    "check": "pnpm run check:format && pnpm run check:lint && pnpm run check:types && pnpm run check:boundaries && pnpm run check:docs && pnpm run check:workflows && pnpm run test",
     "check:format": "biome format .",
     "check:lint": "biome lint .",
     "check:types": "node tools/scripts/check-types.mjs",
     "check:boundaries": "node tools/scripts/check-boundaries.mjs",
     "check:docs": "node tools/scripts/check-docs.mjs",
+    "check:workflows": "node tools/scripts/check-workflows.mjs",
     "check:secrets": "gitleaks detect --no-banner --redact || echo 'gitleaks not installed — CI enforces this'",
     "fix": "biome check --write .",
-    "test": "turbo run test",
+    "test": "turbo run test && vitest run",
+    "test:unit": "turbo run test -- --project '*:unit'",
+    "test:integration": "turbo run test -- --project '*:integration'",
+    "test:coverage": "turbo run test:coverage",
     "build": "turbo run build",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "setup": "bash tools/scripts/install-git-hooks.sh",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "test:cross": "vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "dependency-cruiser": "^18.1.1",
     "js-yaml": "^5.2.3",
     "turbo": "^2.5.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "catalog:"
   }
 }
