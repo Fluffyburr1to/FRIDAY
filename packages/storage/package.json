@@ -1,0 +1,38 @@
+{
+  "name": "@friday/storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The only package permitted to open the database. Repositories, migrations, field encryption.",
+  "license": "UNLICENSED",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist coverage .turbo",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@friday/contracts": "workspace:*",
+    "better-sqlite3": "catalog:",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@friday/tsconfig": "workspace:*",
+    "@friday/vitest-config": "workspace:*",
+    "@types/better-sqlite3": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
