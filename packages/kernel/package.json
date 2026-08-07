@@ -22,11 +22,17 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "@friday/contracts": "workspace:*",
+    "@friday/storage": "workspace:*",
+    "@friday/telemetry": "workspace:*"
+  },
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
     "@friday/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
