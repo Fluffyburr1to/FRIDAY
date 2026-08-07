@@ -76,6 +76,24 @@ export {
   UuidSchema,
   uuidv7,
 } from './ids.js'
+// ── Work ────────────────────────────────────────────────────────────────────
+export {
+  isTerminalPlanStatus,
+  PLAN_STATUSES,
+  PLAN_STEP_STATUSES,
+  type Plan,
+  PlanSchema,
+  type PlanStatus,
+  PlanStatusSchema,
+  type PlanStep,
+  PlanStepSchema,
+  type PlanStepStatus,
+  PlanStepStatusSchema,
+  RISK_CLASSES,
+  type RiskClass,
+  RiskClassSchema,
+  TERMINAL_PLAN_STATUSES,
+} from './plan.js'
 export { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrapOr } from './result.js'
 // ── Classification ──────────────────────────────────────────────────────────
 export {
