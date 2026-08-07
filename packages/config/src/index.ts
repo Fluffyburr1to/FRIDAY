@@ -11,6 +11,7 @@
  */
 
 export { type DeepPartialConfig, expandPath } from './defaults.js'
+export { ENV_VARIABLES, type EnvSource, type EnvVariable, readEnvironment } from './env.js'
 export {
   type Environment,
   EnvironmentSchema,
