@@ -31,6 +31,20 @@ export {
   FridayErrorSchema,
   fridayError,
 } from './errors.js'
+// ── The event log ───────────────────────────────────────────────────────────
+export {
+  EVENT_PATTERN_REGEX,
+  EVENT_TYPE_PATTERN,
+  type EventPattern,
+  EventPatternSchema,
+  EventSchema,
+  type EventType,
+  EventTypeSchema,
+  type FridayEvent,
+  matchesPattern,
+  type NewEvent,
+  NewEventSchema,
+} from './event.js'
 export {
   type CausationId,
   CausationIdSchema,
