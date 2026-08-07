@@ -10,8 +10,10 @@
  * See: README.md · docs/01-bible/33-deployment-strategy.md
  */
 
+export { DEFAULT_CONFIG_FILENAME, defaultConfigFile, readConfigFile } from './config-file.js'
 export { type DeepPartialConfig, expandPath } from './defaults.js'
 export { ENV_VARIABLES, type EnvSource, type EnvVariable, readEnvironment } from './env.js'
+export { type LoadOptions, loadConfig } from './load.js'
 export {
   type Environment,
   EnvironmentSchema,

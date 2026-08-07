@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@friday/contracts": "workspace:*",
+    "smol-toml": "catalog:",
     "zod": "catalog:"
   }
 }
