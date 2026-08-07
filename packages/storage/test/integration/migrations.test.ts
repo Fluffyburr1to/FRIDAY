@@ -42,7 +42,7 @@ describe('migrations', () => {
 
     expect(opened.ok).toBe(true)
     if (opened.ok) {
-      expect(opened.value.migrationsApplied).toEqual(['events:0001', 'main:0001'])
+      expect(opened.value.migrationsApplied).toEqual(['events:0001', 'main:0001', 'main:0002'])
       opened.value.close()
     }
 

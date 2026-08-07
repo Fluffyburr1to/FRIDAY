@@ -7,6 +7,7 @@ import { MAIN_MIGRATIONS } from './migrations/main-migrations.js'
 import { migrate } from './migrations/runner.js'
 import { type CheckpointStore, createCheckpointStore } from './repositories/checkpoint-store.js'
 import { createEventStore, type EventStore } from './repositories/event-store.js'
+import { createGuardianStores, type GuardianStores } from './repositories/guardian-stores.js'
 import { createPlanStore, type PlanStore } from './repositories/plan-store.js'
 
 /**
@@ -26,7 +27,7 @@ import { createPlanStore, type PlanStore } from './repositories/plan-store.js'
  */
 
 export interface StorageOptions {
-  /** `friday.db` — plans, and later approvals and memory. */
+  /** `friday.db` — plans, the Guardian's records, and later memory. */
   mainDbPath: string
 
   /** `events.db` — the immutable log. */
@@ -42,6 +43,9 @@ export interface Storage {
   readonly events: EventStore
   readonly checkpoints: CheckpointStore
   readonly plans: PlanStore
+
+  /** The Guardian's records: approvals, standing grants, slips, decisions. */
+  readonly guardian: GuardianStores
 
   /** Which migrations ran on this open. Reported by `friday status`. */
   readonly migrationsApplied: readonly string[]
@@ -88,6 +92,7 @@ export function openStorage(options: StorageOptions): Result<Storage, FridayErro
     }),
     checkpoints: createCheckpointStore(eventsDb),
     plans: createPlanStore(mainDb),
+    guardian: createGuardianStores(mainConnection.value),
     migrationsApplied: applied.value,
     close() {
       closeDatabase(eventsConnection.value)

@@ -50,6 +50,9 @@ importers:
       '@friday/guardian':
         specifier: workspace:*
         version: link:packages/guardian
+      '@friday/storage':
+        specifier: workspace:*
+        version: link:packages/storage
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3
