@@ -35,12 +35,12 @@ jobs:
     if: startsWith(github.head_ref, 'friday/')
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Label as ai-authored
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // Provenance stays visible forever. Five years from now, the
@@ -99,7 +99,7 @@ jobs:
           exit $fail
 
       - name: Required PR sections
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const body = context.payload.pull_request.body || ''
@@ -131,7 +131,7 @@ jobs:
             }
 
       - name: No self-approval
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             // Branch protection also enforces this. Belt and braces, because

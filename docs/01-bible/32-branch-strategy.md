@@ -54,8 +54,38 @@ Configured at Milestone 0, before FRIDAY exists as a contributor.
 |---|---|---|
 | Direct push | **Blocked for everyone, including you** | The pipeline must be the only path in |
 | Required checks | All CI stages green | Independent verification |
-| Required approvals | 1 | Your approval gate |
+| Required approvals | **0 until M6, then 1** | See below |
 | Self-approval | **Blocked** | FRIDAY cannot approve her own work |
+
+### Why required approvals is 0 until Milestone 6
+
+Discovered in practice on 2026-08-07, and worth recording because the reasoning is not obvious.
+
+**GitHub does not permit anyone to approve their own pull request.** With a single human
+contributor, requiring one approval means *no pull request can ever merge* — the owner cannot
+approve their own work, and there is nobody else. The repository locks itself.
+
+The rule itself is right. It was simply applied a year too early, to the wrong author. The approval
+gate exists so that **the owner approves FRIDAY's changes**. Author and approver are genuinely
+different identities in that case, which is exactly when an approval requirement means something. It
+has nothing useful to say about the owner's own pull requests.
+
+So it is scheduled rather than permanent:
+
+| Phase | Approvals | Rationale |
+|---|---|---|
+| M0 → M5 | **0** | One human. The gate would block everything and protect nothing. |
+| **M6 onward** | **1** | FRIDAY becomes a contributor. The gate now does its actual job. |
+
+**Restoring it is a Milestone 6 prerequisite** ([Chapter 39](39-roadmap.md)), not something to
+remember spontaneously.
+
+Everything else stays enforced against the owner throughout: no direct pushes to `main`, no force
+pushes, no branch deletion, linear history, conversation resolution.
+
+Full detail and two further ordering failures — requiring a status check that had never run, and
+placing a README inside `.github/workflows/` — in
+[the branch protection runbook](../runbooks/branch-protection.md).
 | CODEOWNERS review | Required on protected paths | Guardian, foundation docs, constitutional tests |
 | Stale approval dismissal | On new commits | You approved *that* diff, not a later one |
 | Linear history | Required | Bisecting works; history is readable |

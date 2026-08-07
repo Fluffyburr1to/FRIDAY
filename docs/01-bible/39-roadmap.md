@@ -218,6 +218,7 @@ The architecture supports all three without a rewrite ([Chapter 33](33-deploymen
 | Plain-language change summaries | Written for you, not for a programmer |
 | CI enforcement of AI-authored PR rules | 400-line cap, forbidden paths, required sections |
 | Improvement proposal → PR pipeline | Diagnostics finding becomes a proposed change |
+| **★ Restore required approvals to 1** | **Prerequisite.** Held at 0 since M0 because GitHub forbids self-approval and there was only one human — see [Chapter 32](32-branch-strategy.md). The day FRIDAY becomes a contributor, the gate starts protecting something real and must be turned back on **before** her first pull request. |
 
 **Done when:** FRIDAY identifies a real improvement from her own diagnostics, opens a pull request
 with tests passing and a summary you can evaluate without reading code, and you merge it.
