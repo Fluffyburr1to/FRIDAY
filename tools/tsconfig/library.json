@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "FRIDAY library (Node, no DOM)",
+  "docs": "docs/01-bible/30-coding-standards.md",
+
+  "extends": "../../tsconfig.base.json",
+
+  // NOTE: this file deliberately contains no path-shaped settings — no
+  // `rootDir`, `outDir`, `include`, or `files`. TypeScript resolves relative
+  // paths against the config file they were WRITTEN in, not the one doing the
+  // extending, so a `"rootDir": "src"` here would point every package at
+  // `tools/tsconfig/src`. Each package declares its own paths; this file
+  // declares only the settings that must be identical everywhere.
+  "compilerOptions": {
+    // Deliberately no DOM lib. A package in packages/ that can reach `window`
+    // or `document` is a package that will eventually assume it is running in
+    // a browser — and packages/ must stay usable from the kernel service, the
+    // CLI, a worker thread, and a Tauri shell alike.
+    "lib": ["ES2023"],
+    "types": ["node"]
+  }
+}

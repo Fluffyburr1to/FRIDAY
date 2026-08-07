@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "FRIDAY test files",
+  "docs": "docs/01-bible/28-testing-strategy.md",
+
+  // Test files are typechecked, but never compiled into a package's `dist/`.
+  // Shipping declarations for tests would put them in the published surface,
+  // and excluding them from the package build is what keeps that surface
+  // honest — so they get their own project instead of a per-package config.
+  //
+  // One pass covers every test folder in the workspace under exactly the same
+  // strict settings as the source. `pnpm check:types` runs it after
+  // `tsc --build`, so a type error in a test fails CI like any other.
+  "extends": "./tsconfig.base.json",
+
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "types": ["node"],
+
+    // Vitest resolves `@friday/*` through the workspace's node_modules links,
+    // which point at each package's built `dist/`. `tsc --build` runs first,
+    // so those declarations exist by the time this pass reads them.
+    "lib": ["ES2023"]
+  },
+
+  "include": [
+    "packages/*/test/**/*.ts",
+    "packages/*/vitest.config.ts",
+    "apps/*/test/**/*.ts",
+    "apps/*/vitest.config.ts",
+    "departments/*/test/**/*.ts",
+    "connectors/*/test/**/*.ts",
+    "tools/*/test/**/*.ts",
+    "tools/*/vitest.config.ts",
+    "tests/**/*.ts"
+  ],
+
+  "exclude": ["node_modules", "**/dist", "**/coverage"]
+}
