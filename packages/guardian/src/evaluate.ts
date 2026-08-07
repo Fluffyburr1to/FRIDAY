@@ -1,6 +1,7 @@
 import type { RiskClass } from '@friday/contracts'
 import { type Policy, type PolicyEffect, policyMatches } from './policy.js'
 import type { PolicySet } from './policy-set.js'
+import { RISK_RANK } from './risk.js'
 
 /**
  * Evaluating the rule set.
@@ -28,23 +29,6 @@ const EFFECT_RANK: Readonly<Record<PolicyEffect, number>> = {
   allow: 0,
   require_approval: 1,
   deny: 2,
-}
-
-/**
- * Risk, ascending.
- *
- * `self_modification` ranks above `critical` rather than beside it. ADR-0025
- * requires only that it be treated as at least critical, and a total order is
- * needed to take a maximum at all — placing it at the top is the reading that
- * cannot fail in the permissive direction, and it matches the fact that it
- * carries every restriction `critical` does plus one more (desktop only).
- */
-const RISK_RANK: Readonly<Record<RiskClass, number>> = {
-  low: 0,
-  medium: 1,
-  high: 2,
-  critical: 3,
-  self_modification: 4,
 }
 
 /** What the rule set says about one request. */
