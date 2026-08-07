@@ -14,6 +14,17 @@
  * See: README.md · docs/01-bible/17-authentication-authorization.md · Chapter 19
  */
 export {
+  CAPABILITY_KEY_REFERENCE,
+  type CapabilityIssuer,
+  type CapabilityKeyProvider,
+  type CapabilityPresentation,
+  type CapabilityRejection,
+  type CapabilityRequest,
+  createCapabilityIssuer,
+  DEFAULT_CAPABILITY_LIFETIME_MS,
+} from './capabilities.js'
+export { type CapabilityStore, createInMemoryCapabilityStore } from './capability-store.js'
+export {
   type EvaluationContext,
   evaluatePolicies,
   type PolicyEvaluation,
