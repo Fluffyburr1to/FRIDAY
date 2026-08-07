@@ -1,0 +1,33 @@
+{
+  "name": "@friday/vitest-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Vitest presets. One test harness, configured once.",
+  "license": "UNLICENSED",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "peerDependencies": {
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}
