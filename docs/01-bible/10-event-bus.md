@@ -214,6 +214,16 @@ chain can do that truthfully. **The event bus is how FRIDAY keeps her promises.*
 
 The log grows forever. This is designed for from Milestone 1, not discovered at Milestone 6.
 
+> **Scope note (2026-08-07).** The *design* below is Milestone 1's, and it is settled. The
+> *implementation* — tiering, compaction, and Parquet archival — is deliberately deferred to
+> Milestone 2, because every one of those operations reads and rewrites the event log and therefore
+> depends on the ledger, the integrity chain, and the storage layer that M1 delivers. Compacting a
+> log whose chain has never been verified in anger is the wrong order to build in.
+>
+> This paragraph exists because Chapter 39's Milestone 1 table never listed compaction, and the
+> sentence above reads as though it did. The two documents disagreed; this is the record of which
+> one won and why. See [ADR-0024](../adr/0024-compaction-and-archival-are-milestone-2.md).
+
 ### Three tiers
 
 | Tier | Age | Storage | Query speed | Retention |
