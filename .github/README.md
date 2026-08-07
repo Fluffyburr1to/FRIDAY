@@ -15,14 +15,17 @@ that checks her. Enforced by CI and CODEOWNERS.
 You approve every merge. That decision needs independent verification — otherwise you are trusting
 FRIDAY's own report that her tests pass.
 
-Pipelines to be written at Milestone 0:
+| Workflow | Runs | Status |
+|---|---|---|
+| `pr.yml` | Every PR — lint, typecheck, tests, **constitutional tests**, security scan, build, E2E | ✅ |
+| `ai-pr-rules.yml` | `friday/*` branches — 400-line cap, forbidden paths, required PR sections | ✅ |
+| `main.yml` | After merge — full suite, benchmarks, coverage | ✅ |
+| `nightly.yml` | Live connector smoke tests, soak test, dependency audit | M1 — needs a running kernel to soak |
+| `release.yml` | Build and SBOM. **Signing stays manual.** | M4 — needs something installable |
 
-| Workflow | Runs |
-|---|---|
-| `pr.yml` | Every PR — lint, typecheck, tests, **constitutional tests**, security scan, build, E2E |
-| `ai-pr-rules.yml` | `friday/*` branches — 400-line cap, forbidden paths, required PR sections |
-| `main.yml` | After merge — full suite, benchmarks, coverage |
-| `nightly.yml` | Live connector smoke tests, soak test, dependency audit |
-| `release.yml` | Build and SBOM. **Signing stays manual.** |
+The stages that have nothing to run yet — constitutional tests, migrations, E2E, agent evals — say so
+in their output and pass. They are wired now rather than added later so that the milestone which
+introduces each one finds the gate already in place, rather than retrofitting enforcement onto code
+that already exists.
 
 Reference: [Chapter 27](../docs/01-bible/27-cicd-pipeline.md)

@@ -1,0 +1,17 @@
+# Blank issues are disabled deliberately. Every template asks for the one thing
+# that makes an issue actionable months later — a correlation ID, evidence, or
+# the alternatives considered. A blank issue reliably omits it.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Fluffyburr1to/FRIDAY/security/advisories/new
+    about: >
+      Do not open a public issue. See SECURITY.md — a public report tells everyone about the
+      vulnerability at the same moment it tells the owner.
+
+  - name: Read the Project Bible first
+    url: https://github.com/Fluffyburr1to/FRIDAY/tree/main/docs/01-bible
+    about: >
+      Most "why is it like this?" questions are answered in a chapter, including what else was
+      considered and what the choice costs.

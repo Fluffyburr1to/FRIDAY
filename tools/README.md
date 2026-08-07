@@ -7,8 +7,18 @@ here.
 |---|---|
 | **tsconfig/** | Shared TypeScript configurations that every package extends |
 | **lint-config/** | Shared Biome configuration |
+| **vitest-config/** | Shared Vitest presets — the two test tiers, timeouts, coverage thresholds |
 | **scripts/** | Setup, migration, release, staging refresh, maintenance |
 | **evals/** | ★ The agent evaluation harness |
+
+**`tools/<tool>-config/` holds shared configuration for one tool, named after that tool.** Adding a
+sibling when a new tool needs shared settings follows [Chapter 03](../docs/01-bible/03-repository-structure.md)
+and needs no ADR — `playwright-config/` and `vite-config/` are expected at M4. The pattern was
+settled in [ADR-0017](../docs/adr/0017-shared-tool-configuration-packages.md).
+
+They exist for one reason: with twenty packages ahead, configuration that is copied rather than
+shared drifts — and the drift is invisible, because a package whose coverage threshold has quietly
+slipped to 50% still shows a green tick.
 
 ---
 

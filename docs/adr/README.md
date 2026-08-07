@@ -38,6 +38,20 @@ individually addressable and can be superseded on its own rather than as part of
 | [0014](0014-human-approval-every-merge.md) | FRIDAY proposes; the owner approves every merge | accepted | low* | [31](../01-bible/31-git-workflow.md) |
 | [0015](0015-local-only-observability.md) | Observability is local-only | accepted | low* | [29](../01-bible/29-monitoring-observability.md) |
 
+Decisions taken since, as implementation met the design:
+
+| # | Title | Status | Reverse | Bible |
+|---|---|---|---|---|
+| [0016](0016-build-configuration-is-outside-the-boundary-graph.md) | Build configuration is outside the boundary graph | accepted | low | [03](../01-bible/03-repository-structure.md) |
+| [0017](0017-shared-tool-configuration-packages.md) | `tools/<tool>-config` is a pattern, not a closed list | accepted | low | [03](../01-bible/03-repository-structure.md) |
+| [0018](0018-better-sqlite3-as-the-sqlite-driver.md) | `better-sqlite3` as the SQLite driver | accepted | medium | [09](../01-bible/09-database-design.md) |
+| [0019](0019-the-hash-chain-is-computed-inside-the-append-transaction.md) | The hash chain is computed inside the append transaction | accepted | medium | [09](../01-bible/09-database-design.md) |
+| [0020](0020-key-material-comes-from-an-injected-key-provider.md) | Key material comes from an injected key provider | accepted | low | [09](../01-bible/09-database-design.md) |
+| [0021](0021-the-cli-reads-the-event-log-in-process-until-m3.md) | The CLI reads the event log in-process until M3 | accepted | low | [34](../01-bible/34-disaster-recovery.md) |
+| [0022](0022-toml-for-the-configuration-file.md) | TOML for the configuration file | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
+| [0023](0023-rotating-file-stream-for-log-rotation.md) | `rotating-file-stream` for log rotation | accepted | low | [22](../01-bible/22-logging-standards.md) |
+| [0024](0024-compaction-and-archival-are-milestone-2.md) | Compaction and archival are Milestone 2 work | accepted | low | [10](../01-bible/10-event-bus.md) |
+
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
 promises, and requires a new ADR making that explicit — never a quiet edit.

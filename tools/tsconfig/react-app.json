@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "FRIDAY browser target (apps/web, packages/ui-kit)",
+  "docs": "docs/01-bible/06-frontend-architecture.md",
+
+  "extends": "./library.json",
+
+  // As with library.json: no path-shaped settings here. See the note there.
+  "compilerOptions": {
+    // The DOM lib is granted here and nowhere else. Whether a package can
+    // reach `window` is therefore visible from the single line naming the
+    // config it extends, rather than buried in a compiler option.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": [],
+
+    "jsx": "react-jsx",
+
+    // Vite owns the browser build; tsc is used only as a typechecker there.
+    // Emitting a second, unused JavaScript build would create real confusion
+    // about which output actually ships.
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+
+    // Vite resolves bare specifiers itself and does not require the extension
+    // discipline NodeNext imposes.
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  }
+}

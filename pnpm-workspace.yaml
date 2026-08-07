@@ -4,6 +4,45 @@ packages:
   - 'departments/*'
   - 'connectors/*'
   - 'tools/*'
+
+# ── Catalog: one version of each shared dependency, declared once ────────────
+#
+# Packages write `"vitest": "catalog:"` instead of a version range. With twenty
+# packages and a decade ahead, the alternative is twenty ranges that drift —
+# and two versions of a test runner or a type definition in one repository is
+# a class of bug that costs hours and teaches nothing.
+#
+# Upgrading is then a one-line change here, reviewed once.
+catalog:
+  # Toolchain
+  '@types/node': ^24.13.3
+  '@vitest/coverage-v8': ^4.1.10
+  vitest: ^4.1.10
+
+  # Milestone 1 — Heartbeat
+  #
+  # Each of these is confined to the package that owns it, and for three of the
+  # four that confinement is enforced by .dependency-cruiser.cjs rather than by
+  # convention. Zod is the exception: it is allowed anywhere, because validating
+  # at every boundary is the rule rather than a privilege.
+  zod: ^4.4.3 # contracts, config — the single source of truth for data shapes
+  drizzle-orm: ^0.45.2 # storage ONLY — deny-listed everywhere else
+  better-sqlite3: ^13.0.3 # storage ONLY — see docs/adr/0018
+  '@types/better-sqlite3': ^9.6.0 # lags the runtime package; see ADR-0018's negative consequences
+  pino: ^10.3.1 # telemetry ONLY, by convention — the redaction layer is the point
+
+  # config ONLY. Node has no TOML parser and Chapter 33 specifies config.toml.
+  # A correct TOML 1.0 parser is far past the "prefer fifty lines over a
+  # package" threshold — the failure mode of a hand-rolled one is a config file
+  # that parses to something subtly different from what it says.
+  # See docs/adr/0022.
+  smol-toml: ^1.7.1
+
+  # telemetry ONLY. Chapter 22's rotation rules — daily, 100 MB per file, 30
+  # days, and a 1 GB ceiling on the directory — are all this package's options.
+  # Chosen over pino-roll; the reasoning is in docs/adr/0023.
+  rotating-file-stream: ^3.2.9
+
 # pnpm blocks dependency install scripts by default — a good default, since an
 # install script runs arbitrary code with your privileges (supply chain, T2).
 # Each exception is an explicit decision recorded here.
@@ -12,6 +51,16 @@ allowBuilds:
   # published by the Biome team with npm provenance and the package is our
   # linter, so it is already trusted to read every source file.
   '@biomejs/biome': true
+  # Vitest's coverage provider builds no native code; esbuild, which Vite
+  # depends on, downloads a prebuilt binary for this platform. Both are part
+  # of the test toolchain and already run over every source file.
+  esbuild: true
+  # better-sqlite3 is a native module: its install script fetches a prebuilt
+  # binary for this platform, or compiles one. This is the cost Article VII
+  # pays for Drizzle's only mature SQLite dialect, and it is the reason
+  # node:sqlite is recorded as the alternative to return to — see
+  # docs/adr/0018-better-sqlite3-as-the-sqlite-driver.md
+  better-sqlite3: true
 
 # Departments and connectors are workspace members so they can be developed,
 # tested, and type-checked alongside the kernel — while dependency-cruiser

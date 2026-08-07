@@ -1,0 +1,87 @@
+# Dependency updates.
+#
+# Every dependency is attack surface running with FRIDAY's full privileges
+# (docs/01-bible/18-security-model.md, threat T2). Two consequences shape this
+# configuration:
+#
+#   1. SECURITY UPDATES SHOULD ARRIVE FAST. An unpatched dependency on a
+#      machine holding the owner's entire digital life is the realistic attack,
+#      not a targeted exploit.
+#
+#   2. VERSION UPDATES SHOULD ARRIVE SLOWLY AND IN ONE BATCH. A stream of
+#      individual bump PRs trains the one person reviewing them to merge
+#      without looking — which is exactly how a compromised package gets in.
+#      Grouping makes the weekly review a single deliberate act.
+#
+# Every Dependabot PR goes through the same gate as any other: full CI, and the
+# owner's approval. Nothing here merges itself.
+#
+# Reference: docs/01-bible/27-cicd-pipeline.md
+#            docs/01-bible/18-security-model.md
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: America/Chicago
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - dependencies
+    commit-message:
+      prefix: build
+      prefix-development: build
+      include: scope
+    groups:
+      # One PR for the toolchain. These change often, break loudly, and are
+      # verified by the pipeline itself running successfully.
+      toolchain:
+        patterns:
+          - '@biomejs/*'
+          - 'turbo'
+          - 'typescript'
+          - 'dependency-cruiser'
+          - 'vitest'
+          - '@vitest/*'
+          - '@types/*'
+        update-types:
+          - minor
+          - patch
+      # Everything else, batched. Majors stay separate: a breaking change
+      # deserves its own diff and its own reading.
+      production:
+        patterns:
+          - '*'
+        exclude-patterns:
+          - '@biomejs/*'
+          - 'turbo'
+          - 'typescript'
+          - 'dependency-cruiser'
+          - 'vitest'
+          - '@vitest/*'
+          - '@types/*'
+        update-types:
+          - minor
+          - patch
+
+  # The pipeline is the verification layer of the approval system. An action
+  # pinned to an abandoned major is a supply-chain risk in the one place that
+  # is supposed to be checking everything else.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - '*'

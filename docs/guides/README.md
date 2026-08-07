@@ -3,11 +3,11 @@
 Task-oriented documentation, organized by what the reader is trying to do
 (**Diátaxis**).
 
-| Folder | Reader | Answers |
-|---|---|---|
-| **tutorials/** | Learning, new to this | "Take me through it step by step" |
-| **how-to/** | Working, has a goal | "How do I accomplish X?" |
-| **reference/** | Working, needs a fact | "What are the parameters?" |
+| Folder | Reader | Answers | |
+|---|---|---|---|
+| **[how-to/](how-to/README.md)** | Working, has a goal | "How do I accomplish X?" | ✅ |
+| **tutorials/** | Learning, new to this | "Take me through it step by step" | Arrives when there is something to learn to use |
+| **reference/** | Working, needs a fact | "What are the parameters?" | Generated from code, from Milestone 1 |
 
 **Explanation — "why is it like this?" — does not live here.** It lives in the
 [Project Bible](../01-bible/) and in [ADRs](../adr/).

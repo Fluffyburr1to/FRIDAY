@@ -19,7 +19,9 @@ rotated away along with records the Constitution requires.
   and a deny-list of field names
 - OpenTelemetry tracing setup, with cost as a span attribute
 - Prometheus-format metrics
-- Log rotation and disk-usage protection
+- Log rotation and disk-usage protection — daily, 100 MB per file, 30 files, and a **1 GB ceiling on
+  the directory**, enforced by the writer rather than by anyone remembering to look
+  ([ADR-0023](../../docs/adr/0023-rotating-file-stream-for-log-rotation.md))
 
 ## What does NOT
 

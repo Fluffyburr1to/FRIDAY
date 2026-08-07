@@ -1,0 +1,75 @@
+name: Something needs deciding
+description: An architectural question. Becomes an RFC or an ADR.
+labels: ['decision']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when a change would add or replace a technology, alter an interface between
+        packages, change the data model non-additively, or contradict a chapter of the Project
+        Bible.
+
+        **The decision is recorded before it is implemented**, not after. An ADR written afterwards
+        is a justification, not a decision — see
+        [Chapter 37](../../docs/01-bible/37-adr-process.md).
+
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: Stated so that someone with no memory of the discussion understands it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: forces
+    attributes:
+      label: What is forcing it now
+      description: >
+        Why this cannot be left alone. A decision with no forcing function is usually better
+        deferred until there is more information.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: The options you can see
+      description: >
+        Argue each one as its advocate would. An ADR with no real alternatives is a decision that
+        was defaulted into rather than made.
+    validations:
+      required: true
+
+  - type: textarea
+    id: unknowns
+    attributes:
+      label: What you do not know
+      description: >
+        Often the most valuable field. It tells a future reader whether new information should
+        change the conclusion.
+    validations:
+      required: true
+
+  - type: textarea
+    id: constitutional
+    attributes:
+      label: Which founding provisions this touches
+      description: >
+        Articles, Principles, or Core Values — and whether any of them is in tension with any of
+        the options. Say so if one is.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: reversibility
+    attributes:
+      label: How hard would this be to undo
+      description: This governs how much deliberation the decision deserves.
+      options:
+        - Low — a configuration change
+        - Medium — real work, but contained to one package
+        - High — it would touch many packages, or data already written
+        - Irreversible
+    validations:
+      required: true

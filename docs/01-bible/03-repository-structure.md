@@ -103,10 +103,13 @@ friday/
 ├── tools/                       ── DEVELOPMENT MACHINERY ──
 │   ├── tsconfig/                Shared TypeScript configurations
 │   ├── lint-config/             Shared Biome configuration
+│   ├── vitest-config/           Shared Vitest presets — tiers, timeouts, coverage thresholds
 │   ├── scripts/                 Setup, migration, release, maintenance scripts
 │   └── evals/                   ★ Agent evaluation harness — how we test non-deterministic AI
 │
 ├── tests/                       ── CROSS-CUTTING TESTS ──
+│   ├── constitutional/          ★ The founding guarantees. Protected; FRIDAY may never touch.
+│   ├── architecture/            That the boundary rules below can actually fire
 │   ├── e2e/                     Playwright, full-system journeys
 │   ├── contract/                Connector conformance tests against recorded fixtures
 │   └── fixtures/                Shared test data
@@ -169,6 +172,23 @@ except `packages/model-router/`. This is how Principle 5 stops being an aspirati
 All data access goes through repository functions. This gives us one place to enforce encryption,
 one place to enforce multi-user data isolation, and one place to change when SQLite is eventually
 replaced.
+
+### The rules are only real if they can fire
+
+Rules 3, 4, and 5 are enforced by patterns in `.dependency-cruiser.cjs`, and a pattern can be wrong
+in a way that is completely silent: the rule never matches, no violation is ever reported, and the
+pipeline stays green while the guarantee it names does not hold.
+
+This is not hypothetical. **Rules 4 and 5 were inert from Milestone 0 until Milestone 2**, because
+they matched module specifiers (`^better-sqlite3`) while dependency-cruiser matches resolved paths
+(`node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/lib/index.js`). Nothing
+detected it, because until Milestone 2 there was no dependency installed that could have triggered
+them.
+
+So: **a boundary rule is accompanied by a test in `tests/architecture/` asserting it can fire**, and
+a new rule is confirmed by hand — add the forbidden import, run `pnpm check:boundaries`, watch it
+fail — before it is trusted. A rule that cannot fire is worse than no rule, because everyone
+believes it.
 
 ### Rule 6 — Every folder has a README
 
@@ -249,6 +269,21 @@ broken test would. Without this, you would have no way to know whether a change 
 FRIDAY better or worse — and prompt changes are the changes you will make most often.
 
 Full design in [Chapter 28](28-testing-strategy.md).
+
+### Why `tools/` is a pattern rather than a fixed list
+
+**`tools/<tool>-config/` holds shared configuration for one tool, named after that tool.** The
+entries above are the ones that exist today; adding a sibling when a new tool needs shared settings
+is following this chapter, not diverging from it, and needs no ADR.
+
+The rule matters because the alternative — one folder holding every tool's configuration — has a
+name that describes nothing a reader can check, and because per-tool folders keep an unrelated
+change from invalidating a build cache. The cost is that `tools/` grows: by Milestone 4 it will
+plausibly also hold `playwright-config/` and `vite-config/`, and the two most important entries,
+`scripts/` and `evals/`, become harder to spot in a listing. Revisit the grouping if the count passes
+roughly eight — the same mechanical move anticipated for `packages/` past thirty.
+
+Full reasoning, including the alternatives: [ADR-0017](../adr/0017-shared-tool-configuration-packages.md).
 
 ### Why `_template/` folders exist
 
@@ -425,3 +460,5 @@ somewhere convenient.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial ratification |
+| 1.1 | 2026-08-07 | `tools/vitest-config/` added to the tree; `tools/<tool>-config` stated as a pattern rather than a closed list ([ADR-0017](../adr/0017-shared-tool-configuration-packages.md), closing [RFC 0001](../rfc/0001-shared-test-configuration.md)) |
+| 1.2 | 2026-08-07 | `tests/constitutional/` added to the tree — it was already required by Chapters 27 and 28 and missing here. `tests/architecture/` added, with the rule that a boundary rule must be accompanied by a test proving it can fire, after Rules 4 and 5 were found inert since Milestone 0 |

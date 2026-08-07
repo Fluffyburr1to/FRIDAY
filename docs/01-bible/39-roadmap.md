@@ -98,6 +98,13 @@ appear — then verify the hash chain with `friday verify`.
 **Demonstrable outcome:** a live stream of events in your terminal. Not impressive, but real, and
 you can see it working. (Risk R1.)
 
+**Deliberately not in M1: compaction and archival.** [Chapter 10](10-event-bus.md) says growth
+management is "designed for from Milestone 1", and its design is. The implementation is Milestone 2
+work: tiering, compaction, and Parquet archival all read and rewrite the event log, so they depend
+on the ledger, the integrity chain, and the storage layer being finished and exercised first. The
+table above never listed them; this line records that as a decision rather than an oversight.
+See [ADR-0024](../adr/0024-compaction-and-archival-are-milestone-2.md).
+
 ---
 
 ## M2 — Conscience · 4–5 weeks
@@ -112,6 +119,7 @@ you can see it working. (Risk R1.)
 | `audit` | Causal chain reconstruction, explanation generation |
 | **`tests/constitutional`** | **The founding-guarantee test suite** |
 | `apps/web` | **Thin dashboard** — live event stream, pending approvals |
+| `kernel` | **Compaction and archival** — deferred from M1 ([ADR-0024](../adr/0024-compaction-and-archival-are-milestone-2.md)) |
 
 **Done when:** a simulated action requests permission, blocks, appears in the dashboard with a full
 explanation, waits across a core restart, and executes only after you approve.

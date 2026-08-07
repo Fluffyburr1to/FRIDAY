@@ -1,0 +1,12 @@
+{
+  // Paths live here rather than in @friday/tsconfig, because TypeScript
+  // resolves relative paths against the file they were written in.
+  "extends": "@friday/tsconfig/library.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "coverage", "test"]
+}

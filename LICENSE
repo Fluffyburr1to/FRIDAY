@@ -1,0 +1,42 @@
+Copyright (c) 2026 Tyler Hutson. All rights reserved.
+
+PROPRIETARY AND CONFIDENTIAL
+
+This software and its accompanying documentation — including the founding
+documents in docs/00-foundation/ and the Project Bible in docs/01-bible/ — are
+the private work of the copyright holder.
+
+No license, express or implied, is granted to any person to use, copy, modify,
+merge, publish, distribute, sublicense, or sell any part of this work, or to
+prepare derivative works from it, except with the prior written permission of
+the copyright holder.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+WHY THIS LICENSE, AND WHAT IT DOES NOT FORECLOSE
+
+This is the default position, chosen deliberately and not by omission.
+
+FRIDAY holds the owner's calendar, correspondence, notes, home, and finances.
+Reserving all rights keeps every option open while that is true, and it costs
+nothing: the copyright holder may relicense this work under any terms at any
+time, because they hold all of the copyright in it.
+
+The reverse is not true. Code released under an open license cannot be
+un-released. Waiting is free; releasing early is not.
+
+If FRIDAY is ever opened, README.md records the reasoning: AGPL-3.0 is the most
+philosophically consistent choice, because it would let others use and modify
+her while preventing anyone from building a closed product on work whose
+founding documents are about user sovereignty. That decision requires an ADR
+and is the owner's alone.
+
+Third-party dependencies remain under their own licenses. See the license
+compliance stage of the CI pipeline (docs/01-bible/27-cicd-pipeline.md).

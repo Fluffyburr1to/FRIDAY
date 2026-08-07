@@ -10,13 +10,21 @@ imports from an app.
 
 ## The applications
 
-| App | What it is | Milestone |
-|---|---|---|
-| **core** | The kernel service. **FRIDAY herself.** Runs as a `launchd` agent on the host Mac, at login, always. | M1 |
-| **cli** | `friday` — status, diagnostics, recovery, `safe-mode`, `panic`. The tool you reach for when the UI is unavailable. | M1 |
-| **web** | The dashboard. Served by core at localhost. **Also the UI that both shells load.** | M2 |
-| **desktop** | Tauri shell — menu bar, global hotkey, native notifications, keychain, updater. | M4 |
-| **mobile** | Tauri mobile shell — iOS first. Exists primarily to make Article III practical when you are away from your desk. | M7 |
+| App | What it is | Milestone | |
+|---|---|---|---|
+| **core** | The kernel service. **FRIDAY herself.** Runs as a `launchd` agent on the host Mac, at login, always. | M1 | |
+| **cli** | `friday` — status, diagnostics, recovery, `safe-mode`, `panic`. The tool you reach for when the UI is unavailable. | M1 | scaffolded |
+| **web** | The dashboard. Served by core at localhost. **Also the UI that both shells load.** | M2 | |
+| **desktop** | Tauri shell — menu bar, global hotkey, native notifications, keychain, updater. | M4 | |
+| **mobile** | Tauri mobile shell — iOS first. Exists primarily to make Article III practical when you are away from your desk. | M7 | |
+
+**Scaffolded** means it builds, typechecks, and runs an empty test suite — but does nothing yet.
+Node applications extend `@friday/tsconfig/library.json`; browser targets extend
+`react-app.json`, which is the only configuration granting the DOM library.
+
+`apps/cli` is scaffolded ahead of `apps/core` deliberately. Chapter 39 demonstrates Milestone 1 by
+running `friday events tail` and watching the log — so the CLI is the milestone's visible outcome,
+not an afterthought to it.
 
 ---
 
