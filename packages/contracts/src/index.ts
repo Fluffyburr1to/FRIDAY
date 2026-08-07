@@ -11,6 +11,17 @@
  *
  * See: README.md · docs/01-bible/09-database-design.md · Chapter 10 · Chapter 20
  */
+// ── Identity ────────────────────────────────────────────────────────────────
+export {
+  ACTOR_TYPES,
+  type Actor,
+  ActorSchema,
+  type ActorType,
+  ActorTypeSchema,
+  type Subject,
+  SubjectSchema,
+  SYSTEM_ACTOR,
+} from './actor.js'
 // ── Outcomes and failures ───────────────────────────────────────────────────
 export {
   ERROR_CODES,
@@ -20,6 +31,23 @@ export {
   FridayErrorSchema,
   fridayError,
 } from './errors.js'
+export {
+  type CausationId,
+  CausationIdSchema,
+  type CorrelationId,
+  CorrelationIdSchema,
+  type EventId,
+  EventIdSchema,
+  type PlanId,
+  PlanIdSchema,
+  type PlanStepId,
+  PlanStepIdSchema,
+  type PrincipalId,
+  PrincipalIdSchema,
+  timestampFromUuidv7,
+  UuidSchema,
+  uuidv7,
+} from './ids.js'
 export { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrapOr } from './result.js'
 // ── Classification ──────────────────────────────────────────────────────────
 export {
