@@ -18,6 +18,9 @@ Read, in this order:
 4. [Coding Standards](docs/01-bible/30-coding-standards.md) — how code is written here.
 5. [`CLAUDE.md`](CLAUDE.md) — if you are an AI assistant, this is binding.
 
+Then, for the mechanics — installing, building, testing, adding a package:
+[Working in the Monorepo](docs/guides/how-to/working-in-the-monorepo.md).
+
 ---
 
 ## The process
@@ -36,7 +39,7 @@ Read, in this order:
       · update documentation in the SAME commit
    ▼
 4  Verify locally
-      pnpm check          lint · typecheck · test · boundaries
+      pnpm check          format · lint · types · boundaries · docs · tests
    ▼
 5  Open a pull request
       · fill in the template completely

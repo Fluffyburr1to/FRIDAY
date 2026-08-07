@@ -2,12 +2,20 @@
 
 Tests that span packages. Tests belonging to a single package live in that package's `test/` folder.
 
-| Folder | Contains | Runs |
-|---|---|---|
-| **constitutional/** | ★ Assertions that the founding guarantees hold | Every PR |
-| **e2e/** | Playwright — full user journeys through a real browser | Every PR |
-| **contract/** | The conformance suite every connector must pass | Every PR |
-| **fixtures/** | Shared test data, scrubbed of real content | — |
+| Folder | Contains | Runs | Status |
+|---|---|---|---|
+| **constitutional/** | ★ Assertions that the founding guarantees hold | Every PR | M2 |
+| **architecture/** | That the boundary rules can actually fire | Every PR | ✅ |
+| **e2e/** | Playwright — full user journeys through a real browser | Every PR | M4 |
+| **contract/** | The conformance suite every connector must pass | Every PR | M4 |
+| **fixtures/** | Shared test data, scrubbed of real content | — | |
+
+These are configured by `vitest.config.ts` at the repository root — one project per tier — because
+they belong to no package. Tests that belong to a single package live in that package's `test/`
+folder and are configured by `@friday/vitest-config`. `e2e/` is the exception: it is Playwright, not
+Vitest.
+
+Run them with `pnpm run test:cross`, or `pnpm test`, which runs both these and every package's own.
 
 ---
 
@@ -55,7 +63,14 @@ owner's deliberate decision, not a quiet edit to an assertion.
  ╱             ╲
 ╱               ╲ Unit         ~1500 tests  pure logic, fast (in each package)
 ──────────────────
+
+ ┆ Architecture   ~25 tests    that the enforcement itself works
 ```
+
+The architecture tier sits alongside the pyramid rather than in it, because it does not test FRIDAY
+at all — it tests the tooling that tests FRIDAY. It exists because two boundary rules were found to
+have been silently inert since Milestone 0. See
+[`architecture/README.md`](architecture/README.md).
 
 Deliberately not a standard pyramid. The constitutional tier sits above end-to-end because those
 properties matter more than any feature — and because they are the ones a future contributor is most

@@ -38,6 +38,14 @@ individually addressable and can be superseded on its own rather than as part of
 | [0014](0014-human-approval-every-merge.md) | FRIDAY proposes; the owner approves every merge | accepted | low* | [31](../01-bible/31-git-workflow.md) |
 | [0015](0015-local-only-observability.md) | Observability is local-only | accepted | low* | [29](../01-bible/29-monitoring-observability.md) |
 
+Decisions taken since, as implementation met the design:
+
+| # | Title | Status | Reverse | Bible |
+|---|---|---|---|---|
+| [0016](0016-build-configuration-is-outside-the-boundary-graph.md) | Build configuration is outside the boundary graph | accepted | low | [03](../01-bible/03-repository-structure.md) |
+| [0017](0017-shared-tool-configuration-packages.md) | `tools/<tool>-config` is a pattern, not a closed list | accepted | low | [03](../01-bible/03-repository-structure.md) |
+| [0018](0018-better-sqlite3-as-the-sqlite-driver.md) | `better-sqlite3` as the SQLite driver | accepted | medium | [09](../01-bible/09-database-design.md) |
+
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
 promises, and requires a new ADR making that explicit — never a quiet edit.

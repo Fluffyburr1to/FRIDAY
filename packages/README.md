@@ -47,13 +47,18 @@ packages/<name>/
 ★ marks architecturally load-bearing packages. Changes require an ADR and owner review, and cannot
 be merged from an AI-authored branch.
 
-| Package | Owns | Milestone |
-|---|---|---|
-| ★ **contracts** | Every data shape in the system. Zod schemas, single source of truth. | M1 |
-| **kernel** | Event bus, durable log, hash chain, scheduler, lifecycle | M1 |
-| **storage** | Database access, migrations, repositories, field encryption | M1 |
-| **telemetry** | Structured logging, redaction, tracing, metrics | M1 |
-| **config** | Configuration loading, validation, precedence | M1 |
+**Scaffolded** means the package builds, typechecks, and runs its (empty) test suite — but exports
+nothing. They exist ahead of their milestone so the workspace, the build graph, the boundary rules,
+and the test harness are proven against real packages rather than against nothing. A folder with
+only a README proves none of that.
+
+| Package | Owns | Milestone | |
+|---|---|---|---|
+| ★ **contracts** | Every data shape in the system. Zod schemas, single source of truth. | M1 | scaffolded |
+| **kernel** | Event bus, durable log, hash chain, scheduler, lifecycle | M1 | scaffolded |
+| **telemetry** | Structured logging, redaction, tracing, metrics | M1 | scaffolded |
+| **config** | Configuration loading, validation, precedence | M1 | scaffolded |
+| **storage** | Database access, migrations, repositories, field encryption | M1 | scaffolded |
 | ★ **guardian** | Policy, capabilities, risk classification, approvals | M2 |
 | **audit** | Causal chain reconstruction, explanation generation | M2 |
 | ★ **model-router** | Vendor-neutral AI access, sensitivity routing, budgets | M3 |
@@ -72,10 +77,16 @@ be merged from an AI-authored branch.
 ## Adding a package
 
 1. Does it belong in an existing one? Twenty focused packages is good; forty is a smell.
-2. Copy the anatomy above.
+2. Copy the anatomy above — start from `packages/contracts`, which is the reference shape.
 3. Name it `@friday/<folder-name>`.
 4. Write the README **first** — the charter, and explicitly what does *not* belong in it.
-5. Add its dependency rules to `.dependency-cruiser.cjs`.
-6. If it changes the architecture, write an ADR first.
+5. **Add it to `references` in the root `tsconfig.json`.** A package missing from that list is never
+   typechecked; `pnpm check:types` fails when the two drift apart.
+6. Add its dependency rules to `.dependency-cruiser.cjs` — **and a test in
+   [`tests/architecture/`](../tests/architecture/README.md) proving each one can fire.** Rules 4 and
+   5 above were silently inert from Milestone 0 to Milestone 2 because nobody had checked.
+7. If it changes the architecture, write an ADR first.
+
+Step-by-step: [Working in the Monorepo](../docs/guides/how-to/working-in-the-monorepo.md).
 
 Reference: [Chapter 03 — Repository Structure](../docs/01-bible/03-repository-structure.md).

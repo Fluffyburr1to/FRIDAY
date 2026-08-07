@@ -13,21 +13,45 @@ calendar, your code, your home, your notes, and your correspondence without repl
 
 ## Status
 
-**Pre-implementation.** The engineering foundation is complete; no application code exists yet.
+**Pre-implementation.** The engineering foundation is complete and verified end to end; no
+application code exists yet.
 
 | | |
 |---|---|
-| Phase | Milestone 0 — Ground |
+| Phase | Milestone 0 — Ground, complete · **ready to begin M1** |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
-| Architecture Decision Records | ✅ 15 seed ADRs |
+| Architecture Decision Records | ✅ 18 |
 | Repository structure | ✅ Defined, every folder documented |
-| Build tooling | ✅ pnpm · Turborepo · TypeScript strict · Biome · dependency-cruiser |
+| Build tooling | ✅ pnpm workspaces · Turborepo · TypeScript strict · Biome · dependency-cruiser |
+| Testing | ✅ Vitest — unit, integration, and cross-cutting tiers, coverage thresholds |
+| Boundary enforcement | ✅ Verified firing, with regression tests |
+| M1 packages | ✅ `contracts` `config` `telemetry` `storage` `kernel` `cli` — scaffolded, deliberately empty |
+| M1 dependencies | ✅ Zod · Drizzle · SQLite · Pino — installed, confined to their packages |
 | CI pipeline | ✅ 5 staged gates |
 | Branch protection | ✅ Enforced, including for the owner |
 | Application code | ⬜ Not started — by design |
 
 This is deliberate. See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md).
+
+---
+
+## Working on it
+
+```bash
+corepack enable && pnpm install   # Node 24 LTS, pinned in .nvmrc
+pnpm run setup                    # local git hooks — once per clone
+pnpm check                        # everything the pull request gate runs
+```
+
+| | |
+|---|---|
+| `pnpm check` | Format, lint, types, architecture boundaries, docs, tests |
+| `pnpm build` | Every package, in dependency order, cached |
+| `pnpm test` | Unit and integration tests · `test:unit` `test:integration` `test:coverage` |
+| `pnpm fix` | Applies every safe formatting and lint fix |
+
+Full guide: [Working in the Monorepo](docs/guides/how-to/working-in-the-monorepo.md).
 
 ---
 
@@ -84,9 +108,17 @@ apps/          things that run — core, desktop, mobile, web, cli
 packages/      the kernel and its libraries — guardian, memory, event bus, ...
 departments/   FRIDAY's organizational units, each self-contained
 connectors/    one folder per external service
-tools/         build config, scripts, the agent evaluation harness
-tests/         end-to-end and cross-package contract tests
+tools/         shared tsconfig · lint and test config · scripts · the eval harness
+tests/         constitutional, end-to-end, and cross-package contract tests
 infra/         service definitions, backup config, telemetry config
+```
+
+Dependencies flow one way, and `dependency-cruiser` fails the build when they do not:
+
+```
+apps/  ──►  departments/  ──►  packages/  ──►  packages/contracts
+              │                                        ▲
+              └──►  connectors/  ─────────────────────┘
 ```
 
 Every folder has a `README.md` stating its charter and its boundaries.
@@ -162,19 +194,13 @@ Only the project owner may amend them. Proposed improvements are recorded in
 
 ## License
 
-**Not yet chosen.** This is a Milestone 0 decision for the project owner, and it is deliberately not
-made on your behalf — the choice has real consequences for whether FRIDAY can ever be shared,
-open-sourced in part, or built upon by others.
+**All rights reserved.** See [`LICENSE`](LICENSE).
 
-Until a `LICENSE` file exists, all rights are reserved by the owner.
+Chosen deliberately, and it forecloses nothing. FRIDAY holds her owner's calendar, correspondence,
+notes, home, and finances; reserving all rights keeps every option open while that is true, and it
+costs nothing — the copyright holder may relicense at any time, because they hold all of the
+copyright. The reverse is not true: code released under an open license cannot be un-released.
 
-The three options worth considering, briefly:
-
-| Option | Means | Suits |
-|---|---|---|
-| **All rights reserved** (no license) | Nobody may copy or use this. The default. | Keeping FRIDAY entirely private |
-| **AGPL-3.0** | Anyone may use and modify it, but must publish their changes — including if they run it as a service | Sharing the work while preventing someone from building a closed product on it |
-| **MIT / Apache-2.0** | Anyone may do nearly anything, including building a commercial product | Maximum adoption if FRIDAY ever becomes something others use |
-
-Given the founding documents' emphasis on user sovereignty and vendor independence, **AGPL-3.0** is
-the most philosophically consistent choice if you ever open this. Nothing needs deciding today.
+If FRIDAY is ever opened, **AGPL-3.0** is the most philosophically consistent choice — it would let
+others use and modify her while preventing anyone from building a closed product on work whose
+founding documents are about user sovereignty. That change requires an ADR.
