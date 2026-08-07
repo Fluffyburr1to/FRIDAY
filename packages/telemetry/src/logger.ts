@@ -1,5 +1,6 @@
 import pino from 'pino'
 import { redact } from './redaction.js'
+import { createRotatingDestination, type RotationEvent, type RotationPolicy } from './rotation.js'
 
 /**
  * The system log — verbose, cheap, disposable, for debugging.
@@ -85,10 +86,25 @@ export interface LoggerOptions {
   /**
    * Where lines go. A file path, or omitted for stdout.
    *
-   * Rotation arrives in the next commit. Until then a file grows unbounded,
-   * which Chapter 22 does not permit for long.
+   * A file destination rotates automatically, to Chapter 22's rules — daily,
+   * 100 MB per file, 30 days, and a 1 GB ceiling on the directory. Nothing has
+   * to be configured and nobody has to watch it, because the rule this
+   * implements is that logs must never be the reason FRIDAY cannot write her
+   * audit trail.
    */
   destination?: string
+
+  /** Overrides Chapter 22's rotation numbers. Rarely wanted outside a test. */
+  rotation?: RotationPolicy
+
+  /**
+   * Called when a log file is rotated, deleted, or rotation fails.
+   *
+   * Diagnostics turns a deletion into an issue the owner sees: files being
+   * removed to stay under the ceiling means log volume has outgrown its
+   * budget, and that is a thing to know rather than a thing to absorb.
+   */
+  onRotation?: (event: RotationEvent) => void
 
   /** Test seam. Production callers omit it. */
   stream?: NodeJS.WritableStream
@@ -140,11 +156,17 @@ export function createLogger(options: LoggerOptions): Logger {
  * SQLite before anything acts on it, and losing a debug line is not the same
  * kind of event as losing a record the Constitution requires.
  *
+ * A file goes through a rotating stream instead, so retention is enforced by
+ * the writer rather than by anyone remembering to check.
  */
 function openDestination(options: LoggerOptions): pino.DestinationStream {
   if (options.destination === undefined) return pino.destination({ dest: 1, sync: false })
 
-  return pino.destination({ dest: options.destination, sync: false, mkdir: true })
+  return createRotatingDestination({
+    path: options.destination,
+    ...(options.rotation === undefined ? {} : { policy: options.rotation }),
+    ...(options.onRotation === undefined ? {} : { onRotation: options.onRotation }),
+  })
 }
 
 /**

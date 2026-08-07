@@ -28,3 +28,11 @@ export {
   redact,
   scrubString,
 } from './redaction.js'
+
+export {
+  CHAPTER_22_ROTATION,
+  createRotatingDestination,
+  type RotatingDestinationOptions,
+  type RotationEvent,
+  type RotationPolicy,
+} from './rotation.js'

@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@friday/contracts": "workspace:*",
-    "pino": "catalog:"
+    "pino": "catalog:",
+    "rotating-file-stream": "catalog:"
   }
 }
