@@ -51,6 +51,15 @@ export {
   type EventTypeDefinition,
 } from './event-registry.js'
 export {
+  ChainVerifiedPayloadSchema,
+  CORE_EVENT_TYPES,
+  registerCoreEventTypes,
+  SystemDegradedPayloadSchema,
+  SystemStartedPayloadSchema,
+  SystemStoppedPayloadSchema,
+  TestEventPayloadSchema,
+} from './event-types.js'
+export {
   type CausationId,
   CausationIdSchema,
   type CorrelationId,
