@@ -12,6 +12,15 @@
  */
 
 export {
+  createLogger,
+  createSilentLogger,
+  LOG_LEVELS,
+  type LogContext,
+  type Logger,
+  type LoggerOptions,
+  type LogLevel,
+} from './logger.js'
+export {
   type ClassifiedValue,
   classified,
   isDeniedKey,
