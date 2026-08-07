@@ -46,6 +46,11 @@ export {
   NewEventSchema,
 } from './event.js'
 export {
+  createEventRegistry,
+  type EventRegistry,
+  type EventTypeDefinition,
+} from './event-registry.js'
+export {
   type CausationId,
   CausationIdSchema,
   type CorrelationId,
