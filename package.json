@@ -20,14 +20,14 @@
     "check:workflows": "node tools/scripts/check-workflows.mjs",
     "check:secrets": "gitleaks detect --no-banner --redact || echo 'gitleaks not installed — CI enforces this'",
     "fix": "biome check --write .",
-    "test": "turbo run test && vitest run",
+    "test": "turbo run build && turbo run test && vitest run",
     "test:unit": "turbo run test -- --project '*:unit'",
     "test:integration": "turbo run test -- --project '*:integration'",
     "test:coverage": "turbo run test:coverage",
     "build": "turbo run build",
     "setup": "bash tools/scripts/install-git-hooks.sh",
     "clean": "turbo run clean && rm -rf node_modules",
-    "test:cross": "vitest run"
+    "test:cross": "turbo run build && vitest run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
