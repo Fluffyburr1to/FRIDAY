@@ -8,6 +8,13 @@
   "bin": {
     "friday": "./dist/index.js"
   },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -21,6 +28,8 @@
   "dependencies": {
     "@friday/config": "workspace:*",
     "@friday/contracts": "workspace:*",
+    "@friday/kernel": "workspace:*",
+    "@friday/storage": "workspace:*",
     "@friday/telemetry": "workspace:*"
   },
   "devDependencies": {
