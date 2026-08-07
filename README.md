@@ -20,7 +20,11 @@ calendar, your code, your home, your notes, and your correspondence without repl
 | Phase | Milestone 0 — Ground |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
-| Repository structure | ✅ Defined |
+| Architecture Decision Records | ✅ 15 seed ADRs |
+| Repository structure | ✅ Defined, every folder documented |
+| Build tooling | ✅ pnpm · Turborepo · TypeScript strict · Biome · dependency-cruiser |
+| CI pipeline | ✅ 5 staged gates |
+| Branch protection | ✅ Enforced, including for the owner |
 | Application code | ⬜ Not started — by design |
 
 This is deliberate. See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md).

@@ -4,7 +4,7 @@
 
 To be written at Milestone 0, before FRIDAY can propose anything. See
 [.github/README.md](../README.md) for the list and
-[Chapter 27](../../docs/01-bible/27-cicd-pipeline.md) for the full pipeline design.
+[Chapter 27](../docs/01-bible/27-cicd-pipeline.md) for the full pipeline design.
 
 ## Two standing rules
 
