@@ -34,6 +34,13 @@ export interface FridayTestOptions {
 
   /** `node` everywhere except browser-facing packages, which use `jsdom`. */
   readonly environment?: 'node' | 'jsdom'
+
+  /**
+   * The package's own import name, aliased to `src/index.ts` so its tests can
+   * import through the public surface while coverage still instruments source.
+   * Defaults to `@friday/<name>`; set it only when the two differ.
+   */
+  readonly packageName?: string
 }
 
 /**
@@ -43,6 +50,7 @@ export interface FridayTestOptions {
  */
 export interface FridayTestConfig {
   readonly test: Record<string, unknown>
+  readonly resolve: Record<string, unknown>
 }
 
 /**

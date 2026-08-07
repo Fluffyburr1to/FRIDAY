@@ -34,14 +34,48 @@ const DEFAULT_COVERAGE_THRESHOLDS = {
 }
 
 /**
+ * Every test imports through a package's public name — `@friday/contracts`,
+ * never `../../src/event.js`. That is what keeps the "only index.ts is
+ * importable" rule true of the tests as well as of the code, and it means a
+ * test breaks when the public surface changes, which is the point.
+ *
+ * For a package's own tests, that name is aliased back to its `src/index.ts`
+ * rather than resolved through node_modules to `dist/`. Two reasons, and the
+ * second is the one that matters:
+ *
+ *   1. The inner loop needs no build step.
+ *   2. Vitest externalises anything under node_modules, and an externalised
+ *      module is never instrumented — so coverage would read 0% while every
+ *      test passed. A measurement that fails silently is worse than one that
+ *      fails loudly, and this one failed silently for a whole milestone.
+ *
+ * Imports of OTHER packages still resolve to their built output, so the
+ * cross-package contract remains what it always was: one entry point, built.
+ * `tsc --build` in `pnpm check:types` is what proves the shipped `dist` still
+ * compiles.
+ */
+function selfAlias(packageName) {
+  return [{ find: packageName, replacement: `${process.cwd()}/src/index.ts` }]
+}
+
+/**
  * @param {import('./index.js').FridayTestOptions} options
  * @returns {import('./index.js').FridayTestConfig}
  */
 export function fridayTest(options) {
-  const { name, setupFiles = [], coverageThresholds, environment = 'node' } = options
+  const {
+    name,
+    setupFiles = [],
+    coverageThresholds,
+    environment = 'node',
+    packageName = `@friday/${name}`,
+  } = options
+
+  const resolve = { alias: selfAlias(packageName) }
 
   /** @type {import('./index.js').FridayTestConfig} */
   const config = {
+    resolve,
     test: {
       // Explicit imports from 'vitest' rather than ambient globals. The extra
       // line at the top of each test file is what tells a reader — and an AI
@@ -68,6 +102,9 @@ export function fridayTest(options) {
       // timeouts never silently apply to unit tests.
       projects: [
         {
+          // Repeated per project on purpose: a Vitest project builds its own
+          // Vite config and does not inherit `resolve` from the root.
+          resolve,
           test: {
             name: `${name}:unit`,
             environment,
@@ -78,6 +115,7 @@ export function fridayTest(options) {
           },
         },
         {
+          resolve,
           test: {
             name: `${name}:integration`,
             environment,
