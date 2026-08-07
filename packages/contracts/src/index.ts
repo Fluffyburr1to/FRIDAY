@@ -21,3 +21,12 @@ export {
   fridayError,
 } from './errors.js'
 export { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrapOr } from './result.js'
+// ── Classification ──────────────────────────────────────────────────────────
+export {
+  isAtLeastAsSensitiveAs,
+  mayLeaveTheMachine,
+  requiresFieldEncryption,
+  SENSITIVITY_LEVELS,
+  type Sensitivity,
+  SensitivitySchema,
+} from './sensitivity.js'
