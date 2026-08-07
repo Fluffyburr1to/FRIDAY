@@ -44,6 +44,12 @@ importers:
       '@biomejs/biome':
         specifier: ^2.5.7
         version: 2.5.7
+      '@friday/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
+      '@friday/guardian':
+        specifier: workspace:*
+        version: link:packages/guardian
       '@types/node':
         specifier: 'catalog:'
         version: 24.13.3

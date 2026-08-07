@@ -31,6 +31,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@friday/contracts": "workspace:*",
+    "@friday/guardian": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "dependency-cruiser": "^18.1.1",
