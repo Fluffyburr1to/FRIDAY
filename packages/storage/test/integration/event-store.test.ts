@@ -46,7 +46,12 @@ describe('the event log', () => {
   })
 
   it('runs its migrations on first open', () => {
-    expect(storage.migrationsApplied).toEqual(['events:0001', 'main:0001', 'main:0002'])
+    expect(storage.migrationsApplied).toEqual([
+      'events:0001',
+      'events:0002',
+      'main:0001',
+      'main:0002',
+    ])
   })
 
   it('starts empty', () => {

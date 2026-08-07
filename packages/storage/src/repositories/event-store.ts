@@ -17,6 +17,7 @@ import { encryptField } from '../crypto/field-encryption.js'
 import type { KeyProvider } from '../crypto/key-provider.js'
 import {
   computeIntegrityHash,
+  computePayloadDigest,
   GENESIS_HASH,
   type HashableEvent,
   serialisePayload,
@@ -157,7 +158,13 @@ export function createEventStore(options: EventStoreOptions): EventStore {
           })
 
           tx.insert(events)
-            .values({ ...hashable, integrityHash })
+            .values({
+              ...hashable,
+              payload: stored.value,
+              integrityHash,
+              compactedAt: null,
+              compactionReason: null,
+            })
             .run()
 
           const written: FridayEvent = {
@@ -305,7 +312,10 @@ function buildHashable(input: {
     causationId: event.causationId ?? null,
     correlationId: event.correlationId ?? null,
     traceId: event.traceId ?? null,
-    payload,
+
+    // ★ The digest is computed here, once, over the bytes about to be stored —
+    // never re-derived from a parsed object later. ADR-0028.
+    payloadDigest: computePayloadDigest(payload),
     payloadVersion: event.payloadVersion ?? 1,
     sensitivity: event.sensitivity,
   }

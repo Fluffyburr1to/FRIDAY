@@ -107,8 +107,14 @@ describe('when the record has been broken', () => {
 
     expect(result.code).toBe(1)
     expect(result.errors()).toContain('THE RECORD HAS BEEN BROKEN')
-    expect(result.errors()).toContain('event 2 does not match its own hash')
+    expect(result.errors()).toContain('event 2 does not match the content that was recorded')
     expect(result.errors()).toContain('Everything up to event 1 still verifies')
+
+    // Since ADR-0028 the message also says WHICH guarantee failed, because
+    // that changes what the owner is looking at. Editing bytes on disk leaves
+    // the sequence provably untouched and the content provably altered — the
+    // distinction that makes deliberate removal tellable apart from damage.
+    expect(result.errors()).toContain('The sequence is intact')
   })
 
   it('tells the owner not to let new events bury it', async () => {
