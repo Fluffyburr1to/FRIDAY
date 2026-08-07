@@ -88,6 +88,20 @@ export interface EventStore {
     principalId?: PrincipalId | undefined
   }): Result<FridayEvent[], FridayError>
 
+  /**
+   * Every event belonging to one root request, oldest first.
+   *
+   * This is what the audit trail is walked with. `correlationId` groups a
+   * whole operation — an intent, the plan it produced, every step, every
+   * decision — and reading them as one set is what lets "why did you do that?"
+   * be answered from recorded fact rather than from a model's account of its
+   * own past reasoning.
+   */
+  readByCorrelation(input: {
+    correlationId: string
+    principalId?: PrincipalId | undefined
+  }): Result<FridayEvent[], FridayError>
+
   /** The most recent events, newest first. */
   readLatest(input: {
     limit: number
@@ -191,6 +205,17 @@ export function createEventStore(options: EventStoreOptions): EventStore {
         .orderBy(asc(events.seq))
         .limit(limit ?? DEFAULT_PAGE)
         .all()
+
+      return decodeRows({ rows, keys, fieldKeyReference })
+    },
+
+    readByCorrelation({ correlationId, principalId }) {
+      const condition =
+        principalId === undefined
+          ? eq(events.correlationId, correlationId)
+          : and(eq(events.correlationId, correlationId), eq(events.principalId, principalId))
+
+      const rows = db.select().from(events).where(condition).orderBy(asc(events.seq)).all()
 
       return decodeRows({ rows, keys, fieldKeyReference })
     },

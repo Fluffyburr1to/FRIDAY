@@ -109,6 +109,31 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(vite@7.3.6(@types/node@24.13.3))
 
+  packages/audit:
+    dependencies:
+      '@friday/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+    devDependencies:
+      '@friday/tsconfig':
+        specifier: workspace:*
+        version: link:../../tools/tsconfig
+      '@friday/vitest-config':
+        specifier: workspace:*
+        version: link:../../tools/vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(vite@7.3.6(@types/node@24.13.3))
+
   packages/config:
     dependencies:
       '@friday/contracts':

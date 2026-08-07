@@ -1,0 +1,20 @@
+{
+  // Paths live here rather than in @friday/tsconfig, because TypeScript
+  // resolves relative paths against the file they were written in.
+  "extends": "@friday/tsconfig/library.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  // One entry per workspace dependency, so `tsc --build` builds them in the
+  // right order and resolves their declarations from dist/ rather than src/.
+  //
+  // Deliberately short. The Guardian depends on shapes and on nothing that
+  // performs work — it decides, and the kernel executes. A reference to
+  // `storage` or `kernel` appearing here is the first sign that the boundary
+  // has been crossed.
+  "references": [{ "path": "../contracts" }],
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "coverage", "test"]
+}
