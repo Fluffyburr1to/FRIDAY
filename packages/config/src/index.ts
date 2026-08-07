@@ -1,17 +1,19 @@
 /**
  * @friday/config — the public surface.
  *
- * This is the ONLY file other packages may import from.
+ * This is the ONLY file other packages may import from, and this package is
+ * the ONLY one permitted to read `process.env`.
  *
- * ── Deliberately empty ──────────────────────────────────────────────────────
+ * It holds Keychain *references* — never credential values. A stolen
+ * configuration file yields the names of Keychain entries and nothing else.
  *
- * Configuration loading, precedence resolution, and Zod validation arrive at
- * Milestone 1 (Heartbeat).
- *
- * When it is filled in: this is the only package in FRIDAY permitted to read
- * `process.env`, and it holds Keychain *references* — never credential values.
- *
- * See: README.md · docs/01-bible/39-roadmap.md
+ * See: README.md · docs/01-bible/33-deployment-strategy.md
  */
 
-export {}
+export { type DeepPartialConfig, expandPath } from './defaults.js'
+export {
+  type Environment,
+  EnvironmentSchema,
+  type FridayConfig,
+  FridayConfigSchema,
+} from './schema.js'
