@@ -24,6 +24,8 @@
     { "path": "packages/contracts" },
     { "path": "packages/config" },
     { "path": "packages/telemetry" },
-    { "path": "packages/storage" }
+    { "path": "packages/storage" },
+    { "path": "packages/kernel" },
+    { "path": "apps/cli" }
   ]
 }
