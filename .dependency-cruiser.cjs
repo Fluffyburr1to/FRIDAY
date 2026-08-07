@@ -13,6 +13,34 @@
  *            docs/01-bible/04-monorepo-vs-multirepo.md
  */
 
+/**
+ * Matches an npm package by NAME in a resolved path.
+ *
+ * ── Why this helper exists ──────────────────────────────────────────────────
+ *
+ * dependency-cruiser matches `to.path` against the RESOLVED path, not the
+ * module specifier. Under pnpm, importing `better-sqlite3` resolves to:
+ *
+ *     node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/lib/index.js
+ *
+ * so a rule written as `path: '^better-sqlite3'` — the obvious way to write
+ * it — can never match anything. Rules 4 and 5 were written that way at
+ * Milestone 0 and were silently inert until Milestone 2 tested them with a
+ * real dependency installed. A rule that cannot fire is worse than no rule,
+ * because the pipeline reports success and everyone believes the guarantee
+ * holds.
+ *
+ * Anchoring on the final `node_modules/<name>` segment matches every layout —
+ * pnpm's virtual store, npm's flat tree, and nested installs alike.
+ *
+ * @param {string[]} packages Package names; scoped names are fine.
+ * @returns {string} A regular expression source string.
+ */
+function npmPackages(packages) {
+  const alternatives = packages.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  return `(^|/)node_modules/(${alternatives.join('|')})(/|$)`
+}
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -113,7 +141,23 @@ module.exports = {
       from: { pathNot: '^packages/model-router/' },
       to: {
         dependencyTypes: ['npm'],
-        path: '^(@anthropic-ai/|openai|@google/generative-ai|@google/genai|cohere-ai|@mistralai/|replicate|groq-sdk|ollama)',
+        path: npmPackages([
+          '@anthropic-ai/sdk',
+          '@anthropic-ai/bedrock-sdk',
+          '@anthropic-ai/vertex-sdk',
+          'openai',
+          '@google/generative-ai',
+          '@google/genai',
+          'cohere-ai',
+          '@mistralai/mistralai',
+          'replicate',
+          'groq-sdk',
+          'ollama',
+          '@aws-sdk/client-bedrock-runtime',
+          'ai',
+          '@ai-sdk/anthropic',
+          '@ai-sdk/openai',
+        ]),
       },
     },
 
@@ -130,7 +174,28 @@ module.exports = {
       from: { pathNot: '^packages/storage/' },
       to: {
         dependencyTypes: ['npm'],
-        path: '^(better-sqlite3|node:sqlite|drizzle-orm|libsql|@libsql/)',
+        path: npmPackages([
+          'better-sqlite3',
+          'drizzle-orm',
+          'drizzle-kit',
+          'sqlite3',
+          'libsql',
+          '@libsql/client',
+          'sqlite-vec',
+        ]),
+      },
+    },
+    {
+      name: 'no-node-sqlite-outside-storage',
+      severity: 'error',
+      comment:
+        'Node 24 ships SQLite in core, so the database can be opened with no dependency at ' +
+        'all — which would route straight around the rule above. Core modules resolve by ' +
+        'name rather than to a path, so they need their own clause.',
+      from: { pathNot: '^packages/storage/' },
+      to: {
+        dependencyTypes: ['core'],
+        path: '^(node:)?sqlite$',
       },
     },
     {
@@ -194,7 +259,17 @@ module.exports = {
       comment: 'A module nothing imports is usually dead code.',
       from: {
         orphan: true,
-        pathNot: ['\\.d\\.ts$', '(^|/)\\.[^/]+\\.(js|cjs|mjs|ts)$', '(^|/)tsconfig\\.json$'],
+        pathNot: [
+          '\\.d\\.ts$',
+          '(^|/)\\.[^/]+\\.(js|cjs|mjs|ts)$',
+          '(^|/)tsconfig\\.json$',
+          // A test file is an entry point — the runner loads it, nothing
+          // imports it. Without this, every test written from Milestone 1
+          // onwards adds a warning, and a warning list nobody can act on is a
+          // warning list everybody learns to scroll past.
+          '\\.test\\.ts$',
+          '(^|/)vitest\\.config\\.ts$',
+        ],
       },
       to: {},
     },
@@ -219,13 +294,37 @@ module.exports = {
         'pnpm strictness: if a package uses a library, it must declare it. This is the ' +
         'phantom-dependency problem that npm hides and that breaks mysteriously later.',
       from: {},
-      to: { dependencyTypes: ['undetermined', 'npm-no-pkg', 'npm-unknown'] },
+      to: { dependencyTypes: ['undetermined', 'npm-no-pkg', 'npm-unknown', 'unknown'] },
+    },
+    {
+      name: 'not-to-unresolvable',
+      severity: 'error',
+      comment:
+        'An import that does not resolve is either a typo or a dependency the package uses ' +
+        "without declaring. The rule above was written against dependency-cruiser's named " +
+        'types and missed this case, because an unresolvable module is reported as plain ' +
+        '"unknown" — so it is stated here the way dependency-cruiser means it to be. ' +
+        'TypeScript would also catch it; two mechanisms is correct for the rule that keeps ' +
+        'the module graph honest.',
+      from: {},
+      to: { couldNotResolve: true },
     },
   ],
 
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '(^|/)(dist|coverage|\\.turbo)/' },
+    exclude: {
+      path: [
+        '(^|/)(dist|coverage|\\.turbo)/',
+        // Build and tool configuration — vitest.config.ts, and later
+        // vite/playwright/tailwind. These rules enforce the architecture of
+        // code that runs as part of FRIDAY; configuration that runs as part of
+        // BUILDING her was never in that graph. Amended deliberately rather
+        // than exempted file by file — see docs/adr/0016-build-configuration-
+        // is-outside-the-boundary-graph.md
+        '(^|/)[^/]*\\.config\\.(ts|mts|cts|js|mjs|cjs)$',
+      ].join('|'),
+    },
     tsPreCompilationDeps: true,
     combinedDependencies: true,
     tsConfig: { fileName: 'tsconfig.base.json' },
