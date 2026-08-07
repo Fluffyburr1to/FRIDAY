@@ -54,6 +54,7 @@ Decisions taken since, as implementation met the design:
 | [0025](0025-policy-evaluation-is-order-independent-and-fails-closed.md) | Policy evaluation is order-independent and fails closed | accepted | medium | [17](../01-bible/17-authentication-authorization.md) |
 | [0026](0026-capability-tokens-are-signed-handles-to-kernel-state.md) | Capability tokens are signed handles to kernel state | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
 | [0027](0027-the-guardians-stores-are-ports-that-can-fail.md) | The Guardian's stores are ports that can fail | accepted | medium | [30](../01-bible/30-coding-standards.md) |
+| [0028](0028-the-chain-covers-a-payload-digest-and-is-segmented.md) | The integrity chain covers a payload digest, and is segmented | accepted | **high** | [10](../01-bible/10-event-bus.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
