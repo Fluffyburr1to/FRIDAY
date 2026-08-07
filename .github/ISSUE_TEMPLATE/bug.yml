@@ -1,0 +1,66 @@
+name: Something is broken
+description: FRIDAY did the wrong thing, or stopped doing the right thing.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security issues do not go here.** See [SECURITY.md](../../SECURITY.md) — reporting a
+        vulnerability in a public issue tells everyone about it at the same time.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: In your own words. No need to guess at the cause.
+      placeholder: I asked FRIDAY what my week looked like and she showed last week instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: correlation-id
+    attributes:
+      label: Correlation ID
+      description: >
+        Shown in the dashboard next to the action, and in any error message. This is the single
+        most useful field here — it connects the symptom to the complete causal chain in the audit
+        trail, which is the difference between "it broke" and knowing exactly what happened.
+      placeholder: 01JQ8X4M2P7VNZ3KWQ6R9TYB5C
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: If you know. "It happens sometimes" is a useful answer too — say so.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: How bad is it
+      options:
+        - FRIDAY did something irreversible that she should have asked about first
+        - FRIDAY acted without recording it, or the record is wrong
+        - Something is broken and I have no way around it
+        - Something is broken but I can work around it
+        - Cosmetic or annoying
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: '`friday --version`, or the commit if you are running from source.'
+    validations:
+      required: false

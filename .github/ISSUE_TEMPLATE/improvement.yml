@@ -1,0 +1,52 @@
+name: Something could be better
+description: A capability, a rough edge, or a change worth making — with evidence.
+labels: ['improvement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this changes the architecture — adds a technology, alters an interface between packages,
+        or contradicts a Bible chapter — open a **decision** issue instead. It needs an ADR before
+        it needs an implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is worse than it should be
+      description: >
+        Describe the problem, not the solution. A proposal that starts from the solution usually
+        smuggles in an assumption nobody gets to examine.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: >
+        What actually happened that prompted this — a specific occasion, a measurement, a diagnostic
+        finding, a number. "It feels slow" is a real observation; say when and how slow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would do about it
+      description: Optional. Leave it blank if you only know the problem.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: When could this reasonably happen
+      description: >
+        Chapter 39's rule — new work goes to M8 unless it blocks an earlier milestone. Say which,
+        and why, if you think it blocks something.
+      options:
+        - Whenever — no rush
+        - It blocks a milestone (say which, below)
+        - It is a safety or privacy problem and should not wait
+    validations:
+      required: true
