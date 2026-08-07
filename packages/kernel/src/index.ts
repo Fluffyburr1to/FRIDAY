@@ -11,6 +11,7 @@
  * See: README.md · docs/01-bible/10-event-bus.md
  */
 
+export { backoffFor, DEFAULT_RETRY_POLICY, type RetryPolicy } from './async-lane.js'
 export {
   type AsyncSubscriber,
   matches,
