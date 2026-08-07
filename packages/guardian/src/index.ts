@@ -1,0 +1,33 @@
+/**
+ * @friday/guardian — the public surface.
+ *
+ * This is the ONLY file other packages may import from, and the restriction is
+ * enforced by dependency-cruiser rather than by convention. It matters more
+ * here than anywhere else in the repository: if another package could reach
+ * `evaluate.ts` directly, it could evaluate policy without the capability and
+ * risk layers that surround it, and the answer it got would look like a
+ * Guardian decision without being one.
+ *
+ * Nothing exported here performs an action. The Guardian decides; the kernel
+ * executes.
+ *
+ * See: README.md · docs/01-bible/17-authentication-authorization.md · Chapter 19
+ */
+export {
+  type EvaluationContext,
+  evaluatePolicies,
+  type PolicyEvaluation,
+} from './evaluate.js'
+export {
+  POLICY_EFFECTS,
+  type Policy,
+  type PolicyCondition,
+  PolicyConditionSchema,
+  type PolicyEffect,
+  PolicyEffectSchema,
+  type PolicyExemption,
+  PolicyExemptionSchema,
+  PolicySchema,
+  policyMatches,
+} from './policy.js'
+export { createPolicySet, loadPolicySet, type PolicySet } from './policy-set.js'

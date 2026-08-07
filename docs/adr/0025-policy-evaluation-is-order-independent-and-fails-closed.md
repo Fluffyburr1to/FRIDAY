@@ -48,9 +48,20 @@ Concretely:
 | Does file order matter? | **No.** The result is identical for any load order. |
 | What does the decision carry? | The IDs of *every* rule that matched, not just the deciding one. |
 
-`unless` is evaluated per rule: a rule whose `unless` clause is satisfied does not contribute its
-effect. It is a rule-local exemption, not a global override, which keeps the order-independence
-property intact.
+`unless` is evaluated per rule: a rule whose `unless` clause is satisfied **softens to `allow`**, and
+is not removed from the evaluation. It is a rule-local exemption, not a global override, which keeps
+the order-independence property intact — and because it only ever softens toward `allow`, a `deny`
+elsewhere still wins.
+
+Softening rather than removing matters for one specific case. If an exempted rule were dropped, a
+request that a standing grant covered and that no other rule matched would fall through to "no rule
+matched" and be refused: the owner would have granted permission and thereby made the action *less*
+possible. The rule's risk class still counts toward the maximum, because a pre-approved action has
+not become a safe one — that class is what the grant's own ceiling is checked against.
+
+This is also how Chapter 19's rule that no standing grant may fully satisfy a `critical` action holds
+without a special case anywhere in code: `critical` rules simply carry no `unless`, so there is
+nothing for a grant to exempt.
 
 ## Constitutional review
 

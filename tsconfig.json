@@ -26,6 +26,7 @@
     { "path": "packages/telemetry" },
     { "path": "packages/storage" },
     { "path": "packages/kernel" },
+    { "path": "packages/guardian" },
     { "path": "apps/cli" }
   ]
 }
