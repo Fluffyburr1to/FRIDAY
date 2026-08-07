@@ -102,10 +102,14 @@ export function createGuardian(options: GuardianOptions): Guardian {
 
       // ── Layer 2: the ticket ─────────────────────────────────────────────
       const capability = checkCapability(request, options.capabilities)
+      if (capability.unavailable !== undefined) return err(capability.unavailable)
       if (capability.rejected !== undefined) return decide(capability.rejected)
 
       // ── Layers 3 and 4: the rules, and what they cost you ───────────────
-      const [outcome, extras] = judge(request, options)
+      const judged = judge(request, options)
+      if (!judged.ok) return err(judged.error)
+
+      const [outcome, extras] = judged.value
 
       return decide(outcome, {
         ...extras,
@@ -131,7 +135,7 @@ interface Outcome {
 function checkCapability(
   request: AuthorizationRequest,
   capabilities: CapabilityIssuer,
-): { rejected?: Outcome; capabilityId?: string } {
+): { rejected?: Outcome; unavailable?: FridayError; capabilityId?: string } {
   if (request.capability === undefined) {
     if (!requiresCapability(request.actor)) return {}
 
@@ -155,6 +159,14 @@ function checkCapability(
   })
 
   if (!verified.ok) {
+    // ★ A storage failure is NOT a refusal. The Guardian did not consult the
+    // rules, so recording a `deny` would put a decision in the audit trail
+    // that nobody made. It comes back as an error instead, and a caller with
+    // no decision cannot proceed — fail-closed, and honestly. See ADR-0027.
+    if (verified.error.kind === 'unavailable') {
+      return { unavailable: verified.error.error }
+    }
+
     return {
       rejected: {
         decision: 'deny',
@@ -179,12 +191,12 @@ function checkCapability(
 function judge(
   request: AuthorizationRequest,
   options: GuardianOptions,
-): [Outcome, Partial<GuardianDecision>] {
+): Result<[Outcome, Partial<GuardianDecision>], FridayError> {
   const subject = subjectOf(request)
   const base = evaluatePolicies(options.policies, subject, { standingGrantApplies: false })
   const matchedPolicies = base.matched
 
-  const outcome = options.grants.find({
+  const found = options.grants.find({
     principalId: request.principalId,
     action: request.action,
     resource: request.resource,
@@ -194,10 +206,13 @@ function judge(
       : {}),
   })
 
+  if (!found.ok) return err(found.error)
+  const outcome = found.value
+
   // A standing refusal outranks everything, including a rule that would have
   // allowed this outright. "Never do this again" is a boundary.
   if (outcome.kind === 'denied') {
-    return [
+    return ok([
       {
         decision: 'deny',
         reason: 'standing_grant_denied',
@@ -206,11 +221,11 @@ function judge(
         summary: `You told FRIDAY not to: ${outcome.grant.reason}`,
       },
       { standingGrantId: outcome.grant.id },
-    ]
+    ])
   }
 
   if (base.effect === null) {
-    return [
+    return ok([
       {
         decision: 'deny',
         reason: 'no_policy_matched',
@@ -221,11 +236,11 @@ function judge(
           'Adding a rule for it is how she learns whether it is allowed.',
       },
       {},
-    ]
+    ])
   }
 
   if (base.effect === 'deny') {
-    return [
+    return ok([
       {
         decision: 'deny',
         reason: 'policy_denied',
@@ -234,11 +249,11 @@ function judge(
         summary: describe(base),
       },
       {},
-    ]
+    ])
   }
 
   if (base.effect === 'allow') {
-    return [
+    return ok([
       {
         decision: 'allow',
         reason: 'policy_allowed',
@@ -247,7 +262,7 @@ function judge(
         summary: describe(base),
       },
       {},
-    ]
+    ])
   }
 
   return approvalOrGrant(request, options, base, outcome)
@@ -274,7 +289,7 @@ function approvalOrGrant(
   options: GuardianOptions,
   base: MatchedEvaluation,
   outcome: GrantOutcome,
-): [Outcome, Partial<GuardianDecision>] {
+): Result<[Outcome, Partial<GuardianDecision>], FridayError> {
   const matchedPolicies = base.matched
 
   if (outcome.kind === 'applies') {
@@ -291,9 +306,12 @@ function approvalOrGrant(
       // Counted now rather than after the action runs. An `allow` is FRIDAY
       // saying the action proceeds, and a grant whose uses were only counted
       // on success would under-report exactly when something went wrong.
-      options.grants.use(outcome.grant.id)
+      // A use that could not be counted must not become an allow. A permission
+      // capped at five uses that silently never counts is uncapped.
+      const counted = options.grants.use(outcome.grant.id)
+      if (!counted.ok) return err(counted.error)
 
-      return [
+      return ok([
         {
           decision: 'allow',
           reason: 'standing_grant_applied',
@@ -302,7 +320,7 @@ function approvalOrGrant(
           summary: `You allowed this in advance: ${outcome.grant.reason}`,
         },
         { standingGrantId: outcome.grant.id },
-      ]
+      ])
     }
   }
 
@@ -313,7 +331,7 @@ function approvalOrGrant(
   // lead the owner to different next steps, and only one of them is "widen the
   // permission you already have".
   if (outcome.kind === 'insufficient') {
-    return [
+    return ok([
       {
         decision: 'needs_approval',
         reason: 'standing_grant_insufficient',
@@ -322,10 +340,10 @@ function approvalOrGrant(
         summary: `Your standing permission does not stretch this far, so FRIDAY is asking. ${because}`,
       },
       { standingGrantId: outcome.grant.id },
-    ]
+    ])
   }
 
-  return [
+  return ok([
     {
       decision: 'needs_approval',
       reason: 'approval_required',
@@ -334,7 +352,7 @@ function approvalOrGrant(
       summary: because,
     },
     {},
-  ]
+  ])
 }
 
 /**

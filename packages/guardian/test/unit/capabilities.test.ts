@@ -30,6 +30,26 @@ function keyProvider(value = Buffer.alloc(32, 7).toString('base64')): Capability
   }
 }
 
+/**
+ * Narrows a verification failure to a rejection.
+ *
+ * `verify` can also fail because the store was unreachable, which is not a
+ * rejection and must never be read as one — ADR-0027. Asserting on `.reason`
+ * therefore has to say which shape it expects.
+ */
+function rejectionOf(result: ReturnType<CapabilityIssuer['verify']>) {
+  if (result.ok) throw new Error('expected a rejection')
+  if (result.error.kind !== 'rejected') throw new Error('expected a rejection, not a fault')
+  return result.error
+}
+
+function unwrapStore<T>(
+  result: { ok: true; value: T } | { ok: false; error: { message: string } },
+): T {
+  if (!result.ok) throw new Error(result.error.message)
+  return result.value
+}
+
 let clock: number
 let store: CapabilityStore
 let issuer: CapabilityIssuer
@@ -91,7 +111,7 @@ describe('issuing', () => {
     // line tomorrow is a dead string.
     expect(issued.value.token).not.toContain('memory')
     expect(issued.value.token.startsWith('fct_v1.')).toBe(true)
-    expect(store.get(issued.value.capability.id)?.action).toBe('memory.read')
+    expect(unwrapStore(store.get(issued.value.capability.id))?.action).toBe('memory.read')
   })
 
   it('defaults to five minutes', () => {
@@ -157,7 +177,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_malformed')
+    expect(rejectionOf(verified).reason).toBe('capability_malformed')
   })
 
   it('tells a constructed token apart from a real one', () => {
@@ -173,7 +193,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_forged')
+    expect(rejectionOf(verified).reason).toBe('capability_forged')
   })
 
   it('rejects a correctly signed token for a record that does not exist', () => {
@@ -198,7 +218,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_unknown')
+    expect(rejectionOf(verified).reason).toBe('capability_unknown')
   })
 
   it('rejects a token presented by a different agent', () => {
@@ -213,7 +233,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_actor_mismatch')
+    expect(rejectionOf(verified).reason).toBe('capability_actor_mismatch')
   })
 
   it('rejects a token used for a different action or resource', () => {
@@ -227,7 +247,7 @@ describe('verifying', () => {
 
       expect(verified.ok).toBe(false)
       if (verified.ok) continue
-      expect(verified.error.reason).toBe('capability_scope_mismatch')
+      expect(rejectionOf(verified).reason).toBe('capability_scope_mismatch')
     }
   })
 
@@ -246,7 +266,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_scope_mismatch')
+    expect(rejectionOf(verified).reason).toBe('capability_scope_mismatch')
   })
 
   it('rejects an expired token', () => {
@@ -262,7 +282,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_expired')
+    expect(rejectionOf(verified).reason).toBe('capability_expired')
   })
 
   it('rejects a revoked token immediately, with no window', () => {
@@ -280,7 +300,7 @@ describe('verifying', () => {
 
     expect(verified.ok).toBe(false)
     if (verified.ok) return
-    expect(verified.error.reason).toBe('capability_revoked')
+    expect(rejectionOf(verified).reason).toBe('capability_revoked')
   })
 
   it('counts uses and refuses the one past the budget', () => {
@@ -301,7 +321,7 @@ describe('verifying', () => {
     const third = use()
     expect(third.ok).toBe(false)
     if (third.ok) return
-    expect(third.error.reason).toBe('capability_exhausted')
+    expect(rejectionOf(third).reason).toBe('capability_exhausted')
   })
 
   it('never puts the token value in the error it returns', () => {
@@ -350,9 +370,9 @@ describe('revoking', () => {
     issuer.issue({ ...REQUEST, planId, resource: 'memory:contacts/alex' })
     issuer.issue({ ...REQUEST, planId: uuidv7() })
 
-    expect(issuer.revokeForPlan(planId, 'the plan was cancelled')).toBe(2)
+    expect(unwrapStore(issuer.revokeForPlan(planId, 'the plan was cancelled'))).toBe(2)
 
     // Idempotent: a second sweep finds nothing left to withdraw.
-    expect(issuer.revokeForPlan(planId, 'the plan was cancelled')).toBe(0)
+    expect(unwrapStore(issuer.revokeForPlan(planId, 'the plan was cancelled'))).toBe(0)
   })
 })

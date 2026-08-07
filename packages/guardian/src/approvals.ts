@@ -110,11 +110,11 @@ export interface ApprovalRegistry {
    * while FRIDAY was not running must be settled before anything reads it as
    * still pending.
    */
-  sweepExpired(): readonly ApprovalRequest[]
+  sweepExpired(): Result<readonly ApprovalRequest[], FridayError>
 
-  pending(principalId: string): readonly ApprovalRequest[]
+  pending(principalId: string): Result<readonly ApprovalRequest[], FridayError>
 
-  get(id: string): ApprovalRequest | undefined
+  get(id: string): Result<ApprovalRequest | undefined, FridayError>
 }
 
 /**
@@ -174,40 +174,27 @@ export function createApprovalRegistry(options: {
         )
       }
 
-      store.put(parsed.data)
+      const written = store.put(parsed.data)
+      if (!written.ok) return err(written.error)
+
       return ok(parsed.data)
     },
 
     respond(response) {
-      const request = store.get(response.approvalId)
-      if (request === undefined) {
-        return err(
-          fridayError({
-            code: 'NOT_FOUND',
-            message: 'There is no approval request with that identifier.',
-            detail: { approvalId: response.approvalId },
-          }),
-        )
-      }
+      const open = loadAnswerable(store, response.approvalId)
+      if (!open.ok) return err(open.error)
 
-      if (isTerminalApprovalStatus(request.status)) {
-        return err(
-          fridayError({
-            code: 'APPROVAL_ALREADY_RESOLVED',
-            message: `That request was already ${request.status}.`,
-            detail: { approvalId: request.id, status: request.status },
-          }),
-        )
-      }
-
+      const request = open.value
       const at = now()
 
       // Checked before the answer is accepted, not after. A "yes" that arrives
       // a second after the deadline is a denial, and treating it as an
       // approval would make the deadline advisory.
       if (at >= request.expiresAt) {
-        const expired = settle(request, 'expired', at, null, null)
-        store.replace(expired)
+        // If this write fails the request stays pending, which is the safe
+        // direction: it will be swept again, and it is still not approved.
+        const written = store.replace(settle(request, 'expired', at, null, null))
+        if (!written.ok) return err(written.error)
 
         return err(
           fridayError({
@@ -229,23 +216,34 @@ export function createApprovalRegistry(options: {
         response.reason ?? null,
       )
 
-      store.replace(settled)
+      // ★ The answer is not an answer until it is recorded. Returning success
+      // on a failed write would tell the caller the owner approved something
+      // that FRIDAY has no record of them approving.
+      const written = store.replace(settled)
+      if (!written.ok) return err(written.error)
+
       return ok(settled)
     },
 
     sweepExpired() {
+      const pending = store.listPending()
+      if (!pending.ok) return err(pending.error)
+
       const at = now()
       const lapsed: ApprovalRequest[] = []
 
-      for (const request of store.listPending()) {
+      for (const request of pending.value) {
         if (at < request.expiresAt) continue
 
         const expired = settle(request, 'expired', at, null, null)
-        store.replace(expired)
+
+        const written = store.replace(expired)
+        if (!written.ok) return err(written.error)
+
         lapsed.push(expired)
       }
 
-      return lapsed
+      return ok(lapsed)
     },
 
     pending(principalId) {
@@ -258,6 +256,44 @@ export function createApprovalRegistry(options: {
   }
 
   return registry
+}
+
+/**
+ * Reads a request that is still open to an answer.
+ *
+ * Split out so `respond` reads as the sequence of rules it enforces rather
+ * than as a stack of lookups. The two failures here are ordinary: no such
+ * request, or one that was already settled.
+ */
+function loadAnswerable(
+  store: ApprovalStore,
+  approvalId: string,
+): Result<ApprovalRequest, FridayError> {
+  const found = store.get(approvalId)
+  if (!found.ok) return err(found.error)
+
+  const request = found.value
+  if (request === undefined) {
+    return err(
+      fridayError({
+        code: 'NOT_FOUND',
+        message: 'There is no approval request with that identifier.',
+        detail: { approvalId },
+      }),
+    )
+  }
+
+  if (isTerminalApprovalStatus(request.status)) {
+    return err(
+      fridayError({
+        code: 'APPROVAL_ALREADY_RESOLVED',
+        message: `That request was already ${request.status}.`,
+        detail: { approvalId: request.id, status: request.status },
+      }),
+    )
+  }
+
+  return ok(request)
 }
 
 /**

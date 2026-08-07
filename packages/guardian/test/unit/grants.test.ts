@@ -1,4 +1,4 @@
-import type { GrantRegistry, NewGrant } from '@friday/guardian'
+import type { GrantQuery, GrantRegistry, NewGrant } from '@friday/guardian'
 import { createGrantRegistry, createInMemoryGrantStore } from '@friday/guardian'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -23,6 +23,13 @@ function newGrant(overrides: Partial<NewGrant> = {}): NewGrant {
 function create(overrides: Partial<NewGrant> = {}) {
   const result = grants.create(newGrant(overrides))
   if (!result.ok) throw new Error(`fixture grant rejected: ${result.error.message}`)
+  return result.value
+}
+
+/** `find` returns a Result now; every assertion here is about the outcome. */
+function outcomeOf(query: GrantQuery) {
+  const result = grants.find(query)
+  if (!result.ok) throw new Error(`grant lookup failed: ${result.error.message}`)
   return result.value
 }
 
@@ -88,7 +95,7 @@ describe('applying', () => {
   it('covers a request it matches', () => {
     const grant = create()
 
-    const outcome = grants.find(QUERY)
+    const outcome = outcomeOf(QUERY)
 
     expect(outcome.kind).toBe('applies')
     if (outcome.kind !== 'applies') return
@@ -98,37 +105,35 @@ describe('applying', () => {
   it('does not cover a different action or resource', () => {
     create()
 
-    expect(grants.find({ ...QUERY, action: 'memory.delete' }).kind).toBe('none')
-    expect(grants.find({ ...QUERY, resource: 'connector:slack/channels/general' }).kind).toBe(
-      'none',
-    )
+    expect(outcomeOf({ ...QUERY, action: 'memory.delete' }).kind).toBe('none')
+    expect(outcomeOf({ ...QUERY, resource: 'connector:slack/channels/general' }).kind).toBe('none')
   })
 
   it('does not cover another principal', () => {
     create()
 
-    expect(grants.find({ ...QUERY, principalId: 'usr_someone-else' }).kind).toBe('none')
+    expect(outcomeOf({ ...QUERY, principalId: 'usr_someone-else' }).kind).toBe('none')
   })
 
   it('stops covering once it expires', () => {
     create()
     clock = START + 30 * DAY_MS
 
-    expect(grants.find(QUERY).kind).toBe('none')
+    expect(outcomeOf(QUERY).kind).toBe('none')
   })
 
   it('stops covering once it is withdrawn', () => {
     const grant = create()
     grants.revoke(grant.id)
 
-    expect(grants.find(QUERY).kind).toBe('none')
+    expect(outcomeOf(QUERY).kind).toBe('none')
   })
 
   it('stops covering once it is used up', () => {
     const grant = create({ maxUses: 1 })
     grants.use(grant.id)
 
-    expect(grants.find(QUERY).kind).toBe('none')
+    expect(outcomeOf(QUERY).kind).toBe('none')
   })
 
   it('stops covering when the action is reclassified above it', () => {
@@ -137,7 +142,7 @@ describe('applying', () => {
     // undo the tightening.
     create({ riskClass: 'medium' })
 
-    const outcome = grants.find({ ...QUERY, riskClass: 'high' })
+    const outcome = outcomeOf({ ...QUERY, riskClass: 'high' })
 
     expect(outcome.kind).toBe('insufficient')
   })
@@ -145,7 +150,7 @@ describe('applying', () => {
   it('covers a class below its ceiling', () => {
     create({ riskClass: 'high', expiresAt: START + 30 * DAY_MS })
 
-    expect(grants.find({ ...QUERY, riskClass: 'medium' }).kind).toBe('applies')
+    expect(outcomeOf({ ...QUERY, riskClass: 'medium' }).kind).toBe('applies')
   })
 
   it('reports a near miss rather than silence', () => {
@@ -153,7 +158,7 @@ describe('applying', () => {
     // "you gave no permission", and the owner needs to tell them apart.
     create({ constraints: { maxAmountCents: 500 } })
 
-    const outcome = grants.find({ ...QUERY, amountCents: 900 })
+    const outcome = outcomeOf({ ...QUERY, amountCents: 900 })
 
     expect(outcome.kind).toBe('insufficient')
   })
@@ -161,7 +166,7 @@ describe('applying', () => {
   it('honours a spending ceiling', () => {
     create({ constraints: { maxAmountCents: 500 } })
 
-    expect(grants.find({ ...QUERY, amountCents: 500 }).kind).toBe('applies')
+    expect(outcomeOf({ ...QUERY, amountCents: 500 }).kind).toBe('applies')
   })
 
   it('treats an unstated amount as not covered by a spending ceiling', () => {
@@ -169,7 +174,7 @@ describe('applying', () => {
     // exactly the one a ceiling exists to stop.
     create({ constraints: { maxAmountCents: 500 } })
 
-    expect(grants.find(QUERY).kind).toBe('insufficient')
+    expect(outcomeOf(QUERY).kind).toBe('insufficient')
   })
 
   it('lets a standing denial beat a permission', () => {
@@ -180,13 +185,13 @@ describe('applying', () => {
       riskClass: 'medium',
     })
 
-    const outcome = grants.find(QUERY)
+    const outcome = outcomeOf(QUERY)
 
     expect(outcome.kind).toBe('denied')
   })
 
   it('finds nothing when nothing was ever granted', () => {
-    expect(grants.find(QUERY).kind).toBe('none')
+    expect(outcomeOf(QUERY).kind).toBe('none')
   })
 })
 
@@ -196,15 +201,15 @@ describe('counting and withdrawing', () => {
     // not quietly consume the owner's grant.
     const grant = create({ maxUses: 2 })
 
-    grants.find(QUERY)
-    grants.find(QUERY)
+    outcomeOf(QUERY)
+    outcomeOf(QUERY)
 
-    expect(grants.find(QUERY).kind).toBe('applies')
+    expect(outcomeOf(QUERY).kind).toBe('applies')
 
     grants.use(grant.id)
     grants.use(grant.id)
 
-    expect(grants.find(QUERY).kind).toBe('none')
+    expect(outcomeOf(QUERY).kind).toBe('none')
   })
 
   it('reports a use or withdrawal of something that does not exist', () => {
@@ -229,9 +234,10 @@ describe('counting and withdrawing', () => {
     grants.revoke(grant.id)
 
     const listed = grants.list('usr_tyler')
+    if (!listed.ok) throw new Error('expected a listing')
 
-    expect(listed).toHaveLength(1)
-    expect(listed[0]?.uses).toBe(1)
+    expect(listed.value).toHaveLength(1)
+    expect(listed.value[0]?.uses).toBe(1)
   })
 
   it('uses the wall clock when none is injected', () => {

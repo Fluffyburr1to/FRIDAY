@@ -50,6 +50,15 @@ function ask(overrides: Partial<ApprovalRequestInput> = {}) {
   return result.value
 }
 
+function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: { message: string } }): T {
+  if (!result.ok) throw new Error(result.error.message)
+  return result.value
+}
+
+const swept = () => unwrap(approvals.sweepExpired())
+const pending = (principalId: string) => unwrap(approvals.pending(principalId))
+const statusOf = (id: string) => unwrap(approvals.get(id))?.status
+
 beforeEach(() => {
   clock = START
   approvals = createApprovalRegistry({ store: createInMemoryApprovalStore(), now: () => clock })
@@ -100,8 +109,8 @@ describe('asking', () => {
     clock += 1_000
     const second = ask({ title: 'Another one' })
 
-    expect(approvals.pending('usr_tyler').map((r) => r.id)).toEqual([first.id, second.id])
-    expect(approvals.pending('usr_someone-else')).toEqual([])
+    expect(pending('usr_tyler').map((r) => r.id)).toEqual([first.id, second.id])
+    expect(pending('usr_someone-else')).toEqual([])
   })
 })
 
@@ -237,7 +246,7 @@ describe('timeout means denied', () => {
     const late = approvals.respond({ approvalId: request.id, decision: 'approve', via: 'web' })
 
     expect(late.ok).toBe(false)
-    expect(approvals.get(request.id)?.status).toBe('expired')
+    expect(statusOf(request.id)).toBe('expired')
   })
 
   it('lapses unanswered requests on a sweep', () => {
@@ -245,18 +254,18 @@ describe('timeout means denied', () => {
     const later = ask({ riskClass: 'medium', title: 'Not yet due' })
 
     clock += 1_000
-    const lapsed = approvals.sweepExpired()
+    const lapsed = swept()
 
     expect(lapsed.map((r) => r.id)).toEqual([soon.id])
-    expect(approvals.get(soon.id)?.status).toBe('expired')
-    expect(approvals.get(later.id)?.status).toBe('pending')
+    expect(statusOf(soon.id)).toBe('expired')
+    expect(statusOf(later.id)).toBe('pending')
   })
 
   it('records when a request lapsed, and that nobody answered it', () => {
     const request = ask({ riskClass: 'medium', lifetimeMs: 1_000 })
     clock += 5_000
 
-    const [lapsed] = approvals.sweepExpired()
+    const [lapsed] = swept()
 
     expect(lapsed?.respondedAt).toBe(clock)
     expect(lapsed?.respondedVia).toBeNull()
@@ -266,7 +275,7 @@ describe('timeout means denied', () => {
   it('sweeps nothing when nothing is due', () => {
     ask()
 
-    expect(approvals.sweepExpired()).toEqual([])
+    expect(swept()).toEqual([])
   })
 
   it('uses the wall clock when none is injected', () => {
@@ -276,6 +285,6 @@ describe('timeout means denied', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.value.createdAt).toBeLessThanOrEqual(Date.now())
-    expect(live.sweepExpired()).toEqual([])
+    expect(unwrap(live.sweepExpired())).toEqual([])
   })
 })

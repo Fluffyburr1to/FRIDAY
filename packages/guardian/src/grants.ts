@@ -74,7 +74,7 @@ export interface GrantRegistry {
    * ask this question during evaluation without a rejected request consuming
    * somebody's grant.
    */
-  find(query: GrantQuery): GrantOutcome
+  find(query: GrantQuery): Result<GrantOutcome, FridayError>
 
   /** Counts one use against a grant, after the action was actually permitted. */
   use(id: string): Result<StandingGrant, FridayError>
@@ -82,7 +82,7 @@ export interface GrantRegistry {
   revoke(id: string, at?: number): Result<StandingGrant, FridayError>
 
   /** Every grant for a principal, including lapsed ones, for the renewal review. */
-  list(principalId: string): readonly StandingGrant[]
+  list(principalId: string): Result<readonly StandingGrant[], FridayError>
 }
 
 /**
@@ -136,21 +136,26 @@ export function createGrantRegistry(options: {
         )
       }
 
-      store.put(parsed.data)
+      const written = store.put(parsed.data)
+      if (!written.ok) return err(written.error)
+
       return ok(parsed.data)
     },
 
     find(query) {
+      const held = store.listByPrincipal(query.principalId)
+      if (!held.ok) return err(held.error)
+
       const at = now()
-      const candidates = store
-        .listByPrincipal(query.principalId)
-        .filter((grant) => isGrantLive(grant, at) && covers(grant, query))
+      const candidates = held.value.filter(
+        (grant) => isGrantLive(grant, at) && covers(grant, query),
+      )
 
       // A standing denial wins over any permission, and it is checked first.
       // "Never suggest scheduling anything on Fridays" is a boundary, and a
       // boundary that could be outvoted by a permission is not one.
       const denial = candidates.find((grant) => grant.negative)
-      if (denial !== undefined) return { kind: 'denied', grant: denial }
+      if (denial !== undefined) return ok({ kind: 'denied', grant: denial })
 
       const positives = candidates.filter((grant) => !grant.negative)
 
@@ -159,18 +164,21 @@ export function createGrantRegistry(options: {
           RISK_RANK[grant.riskClass] >= RISK_RANK[query.riskClass] &&
           withinConstraints(grant, query),
       )
-      if (applies !== undefined) return { kind: 'applies', grant: applies }
+      if (applies !== undefined) return ok({ kind: 'applies', grant: applies })
 
       // A grant that matched the action and resource but not the class or the
       // limits is reported rather than ignored. "Your permission does not
       // stretch this far" is a different sentence from "you gave no permission",
       // and the owner needs to be able to tell them apart.
       const near = positives[0]
-      return near === undefined ? { kind: 'none' } : { kind: 'insufficient', grant: near }
+      return ok(near === undefined ? { kind: 'none' } : { kind: 'insufficient', grant: near })
     },
 
     use(id) {
-      const grant = store.get(id)
+      const found = store.get(id)
+      if (!found.ok) return err(found.error)
+
+      const grant = found.value
       if (grant === undefined) {
         return err(
           fridayError({
@@ -182,12 +190,18 @@ export function createGrantRegistry(options: {
       }
 
       const used: StandingGrant = { ...grant, uses: grant.uses + 1 }
-      store.replace(used)
+
+      const written = store.replace(used)
+      if (!written.ok) return err(written.error)
+
       return ok(used)
     },
 
     revoke(id, at) {
-      const grant = store.get(id)
+      const found = store.get(id)
+      if (!found.ok) return err(found.error)
+
+      const grant = found.value
       if (grant === undefined) {
         return err(
           fridayError({
@@ -201,7 +215,10 @@ export function createGrantRegistry(options: {
       if (grant.revokedAt !== null) return ok(grant)
 
       const revoked: StandingGrant = { ...grant, revokedAt: at ?? now() }
-      store.replace(revoked)
+
+      const written = store.replace(revoked)
+      if (!written.ok) return err(written.error)
+
       return ok(revoked)
     },
 

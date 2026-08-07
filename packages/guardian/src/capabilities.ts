@@ -50,6 +50,7 @@ export interface CapabilityKeyProvider {
 
 /** Why a token was refused, in a form the Guardian records verbatim. */
 export interface CapabilityRejection {
+  readonly kind: 'rejected'
   readonly reason: Extract<
     DecisionReason,
     | 'capability_actor_mismatch'
@@ -63,6 +64,24 @@ export interface CapabilityRejection {
   >
   readonly error: FridayError
 }
+
+/**
+ * The Guardian could not tell whether a token is valid.
+ *
+ * ★ Not a rejection. "This token is not valid" and "I could not tell" are
+ * different answers, and only the first belongs in a decision record — a
+ * storage failure recorded as a refusal would look, forever after, like the
+ * owner's rules having refused something they were never consulted about.
+ *
+ * See ADR-0027.
+ */
+export interface CapabilityUnavailable {
+  readonly kind: 'unavailable'
+  readonly error: FridayError
+}
+
+/** Either the token is bad, or the Guardian could not reach its own records. */
+export type CapabilityFailure = CapabilityRejection | CapabilityUnavailable
 
 /** What a caller must say to be issued a capability. */
 export interface CapabilityRequest {
@@ -92,12 +111,12 @@ export interface CapabilityIssuer {
     request: CapabilityRequest,
   ): Result<{ readonly token: string; readonly capability: Capability }, FridayError>
 
-  verify(presentation: CapabilityPresentation): Result<Capability, CapabilityRejection>
+  verify(presentation: CapabilityPresentation): Result<Capability, CapabilityFailure>
 
   revoke(id: string, reason: string): Result<Capability, FridayError>
 
   /** Withdraws every capability a plan was holding. Returns how many. */
-  revokeForPlan(planId: string, reason: string): number
+  revokeForPlan(planId: string, reason: string): Result<number, FridayError>
 }
 
 /**
@@ -162,7 +181,9 @@ export function createCapabilityIssuer(options: {
       }
 
       const capability = parsed.data
-      store.put(capability)
+
+      const written = store.put(capability)
+      if (!written.ok) return err(written.error)
 
       return ok({
         token: `${CAPABILITY_TOKEN_PREFIX}.${capability.id}.${sign(capability.id)}`,
@@ -176,66 +197,25 @@ export function createCapabilityIssuer(options: {
 
       const capability = found.value
 
-      // Ordering is deliberate, and it is about the audit trail rather than
-      // about speed. Identity and scope are checked BEFORE expiry, so a token
-      // replayed against the wrong resource is recorded as a scope mismatch
-      // even if it had also expired. The reverse order would let a real attack
-      // be filed as an ordinary lapsed permission.
-      if (capability.issuedTo.id !== presentation.actor.id) {
-        return err(
-          reject('capability_actor_mismatch', 'A permission was presented by someone else.', {
-            capabilityId: capability.id,
-          }),
-        )
-      }
-
-      if (
-        capability.action !== presentation.action ||
-        capability.resource !== presentation.resource
-      ) {
-        return err(
-          reject(
-            'capability_scope_mismatch',
-            'A permission was used for something other than what it was issued for.',
-            { capabilityId: capability.id, issuedFor: capability.action },
-          ),
-        )
-      }
-
-      if (capability.revokedAt !== null) {
-        return err(
-          reject('capability_revoked', 'That permission was withdrawn.', {
-            capabilityId: capability.id,
-          }),
-        )
-      }
-
-      if (now() >= capability.expiresAt) {
-        return err(
-          reject('capability_expired', 'That permission has expired.', {
-            capabilityId: capability.id,
-          }),
-        )
-      }
-
-      const { maxCalls } = capability.constraints
-      if (maxCalls !== null && capability.uses >= maxCalls) {
-        return err(
-          reject('capability_exhausted', 'That permission has already been used up.', {
-            capabilityId: capability.id,
-            maxCalls,
-          }),
-        )
-      }
+      const refusal = checkUsable(capability, presentation, now())
+      if (refusal !== null) return err(refusal)
 
       const used: Capability = { ...capability, uses: capability.uses + 1 }
-      store.replace(used)
+
+      // A use that could not be counted must not be treated as permitted. A
+      // token with a budget of five that silently never counts is a token with
+      // no budget at all.
+      const counted = store.replace(used)
+      if (!counted.ok) return err(unavailable(counted.error))
 
       return ok(used)
     },
 
     revoke(id, reason) {
-      const capability = store.get(id)
+      const found = store.get(id)
+      if (!found.ok) return err(found.error)
+
+      const capability = found.value
       if (capability === undefined) {
         return err(
           fridayError({
@@ -252,24 +232,88 @@ export function createCapabilityIssuer(options: {
       if (capability.revokedAt !== null) return ok(capability)
 
       const revoked: Capability = { ...capability, revokedAt: now(), revokedReason: reason }
-      store.replace(revoked)
+
+      const written = store.replace(revoked)
+      if (!written.ok) return err(written.error)
 
       return ok(revoked)
     },
 
     revokeForPlan(planId, reason) {
+      const held = store.listByPlan(planId)
+      if (!held.ok) return err(held.error)
+
       const at = now()
       let count = 0
 
-      for (const capability of store.listByPlan(planId)) {
+      for (const capability of held.value) {
         if (capability.revokedAt !== null) continue
-        store.replace({ ...capability, revokedAt: at, revokedReason: reason })
+
+        const written = store.replace({ ...capability, revokedAt: at, revokedReason: reason })
+        if (!written.ok) return err(written.error)
+
         count += 1
       }
 
-      return count
+      return ok(count)
     },
   })
+}
+
+/**
+ * Every reason a real, findable capability still may not be used.
+ *
+ * Ordering is deliberate, and it is about the audit trail rather than about
+ * speed. Identity and scope are checked BEFORE expiry, so a token replayed
+ * against the wrong resource is recorded as a scope mismatch even if it had
+ * also expired. The reverse order would let a real attack be filed as an
+ * ordinary lapsed permission.
+ *
+ * @param capability - The stored record.
+ * @param presentation - What it is being presented for.
+ * @param at - Milliseconds since the epoch.
+ * @returns The rejection, or null when the capability may be used.
+ */
+function checkUsable(
+  capability: Capability,
+  presentation: CapabilityPresentation,
+  at: number,
+): CapabilityRejection | null {
+  if (capability.issuedTo.id !== presentation.actor.id) {
+    return reject('capability_actor_mismatch', 'A permission was presented by someone else.', {
+      capabilityId: capability.id,
+    })
+  }
+
+  if (capability.action !== presentation.action || capability.resource !== presentation.resource) {
+    return reject(
+      'capability_scope_mismatch',
+      'A permission was used for something other than what it was issued for.',
+      { capabilityId: capability.id, issuedFor: capability.action },
+    )
+  }
+
+  if (capability.revokedAt !== null) {
+    return reject('capability_revoked', 'That permission was withdrawn.', {
+      capabilityId: capability.id,
+    })
+  }
+
+  if (at >= capability.expiresAt) {
+    return reject('capability_expired', 'That permission has expired.', {
+      capabilityId: capability.id,
+    })
+  }
+
+  const { maxCalls } = capability.constraints
+  if (maxCalls !== null && capability.uses >= maxCalls) {
+    return reject('capability_exhausted', 'That permission has already been used up.', {
+      capabilityId: capability.id,
+      maxCalls,
+    })
+  }
+
+  return null
 }
 
 /**
@@ -283,7 +327,7 @@ function resolve(
   token: string,
   sign: (id: string) => string,
   store: CapabilityStore,
-): Result<Capability, CapabilityRejection> {
+): Result<Capability, CapabilityFailure> {
   if (!CAPABILITY_TOKEN_REGEX.test(token)) {
     return err(reject('capability_malformed', 'That is not a permission slip FRIDAY issued.'))
   }
@@ -302,8 +346,15 @@ function resolve(
     )
   }
 
-  const capability = store.get(id)
+  const found = store.get(id)
+  if (!found.ok) return err(unavailable(found.error))
+
+  const capability = found.value
   if (capability === undefined) {
+    // Deliberately distinct from the unavailable branch above. A lookup that
+    // finds nothing is close to an alarm — a token nobody issued — and one
+    // that could not run at all is an operational fault. Conflating them would
+    // hide an attack behind a disk problem.
     return err(
       reject('capability_unknown', 'That permission is not one FRIDAY has a record of.', {
         capabilityId: id,
@@ -326,7 +377,13 @@ function reject(
   detail?: Record<string, unknown>,
 ): CapabilityRejection {
   return {
+    kind: 'rejected',
     reason,
     error: fridayError({ code: 'CAPABILITY_INVALID', message, ...(detail ? { detail } : {}) }),
   }
+}
+
+/** Wraps a storage failure as an inability to decide, never as a refusal. */
+function unavailable(error: FridayError): CapabilityUnavailable {
+  return { kind: 'unavailable', error }
 }

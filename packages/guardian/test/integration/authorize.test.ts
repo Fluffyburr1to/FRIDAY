@@ -318,7 +318,10 @@ describe('standing permissions in the whole flow', () => {
       ...WRITE,
     })
 
-    const [after] = grants.list('usr_tyler').filter((g) => g.id === grant.id)
+    const listed = grants.list('usr_tyler')
+    if (!listed.ok) throw new Error('expected a listing')
+
+    const [after] = listed.value.filter((g) => g.id === grant.id)
     expect(after?.uses).toBe(1)
 
     // Spent. The next one asks.
