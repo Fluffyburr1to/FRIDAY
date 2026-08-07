@@ -13,10 +13,67 @@ Reference: [Chapter 32](../01-bible/32-branch-strategy.md) ·
 
 ---
 
+## ⚠ Order matters — learned the hard way, 2026-08-07
+
+Three things went wrong the first time this was configured. All three came from applying the
+**end-state** configuration to a **day-one** repository. Read this before running anything.
+
+### 1. Never require a status check that has never run
+
+Branch protection was enabled with `Ready for review` required, on a repository where CI had never
+executed. That produced an unbreakable deadlock: the check could not run until a pull request
+merged, and the pull request could not merge until the check ran.
+
+**Correct order:**
+
+```
+1  Push workflows to main
+2  Open a PR and confirm CI actually runs and passes    ← prove it
+3  THEN add the required status check                   ← require it
+```
+
+Prove, then require. Never the reverse.
+
+### 2. `.github/workflows/` may contain ONLY workflow YAML
+
+A `README.md` was placed in that directory to document the pipelines. **GitHub parses every file in
+`.github/workflows/` as a workflow definition**, saw a broken one, and silently scheduled nothing —
+no runs, no errors, three workflows still reporting `state: active`.
+
+The symptom is maddening: the Actions tab says "no workflow yet" while `gh workflow list` shows
+them all as active.
+
+Documentation about workflows lives at [`.github/WORKFLOWS.md`](../../.github/WORKFLOWS.md).
+`tools/scripts/check-docs.mjs` exempts the directory from the every-folder-needs-a-README rule, with
+the reason recorded so nobody puts one back.
+
+### 3. Required approvals must be 0 until FRIDAY exists
+
+**GitHub does not allow anyone to approve their own pull request.** With one human contributor,
+requiring 1 approval means *no pull request can ever merge* — including the owner's own.
+
+The rule is not wrong; it was applied a year early. The approval gate exists so that **the owner
+approves FRIDAY's changes**, where author and approver are genuinely different identities. It has
+nothing useful to say about the owner's own pull requests.
+
+| Phase | Required approvals | Why |
+|---|---|---|
+| M0 → M5 | **0** | Only one human. Self-approval is impossible; the gate would protect nothing and block everything. |
+| **M6 onward** | **1** | FRIDAY becomes a contributor with her own identity. The gate now protects exactly what it was designed to. |
+
+**This is a scheduled change, not a permanent relaxation.** Restoring it is a Milestone 6
+prerequisite, listed in [Chapter 39](../01-bible/39-roadmap.md).
+
+What stays enforced throughout, including against the owner: no direct pushes to `main`, no force
+pushes, no branch deletion, linear history, and required conversation resolution.
+
+---
+
 ## Prerequisites
 
 - `gh` installed and authenticated (`gh auth status` shows you logged in)
 - At least one push to `main` has landed, so the branch exists
+- **CI has run and passed at least once** — see ordering note above
 - **`CODEOWNERS` has `@OWNER` replaced with your real GitHub username** — otherwise
   owner-review rules silently do nothing
 
