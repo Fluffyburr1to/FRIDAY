@@ -13,26 +13,37 @@ calendar, your code, your home, your notes, and your correspondence without repl
 
 ## Status
 
-**Pre-implementation.** The engineering foundation is complete and verified end to end; no
-application code exists yet.
+**She records.** Milestone 1 is complete: FRIDAY has an event log, and you can watch it work. She
+cannot act on anything yet — that is Milestone 2.
+
+```
+friday events emit --note "hello"    record an event
+friday events tail                   watch them arrive, live
+friday verify                        confirm the record has not been altered
+friday status                        is she healthy?
+```
 
 | | |
 |---|---|
-| Phase | Milestone 0 — Ground, complete · **ready to begin M1** |
+| Phase | Milestone 1 — Heartbeat, complete 2026-08-07 · **ready to begin M2** |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
-| Architecture Decision Records | ✅ 18 |
-| Repository structure | ✅ Defined, every folder documented |
+| Architecture Decision Records | ✅ 24 |
 | Build tooling | ✅ pnpm workspaces · Turborepo · TypeScript strict · Biome · dependency-cruiser |
-| Testing | ✅ Vitest — unit, integration, and cross-cutting tiers, coverage thresholds |
+| Testing | ✅ Vitest — 322 tests across six packages |
 | Boundary enforcement | ✅ Verified firing, with regression tests |
-| M1 packages | ✅ `contracts` `config` `telemetry` `storage` `kernel` `cli` — scaffolded, deliberately empty |
-| M1 dependencies | ✅ Zod · Drizzle · SQLite · Pino — installed, confined to their packages |
-| CI pipeline | ✅ 5 staged gates |
+| CI pipeline | ✅ 5 staged gates, green on `main` |
 | Branch protection | ✅ Enforced, including for the owner |
-| Application code | ⬜ Not started — by design |
+| **Event log** | ✅ Append-only, gapless, hash-chained — enforced by database triggers |
+| **Tamper evidence** | ✅ `friday verify`, tested by editing the file behind the code's back |
+| **Field encryption** | ✅ AES-256-GCM for private data, keys in the Keychain |
+| **Event bus** | ✅ Durable before dispatch · sync and async lanes · at-least-once |
+| **System log** | ✅ Three-layer redaction, rotation inside a fixed budget |
+| Guardian and approvals | ⬜ Milestone 2 |
+| Compaction and archival | ⬜ Milestone 2, [deliberately](docs/adr/0024-compaction-and-archival-are-milestone-2.md) |
+| Agents, plans, model routing | ⬜ Milestone 3 |
 
-This is deliberate. See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md).
+See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md) for what comes next and why in this order.
 
 ---
 
@@ -148,8 +159,8 @@ Reasoning and rejected alternatives: [Chapter 02](docs/01-bible/02-technology-st
 
 | # | Milestone | Outcome | Target |
 |---|---|---|---|
-| M0 | Ground | Tooling, CI, branch protection, seed ADRs | Aug 2026 |
-| M1 | Heartbeat | Event bus, database, logging — she records | Oct 2026 |
+| M0 | Ground | Tooling, CI, branch protection, seed ADRs | ✅ Aug 2026 |
+| M1 | Heartbeat | Event bus, database, logging — she records | ✅ Aug 2026 |
 | M2 | Conscience | Guardian, approvals, audit — she can be told no | Nov 2026 |
 | M3 | Mind | Agents, Model Router, plans — she thinks | Jan 2027 |
 | M4 | **Face** | Dashboard, Mac app, first connector — **first useful day** | Mar 2027 |

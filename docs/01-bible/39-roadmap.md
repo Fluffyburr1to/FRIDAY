@@ -40,8 +40,8 @@ Ground      Heartbeat  Conscience      Mind           Face      Memory &
 
 | # | Name | What exists at the end | Estimate | Target |
 |---|---|---|---|---|
-| **M0** | **Ground** | Tooling, repo, CI, first ADRs | 2–3 wks | Aug 2026 |
-| **M1** | **Heartbeat** | Event bus, database, config, logging | 4–6 wks | Oct 2026 |
+| **M0** | **Ground** | Tooling, repo, CI, first ADRs | 2–3 wks | ✅ 2026-08-06 |
+| **M1** | **Heartbeat** | Event bus, database, config, logging | 4–6 wks | ✅ 2026-08-07 |
 | **M2** | **Conscience** | Guardian, approvals, audit, thin dashboard | 4–5 wks | Nov 2026 |
 | **M3** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | Jan 2027 |
 | **M4** | **Face** | Dashboard, Mac app, first connector — **first useful day** | 6–8 wks | Mar 2027 |
@@ -97,6 +97,43 @@ appear — then verify the hash chain with `friday verify`.
 
 **Demonstrable outcome:** a live stream of events in your terminal. Not impressive, but real, and
 you can see it working. (Risk R1.)
+
+### ✅ Complete — 2026-08-07
+
+Merged as [#3](https://github.com/Fluffyburr1to/FRIDAY/pull/3), 47 commits, all CI stages green.
+
+`friday events emit` in one terminal, `friday events tail` in another, `friday verify` confirming
+the chain. 322 tests. The demonstrable outcome exists and you can watch it work.
+
+**Actual versus estimated — and why the raw numbers are misleading.**
+
+| | |
+|---|---|
+| Estimated | 4–6 weeks at 10–20 hrs/week — call it 40–120 hours |
+| Elapsed | One working day |
+| Volume delivered | ~5,700 lines of source, ~4,000 of tests, 6 ADRs |
+
+**Do not calibrate M2 against that ratio.** Rule 2 of this chapter says record actual durations to
+calibrate future estimates, so the honest record has to say what actually happened rather than
+report a number that would make every remaining estimate look absurd.
+
+The estimate was not wrong about volume. Five and a half thousand lines of strict, tested,
+documented TypeScript genuinely is 40–120 hours of part-time human work, and anyone reading the
+diff will recognise that. What collapsed was the *writing*, not the *deciding* — the work was done
+by an AI assistant against a design the Bible had already settled completely. Chapters 09, 10, and
+22 specified the schema, the two dispatch lanes, the hash chain, and the three redaction layers in
+enough detail that implementation was largely transcription. The foundation-first decision this
+roadmap opens with is what made that possible.
+
+So the number to carry forward is: **the Bible's specificity is worth roughly what it cost.** Where
+a later milestone is equally well specified, expect similar compression. Where it is not — M3's
+plan engine and M5's memory system are both described in less operational detail — expect the
+original estimates to hold.
+
+Two things that did take real time, and would have regardless: deciding what to do about the six
+questions the Bible had not settled (recorded as ADRs 0019–0024), and decomposing the work into
+47 individually reviewable commits. The second is pure overhead against a solo human's workflow and
+pure necessity against this one, because the owner does not read code.
 
 **Deliberately not in M1: compaction and archival.** [Chapter 10](10-event-bus.md) says growth
 management is "designed for from Milestone 1", and its design is. The implementation is Milestone 2
