@@ -20,5 +20,5 @@
   // dependency problem and is not.
   "files": [],
 
-  "references": []
+  "references": [{ "path": "packages/contracts" }, { "path": "packages/config" }]
 }
