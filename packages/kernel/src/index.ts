@@ -12,6 +12,7 @@
  */
 
 export { backoffFor, DEFAULT_RETRY_POLICY, type RetryPolicy } from './async-lane.js'
+export { announceStart, createEventBus, type EventBus, type EventBusOptions } from './event-bus.js'
 export {
   type AsyncSubscriber,
   matches,
