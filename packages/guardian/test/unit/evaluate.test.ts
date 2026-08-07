@@ -65,7 +65,7 @@ describe('the strictest outcome wins', () => {
     const evaluation = evaluatePolicies(set, REQUEST, NO_GRANT)
 
     expect(evaluation.effect).toBe('deny')
-    expect(evaluation.deciding).toBe('c-deny')
+    expect(evaluation.deciding?.id).toBe('c-deny')
   })
 
   it('lets approval beat allow', () => {
@@ -137,7 +137,7 @@ describe('the deciding rule', () => {
       rule('c-approve', 'require_approval', 'self_modification', { action: 'connector.*.write' }),
     )
 
-    expect(evaluatePolicies(set, REQUEST, NO_GRANT).deciding).toBe('b-deny-critical')
+    expect(evaluatePolicies(set, REQUEST, NO_GRANT).deciding?.id).toBe('b-deny-critical')
   })
 
   it('breaks a tie on id, so the same explanation appears every run', () => {
@@ -146,7 +146,7 @@ describe('the deciding rule', () => {
       rule('b-deny', 'deny', 'high', { action: 'connector.*.write' }),
     )
 
-    expect(evaluatePolicies(set, REQUEST, NO_GRANT).deciding).toBe('a-deny')
+    expect(evaluatePolicies(set, REQUEST, NO_GRANT).deciding?.id).toBe('a-deny')
   })
 
   it('is the only matching rule when there is only one', () => {
@@ -154,9 +154,24 @@ describe('the deciding rule', () => {
 
     const evaluation = evaluatePolicies(set, REQUEST, NO_GRANT)
 
-    expect(evaluation.deciding).toBe('only')
+    expect(evaluation.deciding?.id).toBe('only')
     expect(evaluation.effect).toBe('allow')
     expect(evaluation.riskClass).toBe('low')
+  })
+})
+
+describe('the explanation counts the other rules', () => {
+  it('pluralises correctly, because the sentence is shown to a person', () => {
+    const set = setOf(
+      rule('a-allow', 'allow', 'low', { action: 'connector.*.write' }),
+      rule('b-allow', 'allow', 'low', { action: 'connector.*.*' }),
+      rule('c-deny', 'deny', 'high', { action: 'connector.gmail.write' }),
+    )
+
+    const evaluation = evaluatePolicies(set, REQUEST, NO_GRANT)
+
+    expect(evaluation.matched).toHaveLength(3)
+    expect(evaluation.deciding?.id).toBe('c-deny')
   })
 })
 

@@ -31,11 +31,8 @@ const EFFECT_RANK: Readonly<Record<PolicyEffect, number>> = {
   deny: 2,
 }
 
-/** What the rule set says about one request. */
-export interface PolicyEvaluation {
-  /** Null when no rule matched at all, which is a refusal. */
-  readonly effect: PolicyEffect | null
-
+/** What every evaluation reports, whether or not anything matched. */
+interface EvaluationBase {
   /**
    * The strictest class among the matching rules.
    *
@@ -48,20 +45,42 @@ export interface PolicyEvaluation {
   /** ★ Every rule that matched, so an explanation can be honest about scope. */
   readonly matched: readonly string[]
 
+  /** Rules that would have matched but were exempted by a standing grant. */
+  readonly exempted: readonly string[]
+}
+
+/** No rule mentioned this action. Under ADR-0025 that is a refusal. */
+export interface UnmatchedEvaluation extends EvaluationBase {
+  readonly effect: null
+  readonly deciding: null
+}
+
+/** At least one rule applied. */
+export interface MatchedEvaluation extends EvaluationBase {
+  readonly effect: PolicyEffect
+
   /**
    * The rule that carried the decision: strictest effect, then highest risk,
    * then first by id.
    *
-   * Null when nothing matched. The tiebreak on id exists only so that two
-   * equally decisive rules produce the same explanation every time; without
-   * it, the sentence shown to the owner could change between runs for reasons
-   * that mean nothing.
+   * The whole rule rather than its id, so that composing an explanation cannot
+   * fail to find it. The tiebreak on id exists only so that two equally
+   * decisive rules produce the same explanation every time; without it, the
+   * sentence shown to the owner could change between runs for reasons that
+   * mean nothing.
    */
-  readonly deciding: string | null
-
-  /** Rules that would have matched but were exempted by a standing grant. */
-  readonly exempted: readonly string[]
+  readonly deciding: Policy
 }
+
+/**
+ * What the rule set says about one request.
+ *
+ * A union rather than one shape with nullable fields, so that "nothing matched
+ * but here is the deciding rule" cannot be written down. The caller narrows on
+ * `effect` once and everything else follows, which is what removes a branch
+ * that no test could ever reach and no reader could ever be sure about.
+ */
+export type PolicyEvaluation = UnmatchedEvaluation | MatchedEvaluation
 
 /** What the evaluator needs to know beyond the request itself. */
 export interface EvaluationContext {
@@ -170,5 +189,5 @@ export function evaluatePolicies(
     if (stricter || riskier) deciding = policy
   }
 
-  return { effect, riskClass, matched, deciding: deciding.id, exempted }
+  return { effect, riskClass, matched, deciding, exempted }
 }

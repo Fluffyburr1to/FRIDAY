@@ -14,6 +14,7 @@
  * See: README.md · docs/01-bible/17-authentication-authorization.md · Chapter 19
  */
 
+export { isRecognisableActor, requiresCapability } from './actor-identity.js'
 export { type ApprovalStore, createInMemoryApprovalStore } from './approval-store.js'
 export {
   type ApprovalRegistry,
@@ -38,7 +39,9 @@ export { type CapabilityStore, createInMemoryCapabilityStore } from './capabilit
 export {
   type EvaluationContext,
   evaluatePolicies,
+  type MatchedEvaluation,
   type PolicyEvaluation,
+  type UnmatchedEvaluation,
 } from './evaluate.js'
 export { createInMemoryGrantStore, type GrantStore } from './grant-store.js'
 export {
@@ -48,6 +51,7 @@ export {
   type GrantRegistry,
   type NewGrant,
 } from './grants.js'
+export { createGuardian, type Guardian, type GuardianOptions } from './guardian.js'
 export {
   POLICY_EFFECTS,
   type Policy,

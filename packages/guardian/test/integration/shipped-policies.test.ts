@@ -65,7 +65,7 @@ describe('what an agent may do unattended', () => {
 
     expect(evaluation.effect).toBe('require_approval')
     expect(evaluation.riskClass).toBe('high')
-    expect(evaluation.deciding).toBe('connector-sends-need-approval')
+    expect(evaluation.deciding?.id).toBe('connector-sends-need-approval')
   })
 
   it('asks before an agent forgets something', () => {
