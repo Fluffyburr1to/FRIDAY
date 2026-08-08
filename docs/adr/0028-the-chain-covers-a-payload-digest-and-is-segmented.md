@@ -177,11 +177,22 @@ The reasoning, in the order it mattered:
   what was written — which is what the archival path does before it deletes anything.
 - MIT, on both.
 
-**What is not verified:** Chapter 10 says DuckDB reads these files directly. `hyparquet-writer`
-emits standard Parquet and there is no reason it would not, but DuckDB is not installed here and
-that claim has not been tested end to end. It should be, before the first archive is written in
-anger. What *is* tested is that every archive round-trips through `hyparquet` and matches the rows
-that went in, which is the property the deletion depends on.
+**Verified.** Chapter 10 says DuckDB reads these files directly, and it does. A real archive
+produced by `writeArchive` was read with DuckDB v1.5.5 on 2026-08-07: integer columns came back as
+`BIGINT` and text as `VARCHAR`, every row was present, millisecond timestamps were exact, unicode
+survived, nulls read as nulls, and a `GROUP BY` over the file worked — which is the actual reason
+Chapter 10 chose Parquet rather than a private format.
+
+DuckDB is **not** a CI dependency: `@duckdb/node-api` is 114 MB of embedded analytical database, and
+paying that on every run to re-prove a stable file-format claim is the trade Chapter 18 says not to
+make. Instead `archive-format.test.ts` asserts the *physical* shape of the file — Parquet types,
+`UTF8` annotations, encodings, and the Snappy codec — because that is what an outside reader depends
+on and what a library upgrade could silently change. The round-trip tests read files back with the
+library that wrote them and would not notice.
+
+[`docs/runbooks/archive-format.md`](../runbooks/archive-format.md) records what was checked and how
+to repeat it, and says plainly that a failing format assertion is a blocker on archiving rather than
+a test to update.
 
 **Review trigger:** if `hyparquet-writer` stops being maintained, `parquet-wasm` is the fallback and
 the WASM cost becomes the right trade rather than the wrong one.
