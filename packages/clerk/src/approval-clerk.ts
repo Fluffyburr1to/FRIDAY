@@ -83,14 +83,21 @@ export interface ApprovalClerk {
   get(id: string): Result<ApprovalRequest | undefined, FridayError>
 
   /**
-   * Lapses every request that has run out of time.
+   * Lapses every request that has run out of time, recording each one.
    *
-   * ★ Deliberately still eventless. Expiry is a state change with no
-   * `approval.expired` event yet, exactly as it was before the clerk existed —
-   * emitting one is the next slice, not this one. Kept here so the startup
-   * sweep keeps working and so the gap is visible rather than forgotten.
+   * ★ Each lapse is its own transaction: one `approval.expired` event and one
+   * state change, together or not at all. Per-approval rather than per-sweep,
+   * because they are independent facts — one that could not be recorded must
+   * not undo one that was.
+   *
+   * A failure stops the sweep and is reported. Whatever lapsed before it is
+   * durable and correctly recorded, and the next sweep finds what is left,
+   * because an expired request is no longer pending. That is resumption by
+   * construction rather than a retry.
+   *
+   * @returns Every request that lapsed *and was recorded*, oldest first.
    */
-  sweepExpired(): Result<readonly ApprovalRequest[], FridayError>
+  sweepExpired(): Promise<Result<readonly ApprovalRequest[], FridayError>>
 }
 
 export interface ApprovalClerkOptions {
@@ -154,16 +161,15 @@ export function createApprovalClerk(options: ApprovalClerkOptions): ApprovalCler
       if (!settled.ok) {
         // The registry refused the answer. One refusal — answering after the
         // deadline — settles the request as `expired` on the way out, and that
-        // write must not be lost just because it arrived through this path.
+        // lapse is a real state change that must be recorded like any other.
         //
-        // It is applied directly, without an event, which is exactly what
-        // happened before the clerk existed. Making expiry transactional means
-        // emitting `approval.expired`, and that is the next slice, not this
-        // one. Recorded here so it is a known gap rather than an oversight.
-        for (const write of captured) {
-          const written = approvals.replace(write.request)
-          if (!written.ok) return err(written.error)
-        }
+        // ★ The recording failure wins over the refusal if it happens. Both
+        // are true — the answer was late *and* nothing could be written — but
+        // only one of them is a fault the owner can do something about, and
+        // swallowing it would hide a broken log behind a routine "too late".
+        // The request simply stays pending and the next sweep finds it.
+        const lapse = await recordLapse(bus, approvals, captured)
+        if (!lapse.ok) return err(lapse.error)
 
         return err(settled.error)
       }
@@ -186,7 +192,7 @@ export function createApprovalClerk(options: ApprovalClerkOptions): ApprovalCler
         )
       }
 
-      const recorded = await record(bus, answeredEvent(request), () =>
+      const recorded = await record(bus, settledEvent(request), () =>
         approvals.replace(write.request),
       )
 
@@ -195,19 +201,21 @@ export function createApprovalClerk(options: ApprovalClerkOptions): ApprovalCler
       return ok({ request, event: recorded.value })
     },
 
-    sweepExpired() {
+    async sweepExpired() {
       const lapsed = registry.sweepExpired()
+
+      // Taken synchronously, before the first await, for the same reason as
+      // everywhere else in this file: the captures become local values rather
+      // than shared state spanning a publish.
       const captured = deferred.take()
 
-      // Applied directly, without events. See the note on the interface: this
-      // is the pre-existing expiry path, unchanged, and it is the one place in
-      // this file where state moves without a record of it moving.
-      for (const write of captured) {
-        const written = approvals.replace(write.request)
-        if (!written.ok) return err(written.error)
-      }
+      // A failed read means nothing was settled and nothing was captured.
+      if (!lapsed.ok) return err(lapsed.error)
 
-      return lapsed
+      const recorded = await recordLapse(bus, approvals, captured)
+      if (!recorded.ok) return err(recorded.error)
+
+      return ok(recorded.value)
     },
 
     pending(principalId) {
@@ -285,12 +293,83 @@ function requestedEvent(request: ApprovalRequest, causedByEventId: string): NewE
   }
 }
 
-/** The event that says the owner answered. */
-function answeredEvent(request: ApprovalRequest): NewEvent {
+/**
+ * Records every lapse in `captured`, each in its own transaction.
+ *
+ * ★ Per-approval rather than per-sweep. Two requests lapsing are two
+ * independent facts, and wrapping them together would mean one that could not
+ * be recorded silently undoing one that was.
+ *
+ * Stops at the first failure and reports it. Everything before it is committed
+ * and correctly recorded; everything after is still pending and will be found
+ * by the next sweep, because expiry removes a request from `listPending`. That
+ * is resumption falling out of durable state, not a retry.
+ *
+ * @param bus - The event bus.
+ * @param approvals - The real store.
+ * @param captured - The lapses the registry settled.
+ * @returns The requests recorded as lapsed, or the first failure.
+ */
+async function recordLapse(
+  bus: EventBus,
+  approvals: ApprovalStore,
+  captured: readonly CapturedWrite[],
+): Promise<Result<readonly ApprovalRequest[], FridayError>> {
+  const recorded: ApprovalRequest[] = []
+
+  for (const write of captured) {
+    const lapse = await record(bus, settledEvent(write.request), () =>
+      approvals.replace(write.request),
+    )
+
+    if (!lapse.ok) return err(lapse.error)
+
+    recorded.push(write.request)
+  }
+
+  return ok(recorded)
+}
+
+/** The three endings this package records, and the event for each. */
+const SETTLED_AS = {
+  approved: 'approval.granted',
+  declined: 'approval.declined',
+  expired: 'approval.expired',
+} as const
+
+type RecordableStatus = keyof typeof SETTLED_AS
+
+/**
+ * Names the event for a settled request, refusing anything else.
+ *
+ * ★ A lookup rather than a ternary. Before expiry had an event this read
+ * `status === 'approved' ? granted : declined`, which labelled an expired
+ * request as one the owner had *declined* — a false statement about what the
+ * owner did, produced by a shape with no room for the third case.
+ *
+ * `pending` and `cancelled` throw. Neither can reach here: `pending` is not
+ * settled, and nothing in FRIDAY produces `cancelled` yet. If either ever
+ * does, this stops rather than filing it under the wrong ending.
+ */
+function eventTypeFor(status: ApprovalRequest['status']): string {
+  const type = SETTLED_AS[status as RecordableStatus]
+
+  if (type === undefined) {
+    throw new TypeError(
+      `an approval that is "${status}" has no settled event to record, ` +
+        'and the clerk will not guess at one',
+    )
+  }
+
+  return type
+}
+
+/** The event that says how a request ended. */
+function settledEvent(request: ApprovalRequest): NewEvent {
   const respondedAt = request.respondedAt ?? request.createdAt
 
   return {
-    type: request.status === 'approved' ? 'approval.granted' : 'approval.declined',
+    type: eventTypeFor(request.status),
     actor: request.actor,
     principalId: request.principalId as PrincipalId,
 

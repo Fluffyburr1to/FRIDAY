@@ -63,7 +63,7 @@ export async function main(): Promise<void> {
   // settled before anything reads it as still pending. Chapter 19 is explicit
   // that an approval is never auto-granted by timing out, and a lapsed request
   // shown as awaiting an answer is the same lie in the other direction.
-  const swept = opened.value.context.approvals.sweepExpired()
+  const swept = await opened.value.context.approvals.sweepExpired()
 
   if (!swept.ok) {
     process.stderr.write(`${swept.error.message}\n`)

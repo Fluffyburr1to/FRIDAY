@@ -60,10 +60,21 @@ from constructing a policy engine, a capability signer, and a keychain entry it 
    clerk cannot record an approval, even with the exact type string. That is a safety property, not
    tidiness.
 
-## The one known gap
+## Every ending is recorded
 
-`sweepExpired` changes state without an event. Expiry emits no `approval.expired` yet — that is the
-next slice. It is called out in the code rather than left to be discovered.
+There is no path here that settles an approval without writing the event that says so. All three
+endings — granted, declined, expired — go through the same transaction, and expiry arrives by two
+routes that both record it:
+
+- the sweep, which lapses everything past its deadline, each in its own transaction;
+- answering *after* the deadline, which lapses the request on the way to refusing the answer.
+
+An expiry that could not be recorded did not happen: the state change rolls back with its event, the
+request stays pending, and the next sweep finds it. That is resumption falling out of durable state,
+not a retry.
+
+`cancelled` has no event because nothing in FRIDAY produces that status yet. If something ever does,
+`eventTypeFor` throws rather than filing it under the wrong ending.
 
 Reference: [ADR-0031](../../docs/adr/0031-the-clerk-records-what-the-guardian-decided.md) ·
 [ADR-0032](../../docs/adr/0032-the-guardians-state-moves-into-the-event-log-database.md) ·
