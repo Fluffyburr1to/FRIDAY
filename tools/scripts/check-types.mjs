@@ -100,4 +100,9 @@ run('sources', ['--build'])
 // error could reach main.
 run('tests', ['--noEmit', '--project', 'tsconfig.tests.json'])
 
+// Pass 3 — browser test files, which need the DOM lib that pass 2 withholds.
+// Separate so that granting the DOM to apps/web's tests does not grant it to
+// every test in the repository. See tsconfig.tests.browser.json.
+run('browser tests', ['--noEmit', '--project', 'tsconfig.tests.browser.json'])
+
 console.log(`types ok — ${projects.length} package(s), plus test files`)

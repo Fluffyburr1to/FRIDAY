@@ -88,6 +88,17 @@ catalog:
   # when Vite does.
   '@vitejs/plugin-react': ^5.2.0
 
+  # apps/web tests ONLY. A component test asserting what the owner actually
+  # sees needs a DOM to render into and a way to query it as a person would —
+  # by role and by text, rather than by class name, so a test breaks when the
+  # screen stops being readable and not when the markup is rearranged.
+  #
+  # @friday/vitest-config already types `environment` as 'node' | 'jsdom', so
+  # jsdom is the one this repository was written expecting.
+  jsdom: ^30.0.1
+  '@testing-library/react': ^16.3.2
+  '@testing-library/dom': ^10.4.1 # peer of the above; pinned so there is one
+
 # ── Overrides ────────────────────────────────────────────────────────────────
 #
 # The catalog governs what OUR packages ask for. It does not govern what a

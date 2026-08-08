@@ -42,8 +42,17 @@ describe('fridayTest', () => {
   it('separates the two tiers by directory, so neither can silently absorb the other', () => {
     const [unit, integration] = projectsOf(fridayTest({ name: 'kernel' }))
 
-    expect(unit?.test.include).toEqual(['test/unit/**/*.test.ts'])
-    expect(integration?.test.include).toEqual(['test/integration/**/*.test.ts'])
+    expect(unit?.test.include).toEqual(['test/unit/**/*.test.ts?(x)'])
+    expect(integration?.test.include).toEqual(['test/integration/**/*.test.ts?(x)'])
+  })
+
+  it('picks up JSX test files, so a component test can be written as one', () => {
+    const [unit] = projectsOf(fridayTest({ name: 'web' }))
+
+    // The directory split above is the guarantee; this is the file extension.
+    // Both tiers accept .tsx because apps/web renders components, and a Node
+    // package simply never has a file that matches.
+    expect(unit?.test.include.every((pattern) => pattern.endsWith('.test.ts?(x)'))).toBe(true)
   })
 
   it('gives integration tests a longer timeout than unit tests', () => {

@@ -26,10 +26,13 @@
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
     "@friday/vitest-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "jsdom": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   }
