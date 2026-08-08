@@ -1,4 +1,4 @@
-import { EventSchema } from '@friday/contracts'
+import { ApprovalRequestSchema, EventSchema, type FridayError } from '@friday/contracts'
 import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import type { CoreContext } from './context.js'
@@ -42,7 +42,80 @@ export const ListEventsOutput = z.object({
   events: z.array(EventSchema),
 })
 
+export const RespondInput = z.object({
+  approvalId: z.uuid(),
+  decision: z.enum(['approve', 'decline']),
+  reason: z.string().max(2048).optional(),
+})
+
+export const PendingApprovalsOutput = z.object({
+  approvals: z.array(ApprovalRequestSchema),
+})
+
+/**
+ * Turns a typed failure from a package into a tRPC error.
+ *
+ * The code travels intact so the dashboard can tell `STEP_UP_REQUIRED` from a
+ * genuine fault, and the plain-language message is the one the package wrote —
+ * this app does not compose its own explanation of a refusal it did not make.
+ */
+function refuse(error: FridayError): TRPCError {
+  return new TRPCError({
+    code: error.code === 'STEP_UP_REQUIRED' ? 'FORBIDDEN' : 'BAD_REQUEST',
+    message: error.message,
+    cause: error,
+  })
+}
+
 export const appRouter = t.router({
+  approvals: t.router({
+    /** Everything still waiting on the owner, closest to expiring first. */
+    pending: t.procedure.output(PendingApprovalsOutput).query(({ ctx }) => {
+      const result = ctx.approvals.pending(ctx.principalId)
+
+      if (!result.ok) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: result.error.message,
+          cause: result.error,
+        })
+      }
+
+      return { approvals: [...result.value] }
+    }),
+
+    /**
+     * The owner's answer.
+     *
+     * ★ This app decides nothing here. It names the surface the answer arrived
+     * on and hands the rest to the Guardian, which applies Chapter 19's rules —
+     * including whether this surface may answer this request at all.
+     *
+     * `authenticatedAt` is deliberately never set. A browser on this machine
+     * cannot prove the owner is present, only that the request came from the
+     * owner's machine, so anything above `medium` is refused with
+     * STEP_UP_REQUIRED. Supplying a timestamp here would not implement the
+     * check — it would defeat it while leaving the code that looks like it.
+     *
+     * See docs/adr/0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md
+     */
+    respond: t.procedure
+      .input(RespondInput)
+      .output(ApprovalRequestSchema)
+      .mutation(({ input, ctx }) => {
+        const result = ctx.approvals.respond({
+          approvalId: input.approvalId,
+          decision: input.decision,
+          via: 'web',
+          ...(input.reason === undefined ? {} : { reason: input.reason }),
+        })
+
+        if (!result.ok) throw refuse(result.error)
+
+        return result.value
+      }),
+  }),
+
   events: t.router({
     /** The most recent events, newest first. */
     list: t.procedure

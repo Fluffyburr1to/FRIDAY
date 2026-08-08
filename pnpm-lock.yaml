@@ -162,6 +162,9 @@ importers:
       '@friday/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@friday/guardian':
+        specifier: workspace:*
+        version: link:../../packages/guardian
       '@friday/storage':
         specifier: workspace:*
         version: link:../../packages/storage

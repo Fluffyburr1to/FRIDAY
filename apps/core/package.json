@@ -26,6 +26,7 @@
   "dependencies": {
     "@friday/config": "workspace:*",
     "@friday/contracts": "workspace:*",
+    "@friday/guardian": "workspace:*",
     "@friday/storage": "workspace:*",
     "@trpc/server": "catalog:",
     "zod": "catalog:"

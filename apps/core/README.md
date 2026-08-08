@@ -2,7 +2,7 @@
 
 **The kernel service. This is FRIDAY.**
 
-Milestone: **M2** (read-only API for the thin dashboard) → **M3** (the full service)
+Milestone: **M2** (the thin dashboard's API) → **M3** (the full service)
 
 Eventually runs as a `launchd` LaunchAgent on the host Mac: starts at login, restarts within seconds
 if it dies, and keeps running whether or not any window is open.
@@ -10,10 +10,10 @@ if it dies, and keeps running whether or not any window is open.
 ## What is true today
 
 **M2 is a development server, and calling it anything more would be a lie a future reader pays
-for.** It serves read queries over the event log to `apps/web` and does nothing else. The
-supervision, Safe Mode, and lifecycle rules below are the charter this app is being built toward —
-they are not implemented yet, and the "What lives here" list is the destination rather than the
-inventory.
+for.** It serves the event log to `apps/web`, and lets the owner answer the approvals that do not
+require proving they are present. The supervision, Safe Mode, and lifecycle rules below are the
+charter this app is being built toward — they are not implemented yet, and the "What lives here"
+list is the destination rather than the inventory.
 
 Why it exists a milestone before the Chief of Staff shapes it:
 [ADR-0029](../../docs/adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md).
@@ -66,11 +66,17 @@ One direction, no shortcuts:
    (renders)                (translates)      (owns the data)      (the truth)
 ```
 
-`apps/core` holds a read-only handle from `openEventsReadOnly`. The dashboard is an observer of the
-log at M2; it cannot cause anything to be written, and the absence of a write path is the reason the
-Guardian is not yet on this route. **The milestone that adds the first mutation is the milestone
-that adds Guardian authorization to every mutation** — [Chapter 20](../../docs/01-bible/20-api-standards.md)
-rule 3, no exceptions, including ones that obviously do not need it.
+`apps/core` opens storage read-write, because answering an approval writes. Two things keep that
+from becoming a licence:
+
+**The context cannot append to the event log.** It holds an `EventReader` — the event store with
+every writing method removed from the type — so a procedure that tried to record an event would not
+compile. ADR-0021 names the concern exactly: something that can write directly to the log is a way
+to record an action FRIDAY did not take.
+
+**The Guardian is on the mutation route, and it is the only thing on it.** This app supplies the
+answer and the surface it arrived on. Chapter 19's rules — including whether a browser may answer
+this request at all — are applied by `@friday/guardian`, and a refusal is its refusal.
 
 ### The router
 
@@ -79,8 +85,9 @@ uses exists; the rest are listed there, not stubbed here.
 
 ```
 appRouter
-└── events    list          ← M2
-    (stream)                ← M2, when the live view lands
+├── approvals pending · respond    ← M2
+└── events    list                 ← M2
+    (stream)                       ← M2, when the live view lands
 ```
 
 Every procedure declares input and output schemas. Queries read, mutations write, and one is never
@@ -95,8 +102,14 @@ disguised as the other.
 4. **Five crashes in 60 seconds → Safe Mode**, not an infinite restart loop.
 5. **Loopback only.** The server binds to `127.0.0.1`. FRIDAY's data does not leave the machine
    because there is no interface on which it could (Article IV).
-6. **A missing event log is an error, not an empty list.** Reporting "no events" when the truth is
-   "cannot read the log" is the failure mode this whole app exists to prevent.
+6. **An unreadable log is an error, never an empty list.** Reporting "no events" when the truth is
+   "cannot read the log" is the failure mode this whole app exists to prevent. An empty answer is
+   reserved for a log that really is empty — which, since this app creates its databases on first
+   run, is what a new machine legitimately has.
+7. **`authenticatedAt` is never supplied by this app.** A loopback connection establishes that the
+   request came from the owner's machine, not that the owner is present, so high-risk approvals are
+   refused by the Guardian rather than waved through here.
+   See [ADR-0030](../../docs/adr/0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md).
 
 Reference: [Chapter 05](../../docs/01-bible/05-backend-architecture.md) ·
 [Chapter 20](../../docs/01-bible/20-api-standards.md) ·

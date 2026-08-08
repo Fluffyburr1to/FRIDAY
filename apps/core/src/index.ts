@@ -15,10 +15,16 @@ import { startServer } from './server.js'
  * See: README.md · docs/01-bible/05-backend-architecture.md
  */
 
-export type { CoreContext, OpenedContext } from './context.js'
+export type { CoreContext, EventReader, OpenedContext } from './context.js'
 export { openContext } from './context.js'
 export type { AppRouter } from './router.js'
-export { appRouter, ListEventsInput, ListEventsOutput } from './router.js'
+export {
+  appRouter,
+  ListEventsInput,
+  ListEventsOutput,
+  PendingApprovalsOutput,
+  RespondInput,
+} from './router.js'
 export type { RunningServer } from './server.js'
 export { startServer } from './server.js'
 
@@ -50,6 +56,17 @@ export async function main(): Promise<void> {
 
   if (!opened.ok) {
     process.stderr.write(`${opened.error.message}\n`)
+    process.exit(EXIT_PROBLEM)
+  }
+
+  // A request that ran out of time while FRIDAY was not running must be
+  // settled before anything reads it as still pending. Chapter 19 is explicit
+  // that an approval is never auto-granted by timing out, and a lapsed request
+  // shown as awaiting an answer is the same lie in the other direction.
+  const swept = opened.value.context.approvals.sweepExpired()
+
+  if (!swept.ok) {
+    process.stderr.write(`${swept.error.message}\n`)
     process.exit(EXIT_PROBLEM)
   }
 
