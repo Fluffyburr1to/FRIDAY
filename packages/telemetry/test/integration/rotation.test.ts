@@ -2,7 +2,12 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
-import { CHAPTER_22_ROTATION, createLogger, type RotationEvent } from '@friday/telemetry'
+import {
+  CHAPTER_22_ROTATION,
+  createLogger,
+  createRotatingDestination,
+  type RotationEvent,
+} from '@friday/telemetry'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 /**
@@ -157,6 +162,95 @@ describe('log rotation', () => {
     await delay(SETTLE_MS)
 
     expect(readFileSync(path, 'utf8')).toContain('first line ever')
+  })
+})
+
+describe('when the log itself cannot be written', () => {
+  /**
+   * Chapter 22's priority, tested rather than asserted in a comment: the
+   * system log is the disposable record, and it must never be able to stop
+   * the one that is not.
+   *
+   * The failure being guarded against is specific. Node throws on an `error`
+   * event with no listener, and an uncaught exception ends the process — so a
+   * logger whose directory becomes unwritable could take FRIDAY down with it.
+   * It did, until the handlers stopped being conditional on an observer.
+   */
+  let directory: string
+  const opened: NodeJS.WritableStream[] = []
+
+  const TINY = { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' } as const
+
+  /** Opens a destination the test owns, so it can be closed deterministically. */
+  function open(observer?: (event: RotationEvent) => void): NodeJS.WritableStream {
+    const stream = createRotatingDestination({
+      path: join(directory, 'friday.log'),
+      policy: { ...TINY },
+      ...(observer === undefined ? {} : { onRotation: observer }),
+    })
+
+    opened.push(stream)
+    return stream
+  }
+
+  /** Takes the log directory away from a live logger, then keeps writing. */
+  async function writeIntoNothing(stream: NodeJS.WritableStream): Promise<void> {
+    const log = createLogger({ module: 'test', stream })
+
+    log.info({}, 'a first line, so the stream is genuinely open')
+    await delay(SETTLE_MS)
+
+    // The realistic causes are a removable volume, a cleanup job, or a disk
+    // that filled. The observable effect is the same: the next write fails.
+    rmSync(directory, { recursive: true, force: true })
+
+    for (let i = 0; i < 400; i += 1) log.info({ index: i }, 'writing into a directory that is gone')
+    await delay(SETTLE_MS * 2)
+  }
+
+  beforeEach(() => {
+    directory = mkdtempSync(join(tmpdir(), 'friday-rotation-fail-'))
+  })
+
+  afterEach(async () => {
+    await Promise.all(
+      opened.splice(0).map(
+        (stream) =>
+          new Promise<void>((done) => {
+            stream.end(() => done())
+          }),
+      ),
+    )
+    rmSync(directory, { recursive: true, force: true })
+  })
+
+  it('keeps the process alive when nothing is observing rotation', async () => {
+    // ★ The regression. Nothing in FRIDAY passes an observer yet — Diagnostics
+    // is what will, at M3 — so this is how every real logger is constructed
+    // today, and it is exactly the case that used to end the process.
+    const uncaught: Error[] = []
+    const capture = (error: Error): void => void uncaught.push(error)
+
+    process.on('uncaughtException', capture)
+
+    try {
+      await writeIntoNothing(open())
+    } finally {
+      process.off('uncaughtException', capture)
+    }
+
+    expect(uncaught).toEqual([])
+  })
+
+  it('tells an observer that the log could not be written, and that logging continues', async () => {
+    const events: RotationEvent[] = []
+
+    await writeIntoNothing(open((event) => void events.push(event)))
+
+    const failure = events.find((event) => event.kind === 'error')
+
+    expect(failure).toBeDefined()
+    expect(failure?.message).toContain('Logging continues')
   })
 })
 

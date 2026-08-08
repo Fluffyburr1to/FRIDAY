@@ -97,7 +97,6 @@ export function createRotatingDestination(
   options: RotatingDestinationOptions,
 ): NodeJS.WritableStream {
   const policy = options.policy ?? CHAPTER_22_ROTATION
-  const notify = options.onRotation
 
   const stream = createStream(basename(options.path), {
     path: dirname(options.path),
@@ -124,30 +123,50 @@ export function createRotatingDestination(
     history: '.rotation-history',
   })
 
-  if (notify !== undefined) attachObserver(stream, notify)
+  attachHandlers(stream, options.onRotation)
 
   return stream
 }
 
 /**
- * Wires the stream's events to the observer.
+ * Wires the stream's events, and reports them onward when anyone is listening.
+ *
+ * ★ Called unconditionally, and that is the whole point of it.
  *
  * `error` is deliberately handled rather than left to propagate. An unhandled
  * `error` on a stream takes the process down, and losing FRIDAY because her
  * debug log could not rotate would invert the priority Chapter 22 sets: the
  * system log is the disposable record, and it must never be able to stop the
  * one that is not.
+ *
+ * That was the intent from the start, and for a while the wiring did not match
+ * it: these handlers were attached only when a caller supplied an observer, so
+ * containment depended on an unrelated option. A logger created the ordinary
+ * way — no observer, because nothing consumes rotation events until
+ * Diagnostics arrives at M3 — would end the process the first time its log
+ * directory became unwritable. Reporting is optional. Containment is not, and
+ * separating the two is what keeps that true.
  */
-function attachObserver(
+function attachHandlers(
   stream: ReturnType<typeof createStream>,
-  notify: (event: RotationEvent) => void,
+  notify: ((event: RotationEvent) => void) | undefined,
 ): void {
+  /**
+   * With no observer the event is absorbed rather than announced. That is the
+   * correct outcome for the system log: there is nowhere to report a logging
+   * failure *to* except the logger that is failing, and staying alive matters
+   * more than being heard. Diagnostics becomes the observer at M3.
+   */
+  const report = (event: RotationEvent): void => {
+    notify?.(event)
+  }
+
   stream.on('rotated', (path: string) => {
-    notify({ kind: 'rotated', message: `The log rolled over to a new file.`, path })
+    report({ kind: 'rotated', message: `The log rolled over to a new file.`, path })
   })
 
   stream.on('removed', (path: string) => {
-    notify({
+    report({
       kind: 'removed',
       message:
         'An old log file was deleted to stay inside the size budget. ' +
@@ -157,11 +176,11 @@ function attachObserver(
   })
 
   stream.on('warning', (cause: Error) => {
-    notify({ kind: 'warning', message: cause.message })
+    report({ kind: 'warning', message: cause.message })
   })
 
   stream.on('error', (cause: Error) => {
-    notify({
+    report({
       kind: 'error',
       message: `The system log could not be rotated: ${cause.message}. Logging continues.`,
     })
