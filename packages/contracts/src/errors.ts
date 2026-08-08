@@ -43,6 +43,23 @@ export const ERROR_CODES = [
   'SUBSCRIBER_FAILED',
   'TIMEOUT',
   'SHUTTING_DOWN',
+
+  // ── Authorization ───────────────────────────────────────────────────────
+  //
+  // `NOT_AUTHORIZED` and `APPROVAL_REQUIRED` are distinct on purpose. The
+  // first is an answer — no, and asking will not change it. The second is a
+  // pause: the plan suspends and resumes if the owner says yes. A caller that
+  // treated them the same would either abandon work the owner would have
+  // approved, or retry something already refused.
+  'NOT_AUTHORIZED',
+  'APPROVAL_REQUIRED',
+  'APPROVAL_ALREADY_RESOLVED',
+  'CAPABILITY_INVALID',
+  'STEP_UP_REQUIRED',
+  'SURFACE_NOT_PERMITTED',
+  'POLICY_INVALID',
+  'POLICY_SET_EMPTY',
+  'GRANT_INVALID',
 ] as const
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES)

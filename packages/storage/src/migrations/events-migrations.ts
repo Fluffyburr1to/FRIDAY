@@ -1,3 +1,4 @@
+import { CHAIN_DIGEST_MIGRATION } from './chain-digest-migration.js'
 import type { Migration } from './runner.js'
 
 /**
@@ -98,4 +99,5 @@ export const EVENTS_MIGRATIONS: readonly Migration[] = [
       CREATE INDEX idx_dead_letters_subscriber ON dead_letters (subscriber_id, failed_at);
     `,
   },
+  CHAIN_DIGEST_MIGRATION,
 ]

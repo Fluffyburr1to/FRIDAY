@@ -17,6 +17,7 @@ import { encryptField } from '../crypto/field-encryption.js'
 import type { KeyProvider } from '../crypto/key-provider.js'
 import {
   computeIntegrityHash,
+  computePayloadDigest,
   GENESIS_HASH,
   type HashableEvent,
   serialisePayload,
@@ -88,6 +89,20 @@ export interface EventStore {
     principalId?: PrincipalId | undefined
   }): Result<FridayEvent[], FridayError>
 
+  /**
+   * Every event belonging to one root request, oldest first.
+   *
+   * This is what the audit trail is walked with. `correlationId` groups a
+   * whole operation — an intent, the plan it produced, every step, every
+   * decision — and reading them as one set is what lets "why did you do that?"
+   * be answered from recorded fact rather than from a model's account of its
+   * own past reasoning.
+   */
+  readByCorrelation(input: {
+    correlationId: string
+    principalId?: PrincipalId | undefined
+  }): Result<FridayEvent[], FridayError>
+
   /** The most recent events, newest first. */
   readLatest(input: {
     limit: number
@@ -143,7 +158,13 @@ export function createEventStore(options: EventStoreOptions): EventStore {
           })
 
           tx.insert(events)
-            .values({ ...hashable, integrityHash })
+            .values({
+              ...hashable,
+              payload: stored.value,
+              integrityHash,
+              compactedAt: null,
+              compactionReason: null,
+            })
             .run()
 
           const written: FridayEvent = {
@@ -191,6 +212,17 @@ export function createEventStore(options: EventStoreOptions): EventStore {
         .orderBy(asc(events.seq))
         .limit(limit ?? DEFAULT_PAGE)
         .all()
+
+      return decodeRows({ rows, keys, fieldKeyReference })
+    },
+
+    readByCorrelation({ correlationId, principalId }) {
+      const condition =
+        principalId === undefined
+          ? eq(events.correlationId, correlationId)
+          : and(eq(events.correlationId, correlationId), eq(events.principalId, principalId))
+
+      const rows = db.select().from(events).where(condition).orderBy(asc(events.seq)).all()
 
       return decodeRows({ rows, keys, fieldKeyReference })
     },
@@ -280,7 +312,10 @@ function buildHashable(input: {
     causationId: event.causationId ?? null,
     correlationId: event.correlationId ?? null,
     traceId: event.traceId ?? null,
-    payload,
+
+    // ★ The digest is computed here, once, over the bytes about to be stored —
+    // never re-derived from a parsed object later. ADR-0028.
+    payloadDigest: computePayloadDigest(payload),
     payloadVersion: event.payloadVersion ?? 1,
     sensitivity: event.sensitivity,
   }

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "owner-acts-directly",
+    "description": "Anything you do yourself is allowed. Approval is about what FRIDAY does on her own, not about what you do at the keyboard.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": { "action": "*", "actorType": "user" }
+  },
+  {
+    "id": "agents-may-read-memory",
+    "description": "An agent may read from memory when its current step needs to. Reading changes nothing and never leaves the machine.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": { "action": "memory.read", "actorType": "agent" }
+  },
+  {
+    "id": "memory-writes-need-approval",
+    "description": "Writing something into memory needs your approval, because FRIDAY will act on it later as if it were true.",
+    "effect": "require_approval",
+    "riskClass": "medium",
+    "when": { "action": "memory.write", "actorType": "agent" },
+    "unless": { "standingGrant": true }
+  },
+  {
+    "id": "memory-deletes-need-approval",
+    "description": "Forgetting something needs your approval, and cannot be undone.",
+    "effect": "require_approval",
+    "riskClass": "high",
+    "when": { "action": "memory.delete", "actorType": "agent" },
+    "unless": { "standingGrant": true }
+  },
+  {
+    "id": "schedules-may-run-diagnostics",
+    "description": "A scheduled job may check FRIDAY's own health and verify the audit log. Nothing outside FRIDAY is touched.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": { "action": "diagnostics.*.run", "actorType": "schedule" }
+  }
+]

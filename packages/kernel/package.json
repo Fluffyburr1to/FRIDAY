@@ -25,14 +25,14 @@
   "dependencies": {
     "@friday/contracts": "workspace:*",
     "@friday/storage": "workspace:*",
-    "@friday/telemetry": "workspace:*"
+    "@friday/telemetry": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
     "@friday/vitest-config": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "vitest": "catalog:",
-    "zod": "catalog:"
+    "vitest": "catalog:"
   }
 }

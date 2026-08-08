@@ -32,9 +32,17 @@ export const events = sqliteTable(
     correlationId: text('correlation_id'),
     traceId: text('trace_id'),
     payload: text('payload').notNull(),
+
+    /** ★ What the chain covers. SHA-256 of the payload as first written. */
+    payloadDigest: text('payload_digest').notNull(),
+
     payloadVersion: integer('payload_version').notNull(),
     sensitivity: text('sensitivity').notNull(),
     integrityHash: text('integrity_hash').notNull(),
+
+    /** Set when the payload was deliberately removed. Null for a live event. */
+    compactedAt: integer('compacted_at'),
+    compactionReason: text('compaction_reason'),
   },
   (table) => [
     index('idx_events_type').on(table.type, table.seq),
@@ -44,6 +52,43 @@ export const events = sqliteTable(
     index('idx_events_occurred').on(table.occurredAt),
   ],
 )
+
+/**
+ * Ranges that have left `events.db`, and the hash they ended on.
+ *
+ * A chain cannot span a gap. Rather than pretending otherwise, an archived
+ * range is sealed here and the live chain continues from its final hash — so a
+ * gap that is accounted for reads as "archived" and one that is not still
+ * reads as broken. ADR-0028.
+ */
+export const chainSegments = sqliteTable('chain_segments', {
+  fromSeq: integer('from_seq').primaryKey(),
+  toSeq: integer('to_seq').notNull(),
+
+  /** The integrity hash of the last event in the range. */
+  finalHash: text('final_hash').notNull(),
+
+  eventCount: integer('event_count').notNull(),
+  sealedAt: integer('sealed_at').notNull(),
+
+  /** Where the events went. Null while they are still local. */
+  archivePath: text('archive_path'),
+})
+
+/**
+ * The one narrow exemption to append-only.
+ *
+ * The triggers on `events` are not dropped to allow compaction; they consult
+ * this row instead. Opening the window, doing the work, and closing it happen
+ * inside a single transaction, so a crash rolls the window shut along with
+ * everything it permitted.
+ */
+export const maintenanceWindow = sqliteTable('maintenance_window', {
+  id: integer('id').primaryKey(),
+  open: integer('open').notNull(),
+  reason: text('reason'),
+  openedAt: integer('opened_at'),
+})
 
 export const subscriberCheckpoints = sqliteTable('subscriber_checkpoints', {
   subscriberId: text('subscriber_id').primaryKey(),

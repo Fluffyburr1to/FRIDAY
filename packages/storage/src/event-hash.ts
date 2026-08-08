@@ -13,15 +13,24 @@ import { createHash } from 'node:crypto'
  *
  * ── The rule that makes this work ───────────────────────────────────────────
  *
- * **The hash covers the bytes that are stored, not a value re-derived from
- * them.** The `payload` column holds exactly the string that was hashed, and
- * verification reads that string back and hashes it again. Anything else —
- * re-serialising an object, re-encoding a number — means the chain can break
- * because a JSON serialiser changed its key order in a minor release, which is
- * a failure nobody would ever diagnose.
+ * **The hash covers a digest of the bytes that were stored, computed once,
+ * when they were written.** It is never re-derived from a parsed object.
+ * Anything else — re-serialising, re-encoding a number — means the chain can
+ * break because a JSON serialiser changed its key order in a minor release,
+ * which is a failure nobody would ever diagnose.
  *
  * That is also why the canonical form is a positional array rather than an
  * object: an array has no key order to depend on.
+ *
+ * ── Why a digest rather than the bytes (ADR-0028) ───────────────────────────
+ *
+ * Hashing the payload bytes directly made two things Chapter 10 requires
+ * impossible: compaction, which rewrites payloads, and redaction, which
+ * removes them. Under this form the chain proves the *sequence* is intact
+ * while a separate check proves each *payload* still matches what was
+ * recorded — so deliberately removing content fails the second on purpose and
+ * passes the first, which is the difference between "this was redacted" and
+ * "this log is corrupt".
  *
  * Reference: docs/01-bible/09-database-design.md · Chapter 10
  */
@@ -45,8 +54,14 @@ export interface HashableEvent {
   readonly correlationId: string | null
   readonly traceId: string | null
 
-  /** The stored bytes, exactly as they appear in the column. */
-  readonly payload: string
+  /**
+   * SHA-256 of the payload bytes as they were written.
+   *
+   * Computed inside the append transaction and never recomputed from a parsed
+   * object. This is what the chain covers; the bytes themselves are checked
+   * against it separately.
+   */
+  readonly payloadDigest: string
   readonly payloadVersion: number
   readonly sensitivity: string
 }
@@ -77,7 +92,7 @@ export function canonicalise(event: HashableEvent): string {
     event.causationId,
     event.correlationId,
     event.traceId,
-    event.payload,
+    event.payloadDigest,
     event.payloadVersion,
     event.sensitivity,
   ])
@@ -98,6 +113,16 @@ export function computeIntegrityHash(input: {
     .update('\n')
     .update(canonicalise(input.event))
     .digest('hex')
+}
+
+/**
+ * Digests the payload bytes.
+ *
+ * @param payload - The serialised payload, exactly as stored.
+ * @returns Lowercase SHA-256 hex.
+ */
+export function computePayloadDigest(payload: string): string {
+  return createHash('sha256').update(payload).digest('hex')
 }
 
 /**

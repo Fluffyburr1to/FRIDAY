@@ -51,6 +51,10 @@ Decisions taken since, as implementation met the design:
 | [0022](0022-toml-for-the-configuration-file.md) | TOML for the configuration file | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0023](0023-rotating-file-stream-for-log-rotation.md) | `rotating-file-stream` for log rotation | accepted | low | [22](../01-bible/22-logging-standards.md) |
 | [0024](0024-compaction-and-archival-are-milestone-2.md) | Compaction and archival are Milestone 2 work | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0025](0025-policy-evaluation-is-order-independent-and-fails-closed.md) | Policy evaluation is order-independent and fails closed | accepted | medium | [17](../01-bible/17-authentication-authorization.md) |
+| [0026](0026-capability-tokens-are-signed-handles-to-kernel-state.md) | Capability tokens are signed handles to kernel state | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
+| [0027](0027-the-guardians-stores-are-ports-that-can-fail.md) | The Guardian's stores are ports that can fail | accepted | medium | [30](../01-bible/30-coding-standards.md) |
+| [0028](0028-the-chain-covers-a-payload-digest-and-is-segmented.md) | The integrity chain covers a payload digest, and is segmented | accepted | **high** | [10](../01-bible/10-event-bus.md) |
 | [0029](0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md) | `apps/core` begins at Milestone 2 to serve the dashboard | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
@@ -74,6 +78,12 @@ Two entries are worth watching more than the rest:
 Sequential, four digits, never reused, never renumbered. `docs/adr/0014-choose-tauri.md` is a
 permanent address that other documents link to.
 
-**0025–0028 are held by the unmerged conscience branch.** The dashboard work branched from `main`
-and took 0029 rather than the next free number here, because reusing 0025 would collide on merge and
-renumbering afterwards is forbidden by the rule above. A gap in the index is the cheaper defect.
+**Numbers are claimed on the branch, not on `main`.** The dashboard work branched before the
+conscience work merged, so 0025–0028 did not yet appear in this index — and it took 0029 rather than
+the next number visible to it, because reusing 0025 would have collided when the two branches met
+and renumbering afterwards is forbidden by the rule above.
+
+The index looked wrong for a while and then came right, which is the correct trade: a temporary gap
+costs a reader one moment of confusion, and a renumbered ADR breaks every link to it forever. When
+several branches are open at once, take the number after the highest claimed **anywhere**, not the
+highest merged.

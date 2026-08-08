@@ -29,8 +29,13 @@ import { SensitivitySchema } from './sensitivity.js'
  * tell `sent` from `send` — so it stays a review rule. What IS enforced is
  * that a type is a well-formed, lowercase, dotted name, because a typo in an
  * event type is a subscriber that silently never fires.
+ *
+ * Underscores are permitted inside a segment for the same reason two segments
+ * are: Chapter 19 names `approval.auto_granted` as the event the dashboard
+ * shows when a standing grant is applied, and a rule that rejects the Bible's
+ * own event names would be enforcing a convention nobody agreed to.
  */
-export const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*){1,2}$/
+export const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,2}$/
 
 export const EventTypeSchema = z
   .string()
@@ -47,7 +52,7 @@ export type EventType = z.infer<typeof EventTypeSchema>
  * `approval.*` matches `approval.granted` and `approval.requested`. `*` alone
  * matches everything, which is what the dashboard's live view subscribes to.
  */
-export const EVENT_PATTERN_REGEX = /^(?:\*|[a-z][a-z0-9]*(?:\.(?:[a-z][a-z0-9]*|\*)){0,2})$/
+export const EVENT_PATTERN_REGEX = /^(?:\*|[a-z][a-z0-9_]*(?:\.(?:[a-z][a-z0-9_]*|\*)){0,2})$/
 
 export const EventPatternSchema = z
   .string()

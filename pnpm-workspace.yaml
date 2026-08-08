@@ -38,6 +38,20 @@ catalog:
   # See docs/adr/0022.
   smol-toml: ^1.7.1
 
+  # storage ONLY. Cold-tier archives are Parquet so they stay queryable without
+  # FRIDAY (Chapter 10). Two packages total — the writer depends only on the
+  # reader, which depends on nothing — which is why this won over the
+  # better-known alternative that drags in the AWS SDK. See docs/adr/0028.
+  #
+  # Pinned to exactly what hyparquet-writer depends on, rather than the newest
+  # release. Two reasons, and the second is the real one: it keeps a single
+  # copy in the tree, and a caret here pulled in a version published hours
+  # earlier — which pnpm then wanted to add a minimum-release-age exclusion
+  # for. A brand-new release is precisely what that policy exists to keep out,
+  # and silently excluding a package defeats it.
+  hyparquet: 1.27.1
+  'hyparquet-writer': ^0.16.5
+
   # telemetry ONLY. Chapter 22's rotation rules — daily, 100 MB per file, 30
   # days, and a 1 GB ceiling on the directory — are all this package's options.
   # Chosen over pino-roll; the reasoning is in docs/adr/0023.

@@ -22,6 +22,76 @@ export {
   SubjectSchema,
   SYSTEM_ACTOR,
 } from './actor.js'
+// ── Asking the owner ────────────────────────────────────────────────────────
+export {
+  APPROVAL_STATUSES,
+  type ApprovalRequest,
+  ApprovalRequestSchema,
+  type ApprovalStatus,
+  ApprovalStatusSchema,
+  type Explanation,
+  ExplanationSchema,
+  type Impact,
+  ImpactSchema,
+  isTerminalApprovalStatus,
+  PREVIEW_KINDS,
+  type Preview,
+  type PreviewKind,
+  PreviewKindSchema,
+  PreviewSchema,
+  REQUIRED_AUTHS,
+  RESPONSE_SURFACES,
+  type RequiredAuth,
+  RequiredAuthSchema,
+  type ResponseSurface,
+  ResponseSurfaceSchema,
+  TERMINAL_APPROVAL_STATUSES,
+} from './approval.js'
+// ── Authorization: what a question is about ─────────────────────────────────
+export {
+  ACTION_PATTERN_REGEX,
+  ACTION_REGEX,
+  type Action,
+  type ActionPattern,
+  ActionPatternSchema,
+  ActionSchema,
+  isUnboundedScope,
+  matchesAction,
+  matchesResource,
+  RESOURCE_PATTERN_REGEX,
+  RESOURCE_REGEX,
+  type Resource,
+  type ResourcePattern,
+  ResourcePatternSchema,
+  ResourceSchema,
+} from './authorization.js'
+// ── Narrow, expiring permission ─────────────────────────────────────────────
+export {
+  CAPABILITY_TOKEN_PREFIX,
+  CAPABILITY_TOKEN_REGEX,
+  type Capability,
+  type CapabilityConstraints,
+  CapabilityConstraintsSchema,
+  CapabilitySchema,
+  type CapabilityToken,
+  CapabilityTokenSchema,
+  isCapabilityLive,
+  MAX_CAPABILITY_LIFETIME_MS,
+} from './capability.js'
+// ── Authorization: the answer ───────────────────────────────────────────────
+export {
+  type AuthorizationRequest,
+  AuthorizationRequestSchema,
+  DECISION_REASONS,
+  DECISIONS,
+  type Decision,
+  type DecisionReason,
+  DecisionReasonSchema,
+  DecisionSchema,
+  type GuardianDecision,
+  GuardianDecisionSchema,
+  permits,
+} from './decision.js'
 // ── Outcomes and failures ───────────────────────────────────────────────────
 export {
   ERROR_CODES,
@@ -59,6 +129,31 @@ export {
   SystemStoppedPayloadSchema,
   TestEventPayloadSchema,
 } from './event-types.js'
+// ── Permission given in advance ─────────────────────────────────────────────
+export {
+  GRANT_MAX_LIFETIME_MS,
+  type GrantConstraints,
+  GrantConstraintsSchema,
+  isGrantableRiskClass,
+  isGrantLive,
+  type StandingGrant,
+  StandingGrantSchema,
+} from './grant.js'
+export {
+  ApprovalAutoGrantedPayloadSchema,
+  ApprovalDeclinedPayloadSchema,
+  ApprovalExpiredPayloadSchema,
+  ApprovalGrantedPayloadSchema,
+  ApprovalRequestedPayloadSchema,
+  CapabilityIssuedPayloadSchema,
+  CapabilityRevokedPayloadSchema,
+  CapabilityUsedPayloadSchema,
+  GrantCreatedPayloadSchema,
+  GrantEndedPayloadSchema,
+  GUARDIAN_EVENT_TYPES,
+  GuardianDecidedPayloadSchema,
+  registerGuardianEventTypes,
+} from './guardian-event-types.js'
 export {
   type CausationId,
   CausationIdSchema,

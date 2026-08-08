@@ -1,0 +1,51 @@
+[
+  {
+    "id": "connector-reads-are-allowed",
+    "description": "Reading from a connected service is allowed. It changes nothing, and you can see every read in the log.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": {
+      "action": "connector.*.read",
+      "actorType": "agent"
+    }
+  },
+  {
+    "id": "connector-writes-need-approval",
+    "description": "Changing something in a connected service needs your approval, because the change happens outside FRIDAY where she cannot undo it for you.",
+    "effect": "require_approval",
+    "riskClass": "medium",
+    "when": {
+      "action": "connector.*.write",
+      "actorType": "agent"
+    },
+    "unless": {
+      "standingGrant": true
+    }
+  },
+  {
+    "id": "connector-sends-need-approval",
+    "description": "Sending a message to another person needs your approval every time, and you approve the actual text rather than a summary of it. An email cannot be unsent.",
+    "effect": "require_approval",
+    "riskClass": "high",
+    "when": {
+      "action": "connector.*.message.send",
+      "actorType": "agent"
+    },
+    "unless": {
+      "standingGrant": true
+    }
+  },
+  {
+    "id": "connector-deletes-need-approval",
+    "description": "Deleting something in a connected service needs your approval. It is irreversible and it happens outside FRIDAY.",
+    "effect": "require_approval",
+    "riskClass": "high",
+    "when": {
+      "action": "connector.*.delete",
+      "actorType": "agent"
+    },
+    "unless": {
+      "standingGrant": true
+    }
+  }
+]
