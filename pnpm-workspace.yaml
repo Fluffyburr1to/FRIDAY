@@ -43,6 +43,22 @@ catalog:
   # Chosen over pino-roll; the reasoning is in docs/adr/0023.
   rotating-file-stream: ^3.2.9
 
+  # Milestone 2 — Conscience: the thin dashboard
+  #
+  # The first dependencies since M1. Each was approved individually rather
+  # than as a stack, and the set is deliberately the minimum that makes one
+  # real screen work.
+  #
+  # See docs/adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md
+
+  # apps/core. Chapter 20 specifies tRPC for the internal API: the client and
+  # server share types with no code generation and no schema file to keep in
+  # sync, so an invented endpoint or a wrong argument shape is a compile error
+  # rather than a runtime surprise the owner has to diagnose from a symptom.
+  # The standalone adapter runs on node:http, which is why there is no web
+  # framework in this list.
+  '@trpc/server': ^11.18.0
+
 # pnpm blocks dependency install scripts by default — a good default, since an
 # install script runs arbitrary code with your privileges (supply chain, T2).
 # Each exception is an explicit decision recorded here.
