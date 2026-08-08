@@ -147,6 +147,45 @@ the whole range.
 sealed segments already supports verifying a range without reading the others. Revisit if
 verification time becomes a real cost, which it is nowhere near being.
 
+## The Parquet library
+
+Chapter 10 says cold events live in Parquet files that remain queryable. That needs a writer, and
+Rule 4 says name it and say why.
+
+**Chosen: `hyparquet-writer`, with `hyparquet` for reading archives back.**
+
+| Candidate | Latest | Dependencies | Why not |
+|---|---|---|---|
+| `parquetjs` | 0.11.2, **2019** | 8 | Unmaintained for six years. |
+| `@dsnp/parquetjs` | 1.8.9, 2026-07 | **13**, including `@aws-sdk/client-s3` and `@zenfs/core` | Actively maintained and otherwise the safe pick — rejected on dependency weight. Pulling the AWS SDK into a local-only, privacy-first system to write a file to disk is exactly the trade Chapter 18 says not to make. |
+| `parquet-wasm` | 0.7.2, 2026-06 | 0 | Genuinely good, and the Rust implementation is the most correct one available. Rejected because it ships a WebAssembly binary: harder to audit, harder to reproduce, and a build artifact rather than source. |
+| **`hyparquet-writer`** | **0.16.5, 2026-08** | **1** (`hyparquet`, which has 0) | **Chosen.** |
+
+The reasoning, in the order it mattered:
+
+- **Two packages, total.** `hyparquet-writer` depends only on `hyparquet`, which depends on nothing.
+  That is the smallest attack surface of any working option, and Chapter 18's argument — every
+  dependency runs with FRIDAY's full privileges — applies with particular force to a component that
+  reads the audit log.
+- **Actively maintained.** `hyparquet` has released steadily since January 2024, most recently the
+  week this was written; the writer released four times in the six weeks before.
+- **Plain TypeScript.** No native module to rebuild for every Node version for the next decade, and
+  no WASM blob. `better-sqlite3` is the one native dependency this project accepted
+  ([ADR-0018](0018-better-sqlite3-as-the-sqlite-driver.md)) and the reasoning there was that there
+  was no mature alternative. Here there is.
+- **Reader and writer from the same maintainer**, so an archive can be read back and checked against
+  what was written — which is what the archival path does before it deletes anything.
+- MIT, on both.
+
+**What is not verified:** Chapter 10 says DuckDB reads these files directly. `hyparquet-writer`
+emits standard Parquet and there is no reason it would not, but DuckDB is not installed here and
+that claim has not been tested end to end. It should be, before the first archive is written in
+anger. What *is* tested is that every archive round-trips through `hyparquet` and matches the rows
+that went in, which is the property the deletion depends on.
+
+**Review trigger:** if `hyparquet-writer` stops being maintained, `parquet-wasm` is the fallback and
+the WASM cost becomes the right trade rather than the wrong one.
+
 ## Consequences
 
 **Positive**
