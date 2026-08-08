@@ -7,6 +7,7 @@ import {
   createLogger,
   createRotatingDestination,
   type RotationEvent,
+  type RotationPolicy,
 } from '@friday/telemetry'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -35,8 +36,61 @@ const fixture = (...parts: string[]): string => parts.join('')
 /** Long enough for the stream to flush and rotate; short enough to be a test. */
 const SETTLE_MS = 250
 
+/**
+ * Closes every destination a test opened, and waits for each to finish.
+ *
+ * This is what makes the suite deterministic. It is not a tolerance and not a
+ * retry: `end` resolves once the stream has flushed and stopped, so teardown
+ * happens after the writing rather than alongside it.
+ */
+async function closeAll(streams: NodeJS.WritableStream[]): Promise<void> {
+  await Promise.all(
+    streams.splice(0).map(
+      (stream) =>
+        new Promise<void>((done) => {
+          stream.end(() => done())
+        }),
+    ),
+  )
+}
+
 describe('log rotation', () => {
   let directory: string
+
+  /**
+   * Every destination these tests open, so teardown can close them.
+   *
+   * A rotating stream keeps working after the test that made it returns —
+   * gzipping a rotated file, deleting an old one. Removing the directory while
+   * one is still live made the next write fail, and the resulting error
+   * surfaced as an intermittent failure in whichever test happened to be
+   * running. Closing first makes the teardown ordered rather than a race.
+   */
+  const opened: NodeJS.WritableStream[] = []
+
+  /**
+   * Opens a destination the test owns.
+   *
+   * `createLogger({ destination })` builds exactly this internally; going
+   * through the documented `stream` seam changes nothing about what is
+   * exercised and gives the test a handle it can close.
+   */
+  function open(
+    options: {
+      path?: string
+      policy?: RotationPolicy
+      onRotation?: (event: RotationEvent) => void
+    } = {},
+  ): NodeJS.WritableStream {
+    const stream = createRotatingDestination({
+      path: options.path ?? join(directory, 'friday.log'),
+      ...(options.policy === undefined ? {} : { policy: options.policy }),
+      ...(options.onRotation === undefined ? {} : { onRotation: options.onRotation }),
+    })
+
+    opened.push(stream)
+    return stream
+  }
 
   function logFiles(): string[] {
     return readdirSync(directory).sort()
@@ -46,15 +100,17 @@ describe('log rotation', () => {
     directory = mkdtempSync(join(tmpdir(), 'friday-rotation-'))
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await closeAll(opened)
     rmSync(directory, { recursive: true, force: true })
   })
 
   it('starts a new file once the size limit is passed', async () => {
     const log = createLogger({
       module: 'test',
-      destination: join(directory, 'friday.log'),
-      rotation: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
+      stream: open({
+        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
+      }),
     })
 
     for (let i = 0; i < 200; i += 1) {
@@ -74,8 +130,10 @@ describe('log rotation', () => {
     const path = join(directory, 'friday.log')
     const log = createLogger({
       module: 'test',
-      destination: path,
-      rotation: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
+      stream: open({
+        path,
+        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
+      }),
     })
 
     for (let i = 0; i < 200; i += 1) log.info({ index: i }, 'filling the first file')
@@ -94,11 +152,12 @@ describe('log rotation', () => {
 
     const log = createLogger({
       module: 'test',
-      destination: join(directory, 'friday.log'),
-      rotation: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
-      onRotation: (event) => {
-        if (event.kind === 'removed') removed.push(event)
-      },
+      stream: open({
+        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
+        onRotation: (event) => {
+          if (event.kind === 'removed') removed.push(event)
+        },
+      }),
     })
 
     for (let i = 0; i < 2000; i += 1) {
@@ -124,9 +183,10 @@ describe('log rotation', () => {
 
     const log = createLogger({
       module: 'test',
-      destination: join(directory, 'friday.log'),
-      rotation: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
-      onRotation: (event) => void events.push(event),
+      stream: open({
+        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
+        onRotation: (event) => void events.push(event),
+      }),
     })
 
     for (let i = 0; i < 2000; i += 1) log.info({ index: i }, 'filling the log directory')
@@ -141,7 +201,7 @@ describe('log rotation', () => {
     // Rotation changed how bytes reach the disk. The property that must not
     // have changed is the one Chapter 22 calls a stop-the-line incident.
     const path = join(directory, 'friday.log')
-    const log = createLogger({ module: 'test', destination: path })
+    const log = createLogger({ module: 'test', stream: open({ path }) })
 
     log.error(
       { apiKey: fixture('sk-', 'ant-api03-', 'AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH') },
@@ -156,7 +216,7 @@ describe('log rotation', () => {
     // It does not exist on a fresh install, and a logger that cannot start
     // because of that hides whatever else went wrong during startup.
     const path = join(directory, 'nested', 'deeper', 'friday.log')
-    const log = createLogger({ module: 'test', destination: path })
+    const log = createLogger({ module: 'test', stream: open({ path }) })
 
     log.info({}, 'first line ever')
     await delay(SETTLE_MS)
@@ -213,14 +273,7 @@ describe('when the log itself cannot be written', () => {
   })
 
   afterEach(async () => {
-    await Promise.all(
-      opened.splice(0).map(
-        (stream) =>
-          new Promise<void>((done) => {
-            stream.end(() => done())
-          }),
-      ),
-    )
+    await closeAll(opened)
     rmSync(directory, { recursive: true, force: true })
   })
 
