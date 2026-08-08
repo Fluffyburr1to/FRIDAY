@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type FridayConfig, loadConfig } from '@friday/config'
@@ -140,15 +140,42 @@ describe('the events API', () => {
   })
 
   it('reports an unreadable log as an error rather than as no events', () => {
-    // The log is never created — this is the "FRIDAY has never run" case, and
-    // the failure mode being guarded against is a dashboard that renders a
-    // calm empty state when it cannot see anything at all.
+    // The failure mode guarded against is a dashboard rendering a calm empty
+    // state when it cannot see anything at all.
+    //
+    // "Never created" used to stand in for "unreadable", and it stopped
+    // meaning that when core became the service that owns these files: a
+    // kernel that refused to start until something else made its database
+    // could never start at all on a new machine. Creating an empty log and
+    // reporting it as empty is now correct, because it *is* empty.
+    //
+    // So the guarantee is tested against a log that genuinely cannot be read.
+    // A directory where the file belongs is unopenable in a way no amount of
+    // retrying fixes, and it is the shape of the real causes — a bad path, a
+    // permission change, a half-restored backup.
+    mkdirSync(config.paths.eventsDb, { recursive: true })
+
     const opened = openContext({ config, keys })
 
     expect(opened.ok).toBe(false)
     if (opened.ok) return
 
     expect(opened.error.message).toContain(config.paths.eventsDb)
+  })
+
+  it('serves an empty log as empty, once it has one', async () => {
+    // The other half of the same rule: an empty answer must be reserved for a
+    // log that really is empty, and must not be how an error looks.
+    const opened = openContext({ config, keys })
+    if (!opened.ok) throw new Error(opened.error.message)
+
+    try {
+      const caller = appRouter.createCaller(opened.value.context)
+
+      expect((await caller.events.list({ limit: 10 })).events).toEqual([])
+    } finally {
+      opened.value.close()
+    }
   })
 
   it('serves the same events over HTTP', async () => {
