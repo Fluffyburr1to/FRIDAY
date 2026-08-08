@@ -1,3 +1,4 @@
+import { type ApprovalClerk, createApprovalClerk, registerClerkEventTypes } from '@friday/clerk'
 import type { FridayConfig } from '@friday/config'
 import {
   err,
@@ -7,7 +8,7 @@ import {
   type PrincipalId,
   type Result,
 } from '@friday/contracts'
-import { type ApprovalRegistry, createApprovalRegistry } from '@friday/guardian'
+import { createEventBus } from '@friday/kernel'
 import { type EventStore, type KeyProvider, openStorage } from '@friday/storage'
 
 /**
@@ -41,14 +42,20 @@ export interface CoreContext {
   readonly events: EventReader
 
   /**
-   * Raising and settling approvals.
+   * Settling approvals, and recording that they were settled.
    *
-   * ★ The registry decides nothing about whether an answer is permitted — it
-   * enforces Chapter 19's rules on the answer itself, including step-up. This
-   * app supplies the answer and the surface it arrived on, and no more than
-   * that.
+   * ★ The clerk decides nothing about whether an answer is permitted — it
+   * applies Chapter 19's rules through the approval registry, including
+   * step-up. This app supplies the answer and the surface it arrived on, and
+   * no more than that.
+   *
+   * ★ This is also the only way anything in this app reaches the event log,
+   * and it is deliberately not a way to write to it. The clerk offers the
+   * specific lifecycle transitions an answer actually is; there is no method
+   * on it that records an event FRIDAY did not cause. The bus itself is built
+   * in `openContext` and never leaves it. See ADR-0021 and ADR-0031.
    */
-  readonly approvals: ApprovalRegistry
+  readonly approvals: ApprovalClerk
 
   /** Whose data this instance serves. The multi-user seam, read from config. */
   readonly principalId: PrincipalId
@@ -100,10 +107,21 @@ export function openContext(input: {
     )
   }
 
+  // ★ The bus is built here and stays here. Nothing on `CoreContext` can
+  // publish, so a procedure cannot record an arbitrary event — it can only ask
+  // the clerk to settle an approval, which is a transition the owner actually
+  // caused. ADR-0021 names the concern: a way to write directly to the log is
+  // a way to record an action FRIDAY did not take.
+  const bus = createEventBus({ storage: storage.value, principalId: config.principalId })
+
+  // The Guardian's event types are registered on this bus and nowhere else, so
+  // only a process that composed a clerk can record one. See ADR-0031.
+  registerClerkEventTypes(bus)
+
   return ok({
     context: {
       events: storage.value.events,
-      approvals: createApprovalRegistry({ store: storage.value.guardian.approvals }),
+      approvals: createApprovalClerk({ approvals: storage.value.guardian.approvals, bus }),
       principalId: config.principalId,
     },
     close: storage.value.close,

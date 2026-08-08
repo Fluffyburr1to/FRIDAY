@@ -183,6 +183,22 @@ export const ApprovalRequestSchema = z
     /** The Guardian decision that raised this. Every request has a cause. */
     decisionId: UuidSchema,
 
+    /**
+     * ★ The `approval.requested` EVENT that recorded this request.
+     *
+     * Not the same thing as `decisionId`, and the distinction is the whole
+     * point: `decisionId` names a Guardian decision, this names a row in the
+     * event log. Only this one may be used as a `causationId`, because only
+     * this one exists in the log the causal chain is rebuilt from. Both are
+     * UUIDs, so nothing but this comment and a test stops them being swapped.
+     *
+     * Null only between the instant the request is built and the instant its
+     * event is written — the id is assigned inside the append transaction and
+     * cannot be known before it. A request in a terminal state with this still
+     * null is a bug: the answer would have nothing to hang from.
+     */
+    requestedEventId: UuidSchema.nullable(),
+
     requiredAuth: RequiredAuthSchema,
 
     createdAt: TimestampSchema,

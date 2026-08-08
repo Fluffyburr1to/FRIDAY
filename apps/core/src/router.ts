@@ -53,6 +53,20 @@ export const PendingApprovalsOutput = z.object({
 })
 
 /**
+ * Failures that mean FRIDAY could not write, not that the caller was wrong.
+ *
+ * ★ Kept distinct because the difference is the whole point of ADR-0032: an
+ * approval that could not be recorded is an infrastructure fault, and
+ * reporting it as a bad request would tell the owner their answer was refused
+ * when in fact nothing was decided at all.
+ */
+const UNWRITABLE: readonly FridayError['code'][] = [
+  'EVENT_LOG_UNWRITABLE',
+  'STORAGE_UNAVAILABLE',
+  'STORAGE_WRITE_FAILED',
+]
+
+/**
  * Turns a typed failure from a package into a tRPC error.
  *
  * The code travels intact so the dashboard can tell `STEP_UP_REQUIRED` from a
@@ -60,6 +74,10 @@ export const PendingApprovalsOutput = z.object({
  * this app does not compose its own explanation of a refusal it did not make.
  */
 function refuse(error: FridayError): TRPCError {
+  if (UNWRITABLE.includes(error.code)) {
+    return new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message, cause: error })
+  }
+
   return new TRPCError({
     code: error.code === 'STEP_UP_REQUIRED' ? 'FORBIDDEN' : 'BAD_REQUEST',
     message: error.message,
@@ -102,8 +120,8 @@ export const appRouter = t.router({
     respond: t.procedure
       .input(RespondInput)
       .output(ApprovalRequestSchema)
-      .mutation(({ input, ctx }) => {
-        const result = ctx.approvals.respond({
+      .mutation(async ({ input, ctx }) => {
+        const result = await ctx.approvals.respond({
           approvalId: input.approvalId,
           decision: input.decision,
           via: 'web',
@@ -112,7 +130,10 @@ export const appRouter = t.router({
 
         if (!result.ok) throw refuse(result.error)
 
-        return result.value
+        // The answer and the event recording it were one write. Returning the
+        // request without its event, or an event without the request, is not a
+        // state this procedure can observe.
+        return result.value.request
       }),
   }),
 

@@ -1,14 +1,18 @@
-import { GUARDIAN_MIGRATION } from './guardian-migration.js'
 import type { Migration } from './runner.js'
 
 /**
  * `friday.db` — everything current.
  *
- * Plans and their steps at Milestone 1; the Guardian's records at M2. Memory
- * arrives at M5.
+ * Plans and their steps at Milestone 1. Memory arrives at M5.
  * The tables are here now because a data model is the thing you cannot
  * cheaply change later: `principal_id` on every row and `idempotency_key` on
  * every step are both one column now and a security review later.
+ *
+ * ★ The Guardian's records are deliberately NOT here. They live in `events.db`
+ * so that an approval and the event recording it commit in one transaction —
+ * a transaction cannot span two SQLite files, and an approval that is answered
+ * in one file and recorded in another has a crash window between them.
+ * See docs/adr/0032-the-guardians-state-moves-into-the-event-log-database.md.
  *
  * Reference: docs/01-bible/09-database-design.md
  */
@@ -80,5 +84,4 @@ export const MAIN_MIGRATIONS: readonly Migration[] = [
       CREATE UNIQUE INDEX idx_plan_steps_idempotency ON plan_steps (idempotency_key);
     `,
   },
-  GUARDIAN_MIGRATION,
 ]
