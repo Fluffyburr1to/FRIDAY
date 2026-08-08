@@ -56,10 +56,16 @@ Decisions taken since, as implementation met the design:
 | [0027](0027-the-guardians-stores-are-ports-that-can-fail.md) | The Guardian's stores are ports that can fail | accepted | medium | [30](../01-bible/30-coding-standards.md) |
 | [0028](0028-the-chain-covers-a-payload-digest-and-is-segmented.md) | The integrity chain covers a payload digest, and is segmented | accepted | **high** | [10](../01-bible/10-event-bus.md) |
 | [0029](0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md) | `apps/core` begins at Milestone 2 to serve the dashboard | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
+| [0030](0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md) | Loopback identifies the owner's machine, not the owner's presence | accepted | low* | [17](../01-bible/17-authentication-authorization.md) |
 
-\* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
+\* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
 promises, and requires a new ADR making that explicit — never a quiet edit.
+
+The mark is not confined to the seed ADRs. 0030 carries it because "local access is not presence" is
+a promise about Article III rather than an engineering preference — relaxing it would widen what can
+be approved without the owner, which is precisely the kind of change that must be argued in the open
+rather than adjusted in a settings file.
 
 ### Where the real risk sits
 
