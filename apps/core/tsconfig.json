@@ -13,6 +13,8 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/config" },
     { "path": "../../packages/guardian" },
+    { "path": "../../packages/kernel" },
+    { "path": "../../packages/clerk" },
     { "path": "../../packages/storage" }
   ],
   "include": ["src/**/*"],

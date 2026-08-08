@@ -1,15 +1,30 @@
 import { CHAIN_DIGEST_MIGRATION } from './chain-digest-migration.js'
+import { GUARDIAN_MIGRATION } from './guardian-migration.js'
 import type { Migration } from './runner.js'
 
 /**
- * `events.db` — the immutable event log.
+ * `events.db` — the immutable event log, and the Guardian's records.
  *
  * Its own file because its requirements are opposite to everything else's: it
  * is append-only, write-heavy, grows forever, and is irreplaceable. Keeping it
  * apart means archiving old events cannot disturb live data, and continuous
  * backup does not have to carry gigabytes of disposable cache.
  *
- * Reference: docs/01-bible/09-database-design.md · Chapter 10
+ * ★ The Guardian's four tables are here despite being mutable, and that is the
+ * one exception to the paragraph above. They are the only state that must be
+ * written in the same transaction as the event describing it: an approval
+ * answered in `friday.db` and recorded in `events.db` can crash between the
+ * two, leaving either an authorized action with no audit record or a log
+ * asserting an approval the state denies. A transaction cannot span two SQLite
+ * files, and `ATTACH` does not close the gap under WAL. One file makes the two
+ * writes one write.
+ *
+ * The append-only discipline survives as a rule about the `events` table
+ * rather than about the file — `EventStore` cannot update it, and
+ * `maintenance` remains the only path permitted to.
+ *
+ * Reference: docs/01-bible/09-database-design.md · Chapter 10 ·
+ * docs/adr/0032-the-guardians-state-moves-into-the-event-log-database.md
  */
 export const EVENTS_MIGRATIONS: readonly Migration[] = [
   {
@@ -100,4 +115,5 @@ export const EVENTS_MIGRATIONS: readonly Migration[] = [
     `,
   },
   CHAIN_DIGEST_MIGRATION,
+  GUARDIAN_MIGRATION,
 ]

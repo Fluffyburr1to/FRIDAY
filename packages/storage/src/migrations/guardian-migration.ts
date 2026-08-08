@@ -14,7 +14,10 @@ import type { Migration } from './runner.js'
  * Reference: docs/01-bible/19-approval-system.md · Chapter 17 · Chapter 09
  */
 export const GUARDIAN_MIGRATION: Migration = {
-  id: '0002',
+  // 0003 rather than 0002: these tables moved from `friday.db` to `events.db`
+  // (ADR-0032), and `events.db` already had a 0002. Migration ids are unique
+  // per file, and the ledger's primary key is what caught the collision.
+  id: '0003',
   name: 'approvals, standing grants, capabilities, and decisions',
   sql: `
     -- ── Approval requests ────────────────────────────────────────────────
@@ -60,6 +63,14 @@ export const GUARDIAN_MIGRATION: Migration = {
       plan_step_id      TEXT,
       correlation_id    TEXT,
       decision_id       TEXT    NOT NULL,
+
+      -- ★ The approval.requested EVENT that recorded this request, which is a
+      -- different thing from decision_id above. Nullable only because the id
+      -- is assigned inside the append transaction and does not exist when the
+      -- row is built; it is filled in by that same transaction. An answer
+      -- names this as its cause, so a settled row without it is a broken
+      -- causal chain. See ADR-0031.
+      requested_event_id TEXT,
 
       required_auth     TEXT    NOT NULL,
 

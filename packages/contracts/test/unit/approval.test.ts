@@ -41,6 +41,7 @@ function validRequest(overrides: Partial<ApprovalRequest> = {}): unknown {
     planStepId: null,
     correlationId: null,
     decisionId: uuidv7(),
+    requestedEventId: null,
     requiredAuth: 'biometric',
     createdAt: 1_000,
     expiresAt: 2_000,

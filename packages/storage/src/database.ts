@@ -19,19 +19,22 @@ import { createPlanStore, type PlanStore } from './repositories/plan-store.js'
  * append-only; `friday.db` plateaus; `cache.db` is worthless and is not opened
  * at Milestone 1 because nothing generates cacheable data yet.
  *
- * The cost of three files is that a transaction cannot span two of them. The
- * boundary is drawn where that does not bind: the event log and the plan
- * tables are never written in one atomic step, because a plan's state is
- * derived from events rather than kept alongside them.
+ * The cost of three files is that a transaction cannot span two of them, and
+ * `ATTACH` does not close that gap under WAL. So the boundary is drawn the
+ * other way round: anything that must be written atomically *with* an event
+ * lives in `events.db` beside it. That is why the Guardian's records are
+ * opened on the events connection below, and why the plan tables are not —
+ * a plan's state is derived from events rather than written alongside them.
  *
- * Reference: docs/01-bible/09-database-design.md
+ * Reference: docs/01-bible/09-database-design.md ·
+ * docs/adr/0032-the-guardians-state-moves-into-the-event-log-database.md
  */
 
 export interface StorageOptions {
-  /** `friday.db` — plans, the Guardian's records, and later memory. */
+  /** `friday.db` — plans, and later memory. */
   mainDbPath: string
 
-  /** `events.db` — the immutable log. */
+  /** `events.db` — the log, and the Guardian's records. See ADR-0032. */
   eventsDbPath: string
 
   keys: KeyProvider
@@ -102,7 +105,13 @@ export function openStorage(options: StorageOptions): Result<Storage, FridayErro
     }),
     checkpoints: createCheckpointStore(eventsDb),
     plans: createPlanStore(mainDb),
-    guardian: createGuardianStores(mainConnection.value),
+
+    // ★ On the EVENTS connection, not the main one. better-sqlite3
+    // transactions are per-connection, so this is what lets a Guardian state
+    // write happen inside the append transaction of the event that records it.
+    // Moving it back to `mainConnection` would compile, pass most tests, and
+    // silently reintroduce the crash window ADR-0032 exists to close.
+    guardian: createGuardianStores(eventsConnection.value),
     maintenance: createMaintenance(eventsConnection.value),
     migrationsApplied: applied.value,
     close() {

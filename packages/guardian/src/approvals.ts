@@ -149,6 +149,13 @@ export function createApprovalRegistry(options: {
         planStepId: input.planStepId ?? null,
         correlationId: input.correlationId ?? null,
         decisionId: input.decisionId,
+
+        // Left unset here on purpose. The event id is assigned inside the
+        // append transaction, so the only thing that can fill this in is
+        // whoever records the request — see ADR-0031. The registry does not
+        // publish, and does not pretend to know.
+        requestedEventId: null,
+
         requiredAuth: requiredAuthFor(input.riskClass),
         createdAt,
         expiresAt: createdAt + (input.lifetimeMs ?? DEFAULT_APPROVAL_LIFETIME_MS),

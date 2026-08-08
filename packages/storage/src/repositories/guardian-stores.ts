@@ -150,7 +150,7 @@ export function createGuardianStores(db: Database): GuardianStores {
     preview_kind, preview_content,
     reversible, data_leaves_device, data_categories, estimated_cost_cents,
     actor_type, actor_id, action, resource,
-    plan_id, plan_step_id, correlation_id, decision_id,
+    plan_id, plan_step_id, correlation_id, decision_id, requested_event_id,
     required_auth, created_at, expires_at, status,
     responded_at, responded_via, response_reason`
 
@@ -161,7 +161,7 @@ export function createGuardianStores(db: Database): GuardianStores {
             @previewKind, @previewContent,
             @reversible, @dataLeavesDevice, @dataCategories, @estimatedCostCents,
             @actorType, @actorId, @action, @resource,
-            @planId, @planStepId, @correlationId, @decisionId,
+            @planId, @planStepId, @correlationId, @decisionId, @requestedEventId,
             @requiredAuth, @createdAt, @expiresAt, @status,
             @respondedAt, @respondedVia, @responseReason)`)
 
@@ -197,6 +197,7 @@ export function createGuardianStores(db: Database): GuardianStores {
     planStepId: request.planStepId,
     correlationId: request.correlationId,
     decisionId: request.decisionId,
+    requestedEventId: request.requestedEventId,
     requiredAuth: request.requiredAuth,
     createdAt: request.createdAt,
     expiresAt: request.expiresAt,
@@ -232,6 +233,7 @@ export function createGuardianStores(db: Database): GuardianStores {
     planStepId: row.plan_step_id,
     correlationId: row.correlation_id,
     decisionId: row.decision_id,
+    requestedEventId: row.requested_event_id,
     requiredAuth: row.required_auth,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
@@ -562,6 +564,7 @@ interface ApprovalRow {
   plan_step_id: string | null
   correlation_id: string | null
   decision_id: string
+  requested_event_id: string | null
   required_auth: string
   created_at: number
   expires_at: number

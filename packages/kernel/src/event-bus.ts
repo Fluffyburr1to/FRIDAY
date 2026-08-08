@@ -51,6 +51,25 @@ export interface EventBusOptions {
   sleep?: (ms: number) => Promise<void>
 }
 
+/**
+ * Work that must happen in the same transaction as the event describing it.
+ *
+ * ★ Runs INSIDE the append transaction, and receives the event exactly as it
+ * was written — including the `id` and `seq` assigned during the append, which
+ * do not exist before it. If it throws, the event is rolled back with it.
+ *
+ * This is what lets a caller keep authoritative state and its record from ever
+ * disagreeing: the two become one write. The bus stays domain-agnostic — it
+ * offers the transaction, and knows nothing about what is written inside it.
+ *
+ * Synchronous by type, for the reason `SyncSubscriber` is: a promise cannot be
+ * awaited inside a SQLite transaction, and one that was would have its failure
+ * escape the rollback.
+ *
+ * Reference: docs/adr/0032 — amendment of 2026-08-08
+ */
+export type TransactionalRecord = (event: FridayEvent) => void
+
 export interface EventBus {
   /**
    * Records an event and dispatches it.
@@ -58,9 +77,15 @@ export interface EventBus {
    * @param event - The event to publish. Its payload is validated against the
    *   registered schema for its type first; an unregistered or malformed event
    *   is refused rather than written.
+   * @param onRecorded - Optional work to perform inside the append
+   *   transaction, after the row is written and before it is committed.
+   *   Omitting it produces exactly the behaviour every existing caller has.
    * @returns The recorded event, or a typed error.
    */
-  publish(event: NewEvent): Promise<Result<FridayEvent, FridayError>>
+  publish(
+    event: NewEvent,
+    onRecorded?: TransactionalRecord,
+  ): Promise<Result<FridayEvent, FridayError>>
 
   subscribeSync(subscriber: SyncSubscriber): Unsubscribe
   subscribeAsync(subscriber: AsyncSubscriber): Unsubscribe
@@ -124,7 +149,7 @@ export function createEventBus(options: EventBusOptions): EventBus {
     // are asynchronous. A synchronous signature here would mean changing every
     // call site in the system on the day that happens.
     // biome-ignore lint/suspicious/useAwait: see above — the async signature is the swappable interface
-    async publish(event) {
+    async publish(event, onRecorded) {
       // Chapter 10, rule 4: an unregistered or invalid event fails loudly at
       // the source. AI assistants will add event types, and a malformed one
       // accepted quietly corrupts the log for every future reader.
@@ -155,6 +180,11 @@ export function createEventBus(options: EventBusOptions): EventBus {
         // rolls the write back and the event never happened — which is the
         // guarantee that the audit trail and the system state cannot disagree.
         onRecorded: (written) => {
+          // The publisher's own transactional work runs first, because it is
+          // the authoritative state this event describes, and a subscriber
+          // projecting the same event should see it already applied.
+          onRecorded?.(written)
+
           for (const subscriber of syncSubscribers) {
             if (matches(subscriber.pattern, written.type)) subscriber.handle(written)
           }

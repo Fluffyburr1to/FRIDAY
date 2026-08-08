@@ -1,9 +1,11 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createApprovalClerk, registerClerkEventTypes } from '@friday/clerk'
 import { type FridayConfig, loadConfig } from '@friday/config'
 import type { Actor, RiskClass } from '@friday/contracts'
 import { appRouter, type OpenedContext, openContext } from '@friday/core'
+import { createEventBus } from '@friday/kernel'
 import {
   createInMemoryKeyProvider,
   KEY_LENGTH_BYTES,
@@ -32,22 +34,57 @@ describe('the approvals API', () => {
   let keys: KeyProvider
   const opened: OpenedContext[] = []
 
-  /** Raises a real approval request of a given risk, in the real store. */
-  function raise(riskClass: RiskClass): string {
+  /**
+   * Raises a real approval request of a given risk, through the real clerk.
+   *
+   * ★ Not seeded straight into the table. An approval that was never recorded
+   * as having been asked cannot be answered — the clerk refuses it, because
+   * the grant would have nothing to name as its cause. Going through the clerk
+   * here is what makes this setup resemble the thing it is testing.
+   */
+  async function raise(riskClass: RiskClass): Promise<string> {
     const storage = openStorage({
       eventsDbPath: config.paths.eventsDb,
       mainDbPath: config.paths.mainDb,
       keys,
-      fieldKeyReference: FIELD_KEY_REF,
+      fieldKeyReference: config.keychain.fieldKeyRef,
     })
 
     if (!storage.ok) throw new Error(`test setup could not open storage: ${storage.error.message}`)
 
-    const asked = storage.value.guardian.approvals
-    const id = crypto.randomUUID()
+    const bus = registerClerkEventTypes(
+      createEventBus({ storage: storage.value, principalId: config.principalId }),
+    )
 
-    const put = asked.put({
-      id,
+    const decisionId = crypto.randomUUID()
+
+    // The decision the request hangs from. Without it there is no chain.
+    const decided = await bus.publish({
+      type: 'guardian.decided',
+      actor: AGENT,
+      principalId: config.principalId,
+      payload: {
+        decisionId,
+        decision: 'needs_approval',
+        reason: 'approval_required',
+        riskClass,
+        action: 'connector.gmail.send',
+        resource: 'gmail:thread/abc',
+        actor: AGENT,
+        matchedPolicies: ['connector-sends-need-approval'],
+        approvalId: null,
+        standingGrantId: null,
+        summary: `A ${riskClass} thing that needs you.`,
+      },
+      sensitivity: 'private',
+    })
+
+    if (!decided.ok)
+      throw new Error(`test setup could not record a decision: ${decided.error.message}`)
+
+    const clerk = createApprovalClerk({ approvals: storage.value.guardian.approvals, bus })
+
+    const raised = await clerk.request({
       principalId: config.principalId,
       title: `A ${riskClass} thing that needs you`,
       riskClass,
@@ -68,23 +105,15 @@ describe('the approvals API', () => {
       actor: AGENT,
       action: 'connector.gmail.send',
       resource: 'gmail:thread/abc',
-      planId: null,
-      planStepId: null,
-      correlationId: null,
-      decisionId: crypto.randomUUID(),
-      requiredAuth: riskClass === 'low' || riskClass === 'medium' ? 'none' : 'biometric',
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 60 * 60 * 1000,
-      status: 'pending',
-      respondedAt: null,
-      respondedVia: null,
-      responseReason: null,
+      decisionId,
+      causedByEventId: decided.value.id,
     })
 
-    if (!put.ok) throw new Error(`test setup could not store the request: ${put.error.message}`)
+    if (!raised.ok)
+      throw new Error(`test setup could not raise the request: ${raised.error.message}`)
 
     storage.value.close()
-    return id
+    return raised.value.request.id
   }
 
   beforeEach(() => {
@@ -96,8 +125,13 @@ describe('the approvals API', () => {
     if (!loaded.ok) throw new Error(`test setup could not load config: ${loaded.error.message}`)
 
     config = loaded.value
+    // Both names, because two things read this provider: the helper below,
+    // which opens storage directly, and `openContext`, which uses whatever the
+    // configuration names. They only had to agree once the context started
+    // writing `private` events, which is what field encryption needs a key for.
     keys = createInMemoryKeyProvider({
       [FIELD_KEY_REF]: Buffer.alloc(KEY_LENGTH_BYTES, 7).toString('base64'),
+      [config.keychain.fieldKeyRef]: Buffer.alloc(KEY_LENGTH_BYTES, 7).toString('base64'),
     })
   })
 
@@ -123,8 +157,8 @@ describe('the approvals API', () => {
   }
 
   it('lists what is waiting on the owner', async () => {
-    raise('low')
-    raise('high')
+    await raise('low')
+    await raise('high')
 
     const page = await caller().approvals.pending()
 
@@ -137,7 +171,7 @@ describe('the approvals API', () => {
   })
 
   it('records an answer to a routine request, and says it came from the browser', async () => {
-    const id = raise('low')
+    const id = await raise('low')
 
     const settled = await caller().approvals.respond({ approvalId: id, decision: 'approve' })
 
@@ -147,7 +181,7 @@ describe('the approvals API', () => {
   })
 
   it('records a decline, with the reason the owner gave', async () => {
-    const id = raise('medium')
+    const id = await raise('medium')
 
     const settled = await caller().approvals.respond({
       approvalId: id,
@@ -165,7 +199,7 @@ describe('the approvals API', () => {
     // app started filling that field in, STEP_UP_REQUIRED would become
     // unreachable and the guarantee would be gone while the code still looked
     // like it enforced something.
-    const id = raise('high')
+    const id = await raise('high')
 
     await expect(
       caller().approvals.respond({ approvalId: id, decision: 'approve' }),
@@ -173,7 +207,7 @@ describe('the approvals API', () => {
   })
 
   it('refuses a request to change her own code from the browser', async () => {
-    const id = raise('self_modification')
+    const id = await raise('self_modification')
 
     await expect(
       caller().approvals.respond({ approvalId: id, decision: 'approve' }),
@@ -181,7 +215,7 @@ describe('the approvals API', () => {
   })
 
   it('leaves a refused request pending rather than half-answered', async () => {
-    const id = raise('critical')
+    const id = await raise('critical')
 
     await expect(
       caller().approvals.respond({ approvalId: id, decision: 'approve' }),

@@ -45,8 +45,12 @@ describe('migrations', () => {
       expect(opened.value.migrationsApplied).toEqual([
         'events:0001',
         'events:0002',
+
+        // The Guardian's tables, in events.db rather than friday.db so an
+        // approval and the event recording it share one transaction. ADR-0032.
+        'events:0003',
+
         'main:0001',
-        'main:0002',
       ])
       opened.value.close()
     }
