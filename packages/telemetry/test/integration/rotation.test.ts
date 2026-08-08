@@ -1,7 +1,6 @@
 import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { setTimeout as delay } from 'node:timers/promises'
 import {
   CHAPTER_22_ROTATION,
   createLogger,
@@ -33,8 +32,40 @@ const fixture = (...parts: string[]): string => parts.join('')
  * ship are in `CHAPTER_22_ROTATION` and are asserted separately.
  */
 
-/** Long enough for the stream to flush and rotate; short enough to be a test. */
-const SETTLE_MS = 250
+/**
+ * A destination the test owns, and can wait on.
+ *
+ * ── Why there are no timers in this file ────────────────────────────────────
+ *
+ * These tests used to write, wait a fixed 250 ms, and assert. That is a guess
+ * about how fast a machine is, and it was wrong on CI: a slower runner had not
+ * finished recreating the live file when the assertion read it, so the suite
+ * failed with ENOENT on hardware that was doing nothing wrong.
+ *
+ * Raising the number would have moved the threshold rather than removed it.
+ * Rotation already announces itself — `rotated` when a file rolls over,
+ * `removed` when one is deleted to stay inside the budget — so the tests wait
+ * for the thing they are actually waiting for. On a fast machine that is
+ * instant; on a slow one it is correct.
+ */
+interface Destination {
+  readonly stream: NodeJS.WritableStream
+
+  /** Every rotation event so far, in order. */
+  readonly events: readonly RotationEvent[]
+
+  /** Resolves when rotation next reports an event of this kind, or has already. */
+  next(kind: RotationEvent['kind']): Promise<RotationEvent>
+
+  /**
+   * Resolves once every line written before it has reached the file.
+   *
+   * A stream processes writes in order, so a zero-length write whose callback
+   * has fired is a barrier: everything queued ahead of it is done. That is a
+   * fact about the stream rather than a bet on the clock.
+   */
+  flushed(): Promise<void>
+}
 
 /**
  * Closes every destination a test opened, and waits for each to finish.
@@ -75,21 +106,44 @@ describe('log rotation', () => {
    * through the documented `stream` seam changes nothing about what is
    * exercised and gives the test a handle it can close.
    */
-  function open(
-    options: {
-      path?: string
-      policy?: RotationPolicy
-      onRotation?: (event: RotationEvent) => void
-    } = {},
-  ): NodeJS.WritableStream {
+  function open(options: { path?: string; policy?: RotationPolicy } = {}): Destination {
+    const events: RotationEvent[] = []
+    const waiting: { kind: RotationEvent['kind']; resolve: (event: RotationEvent) => void }[] = []
+
     const stream = createRotatingDestination({
       path: options.path ?? join(directory, 'friday.log'),
       ...(options.policy === undefined ? {} : { policy: options.policy }),
-      ...(options.onRotation === undefined ? {} : { onRotation: options.onRotation }),
+      onRotation: (event) => {
+        events.push(event)
+
+        for (let index = waiting.length - 1; index >= 0; index -= 1) {
+          const waiter = waiting[index]
+          if (waiter !== undefined && waiter.kind === event.kind) {
+            waiting.splice(index, 1)
+            waiter.resolve(event)
+          }
+        }
+      },
     })
 
     opened.push(stream)
-    return stream
+
+    return {
+      stream,
+      events,
+      next: (kind) => {
+        const already = events.find((event) => event.kind === kind)
+        if (already !== undefined) return Promise.resolve(already)
+
+        return new Promise((resolve) => {
+          waiting.push({ kind, resolve })
+        })
+      },
+      flushed: () =>
+        new Promise((done) => {
+          stream.write('', () => done())
+        }),
+    }
   }
 
   function logFiles(): string[] {
@@ -106,18 +160,16 @@ describe('log rotation', () => {
   })
 
   it('starts a new file once the size limit is passed', async () => {
-    const log = createLogger({
-      module: 'test',
-      stream: open({
-        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
-      }),
+    const destination = open({
+      policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
     })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     for (let i = 0; i < 200; i += 1) {
       log.info({ index: i }, 'a line long enough to fill a very small file quickly')
     }
 
-    await delay(SETTLE_MS)
+    await destination.next('rotated')
 
     // The live file plus at least one rotated, compressed predecessor.
     expect(logFiles().length).toBeGreaterThan(1)
@@ -128,19 +180,19 @@ describe('log rotation', () => {
     // The failure that would otherwise go unnoticed: rotation works once and
     // then the logger is writing to a file nobody reads.
     const path = join(directory, 'friday.log')
-    const log = createLogger({
-      module: 'test',
-      stream: open({
-        path,
-        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
-      }),
+    const destination = open({
+      path,
+      policy: { interval: '1d', maxFileSize: '1K', maxFiles: 10, maxTotalSize: '10M' },
     })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     for (let i = 0; i < 200; i += 1) log.info({ index: i }, 'filling the first file')
-    await delay(SETTLE_MS)
+
+    // The rotation itself, not a guess at how long one takes.
+    await destination.next('rotated')
 
     log.info({}, 'after the rotation')
-    await delay(SETTLE_MS)
+    await destination.flushed()
 
     expect(readFileSync(path, 'utf8')).toContain('after the rotation')
   })
@@ -148,23 +200,19 @@ describe('log rotation', () => {
   it('deletes the oldest files to stay inside the total budget', async () => {
     // ★ The rule pino-roll cannot express, and the reason for the deviation:
     // capping the FILE COUNT still lets a burst of large files fill the disk.
-    const removed: RotationEvent[] = []
-
-    const log = createLogger({
-      module: 'test',
-      stream: open({
-        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
-        onRotation: (event) => {
-          if (event.kind === 'removed') removed.push(event)
-        },
-      }),
+    const destination = open({
+      policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
     })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     for (let i = 0; i < 2000; i += 1) {
       log.info({ index: i }, 'a line long enough to fill a very small file quickly')
     }
 
-    await delay(SETTLE_MS * 4)
+    // Wait for a deletion to actually happen, which is the thing being tested.
+    await destination.next('removed')
+
+    const removed = destination.events.filter((event) => event.kind === 'removed')
 
     const total = readdirSync(directory).reduce(
       (bytes, name) => bytes + statSync(join(directory, name)).size,
@@ -179,20 +227,14 @@ describe('log rotation', () => {
   })
 
   it('tells the owner why a file was deleted, in words they can act on', async () => {
-    const events: RotationEvent[] = []
-
-    const log = createLogger({
-      module: 'test',
-      stream: open({
-        policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
-        onRotation: (event) => void events.push(event),
-      }),
+    const destination = open({
+      policy: { interval: '1d', maxFileSize: '1K', maxFiles: 100, maxTotalSize: '4K' },
     })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     for (let i = 0; i < 2000; i += 1) log.info({ index: i }, 'filling the log directory')
-    await delay(SETTLE_MS * 4)
 
-    const removal = events.find((event) => event.kind === 'removed')
+    const removal = await destination.next('removed')
 
     expect(removal?.message).toContain('outgrown')
   })
@@ -201,13 +243,14 @@ describe('log rotation', () => {
     // Rotation changed how bytes reach the disk. The property that must not
     // have changed is the one Chapter 22 calls a stop-the-line incident.
     const path = join(directory, 'friday.log')
-    const log = createLogger({ module: 'test', stream: open({ path }) })
+    const destination = open({ path })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     log.error(
       { apiKey: fixture('sk-', 'ant-api03-', 'AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH') },
       'call failed',
     )
-    await delay(SETTLE_MS)
+    await destination.flushed()
 
     expect(readFileSync(path, 'utf8')).not.toContain('sk-ant')
   })
@@ -216,10 +259,11 @@ describe('log rotation', () => {
     // It does not exist on a fresh install, and a logger that cannot start
     // because of that hides whatever else went wrong during startup.
     const path = join(directory, 'nested', 'deeper', 'friday.log')
-    const log = createLogger({ module: 'test', stream: open({ path }) })
+    const destination = open({ path })
+    const log = createLogger({ module: 'test', stream: destination.stream })
 
     log.info({}, 'first line ever')
-    await delay(SETTLE_MS)
+    await destination.flushed()
 
     expect(readFileSync(path, 'utf8')).toContain('first line ever')
   })
@@ -253,19 +297,45 @@ describe('when the log itself cannot be written', () => {
     return stream
   }
 
-  /** Takes the log directory away from a live logger, then keeps writing. */
+  /** A destination whose first reported failure can be awaited. */
+  function watched(): { stream: NodeJS.WritableStream; failure: Promise<RotationEvent> } {
+    let announce: (event: RotationEvent) => void = () => undefined
+    const failure = new Promise<RotationEvent>((resolve) => {
+      announce = resolve
+    })
+
+    const stream = open((event) => {
+      if (event.kind === 'error') announce(event)
+    })
+
+    return { stream, failure }
+  }
+
+  /** Resolves once everything written so far has reached the stream. */
+  function flushed(stream: NodeJS.WritableStream): Promise<void> {
+    return new Promise((done) => {
+      stream.write('', () => done())
+    })
+  }
+
+  /**
+   * Takes the log directory away from a live logger, then keeps writing.
+   *
+   * The wait after the first line is a flush barrier rather than a timer: the
+   * stream must genuinely have the file open before removing it underneath
+   * proves anything.
+   */
   async function writeIntoNothing(stream: NodeJS.WritableStream): Promise<void> {
     const log = createLogger({ module: 'test', stream })
 
     log.info({}, 'a first line, so the stream is genuinely open')
-    await delay(SETTLE_MS)
+    await flushed(stream)
 
     // The realistic causes are a removable volume, a cleanup job, or a disk
     // that filled. The observable effect is the same: the next write fails.
     rmSync(directory, { recursive: true, force: true })
 
     for (let i = 0; i < 400; i += 1) log.info({ index: i }, 'writing into a directory that is gone')
-    await delay(SETTLE_MS * 2)
   }
 
   beforeEach(() => {
@@ -281,13 +351,23 @@ describe('when the log itself cannot be written', () => {
     // ★ The regression. Nothing in FRIDAY passes an observer yet — Diagnostics
     // is what will, at M3 — so this is how every real logger is constructed
     // today, and it is exactly the case that used to end the process.
+    //
+    // A sibling stream with an observer runs alongside, under the same removed
+    // directory, purely so the test knows when the failure has actually
+    // happened. Waiting on that is what replaces waiting on a clock: without
+    // it, "no exception was thrown" could just mean "nothing had gone wrong
+    // yet".
     const uncaught: Error[] = []
     const capture = (error: Error): void => void uncaught.push(error)
+
+    const witness = watched()
 
     process.on('uncaughtException', capture)
 
     try {
       await writeIntoNothing(open())
+      await writeIntoNothing(witness.stream)
+      await witness.failure
     } finally {
       process.off('uncaughtException', capture)
     }
@@ -296,14 +376,13 @@ describe('when the log itself cannot be written', () => {
   })
 
   it('tells an observer that the log could not be written, and that logging continues', async () => {
-    const events: RotationEvent[] = []
+    const observed = watched()
 
-    await writeIntoNothing(open((event) => void events.push(event)))
+    await writeIntoNothing(observed.stream)
 
-    const failure = events.find((event) => event.kind === 'error')
+    const failure = await observed.failure
 
-    expect(failure).toBeDefined()
-    expect(failure?.message).toContain('Logging continues')
+    expect(failure.message).toContain('Logging continues')
   })
 })
 
