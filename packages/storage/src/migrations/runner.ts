@@ -30,8 +30,22 @@ export interface Migration {
   /** Plain language, for the migration log and for `friday status`. */
   readonly name: string
 
-  /** Forward SQL. May contain several statements. */
-  readonly sql: string
+  /** Forward SQL. May contain several statements. Omitted when `run` does it all. */
+  readonly sql?: string | undefined
+
+  /**
+   * A migration that has to compute something SQLite cannot.
+   *
+   * Runs inside the same transaction as `sql`, immediately after it. Added for
+   * the one migration that needs it — recomputing the integrity chain, which
+   * requires SHA-256 over each row and therefore cannot be expressed in SQLite
+   * alone (ADR-0028).
+   *
+   * Held to the same immutability rule as the SQL: its source is part of the
+   * migration's checksum, so editing it after it has run is caught here rather
+   * than as two machines that silently disagree.
+   */
+  readonly run?: ((connection: Connection) => void) | undefined
 }
 
 export interface MigrationOutcome {
@@ -103,7 +117,8 @@ export function migrate(input: {
       )
 
       for (const migration of pending) {
-        connection.exec(migration.sql)
+        if (migration.sql !== undefined) connection.exec(migration.sql)
+        migration.run?.(connection)
         record.run(migration.id, migration.name, Date.now(), checksum(migration))
       }
     })()
@@ -186,8 +201,13 @@ function takeSnapshot(databasePath: string): Result<string | undefined, FridayEr
 }
 
 function checksum(migration: Migration): string {
-  // Whitespace-insensitive, so reformatting the SQL is not treated as drift
-  // while a real change still is.
-  const normalised = migration.sql.replaceAll(/\s+/g, ' ').trim()
+  // Whitespace-insensitive, so reformatting is not treated as drift while a
+  // real change still is. The JS step is included: a migration whose code
+  // changed is exactly as dangerous as one whose SQL did.
+  const normalised = [migration.sql ?? '', migration.run?.toString() ?? '']
+    .join('\n')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
+
   return createHash('sha256').update(normalised).digest('hex')
 }

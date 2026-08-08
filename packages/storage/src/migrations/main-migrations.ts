@@ -1,9 +1,11 @@
+import { GUARDIAN_MIGRATION } from './guardian-migration.js'
 import type { Migration } from './runner.js'
 
 /**
  * `friday.db` — everything current.
  *
- * Plans and their steps at Milestone 1. Approvals arrive at M2, memory at M5.
+ * Plans and their steps at Milestone 1; the Guardian's records at M2. Memory
+ * arrives at M5.
  * The tables are here now because a data model is the thing you cannot
  * cheaply change later: `principal_id` on every row and `idempotency_key` on
  * every step are both one column now and a security review later.
@@ -78,4 +80,5 @@ export const MAIN_MIGRATIONS: readonly Migration[] = [
       CREATE UNIQUE INDEX idx_plan_steps_idempotency ON plan_steps (idempotency_key);
     `,
   },
+  GUARDIAN_MIGRATION,
 ]

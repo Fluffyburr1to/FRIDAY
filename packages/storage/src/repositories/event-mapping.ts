@@ -22,10 +22,13 @@ import type { EventRow } from '../schema/events.js'
  * they disagree — and they will, the first time a column is added.
  */
 
-/** The row's own columns, which are exactly what the hash covers. */
+/** The row's own columns, which include exactly what the hash covers. */
 export function toHashable(row: EventRow): HashableEvent {
   return { ...row }
 }
+
+/** The marker a compacted payload is replaced with. */
+export const TOMBSTONE = { compacted: true } as const
 
 /**
  * Builds the nested event, with an empty payload.

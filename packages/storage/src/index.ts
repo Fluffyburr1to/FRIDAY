@@ -26,7 +26,15 @@ export {
 } from './crypto/key-provider.js'
 export { openEventsReadOnly, openStorage, type Storage, type StorageOptions } from './database.js'
 export { GENESIS_HASH } from './event-hash.js'
+export { verifyArchive, type WrittenArchive, writeArchive } from './repositories/archive.js'
 export type { ChainVerification } from './repositories/chain-verification.js'
 export type { CheckpointStore, DeadLetter } from './repositories/checkpoint-store.js'
 export type { AppendableEvent, EventStore } from './repositories/event-store.js'
+export type { GuardianStores } from './repositories/guardian-stores.js'
+export {
+  type CompactionOutcome,
+  type Maintenance,
+  type SealedSegment,
+  TOMBSTONE,
+} from './repositories/maintenance.js'
 export type { PlanStore } from './repositories/plan-store.js'

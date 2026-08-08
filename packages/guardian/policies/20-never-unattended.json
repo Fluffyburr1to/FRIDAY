@@ -1,0 +1,44 @@
+[
+  {
+    "id": "guardian-policy-changes-are-critical",
+    "description": "Changing the rules FRIDAY is governed by needs your approval every single time, and a standing permission can never cover it.",
+    "effect": "require_approval",
+    "riskClass": "critical",
+    "when": { "action": "guardian.policy.*" }
+  },
+  {
+    "id": "standing-grants-need-approval",
+    "description": "Giving FRIDAY standing permission is a bigger decision than the action it covers, so it is approved on its own.",
+    "effect": "require_approval",
+    "riskClass": "high",
+    "when": { "action": "guardian.grant.*" }
+  },
+  {
+    "id": "credential-changes-are-critical",
+    "description": "Adding or replacing the credentials for a connected service needs your approval every time. Whoever holds them holds that account.",
+    "effect": "require_approval",
+    "riskClass": "critical",
+    "when": { "action": "credential.*.write" }
+  },
+  {
+    "id": "configuration-changes-are-critical",
+    "description": "Changing how FRIDAY herself is configured needs your approval every time.",
+    "effect": "require_approval",
+    "riskClass": "critical",
+    "when": { "action": "system.config.*" }
+  },
+  {
+    "id": "self-modification-needs-approval",
+    "description": "FRIDAY changing her own code or configuration needs your approval, on a computer rather than a phone, with the full change shown.",
+    "effect": "require_approval",
+    "riskClass": "self_modification",
+    "when": { "action": "engineering.change.*" }
+  },
+  {
+    "id": "money-is-never-moved",
+    "description": "FRIDAY does not move money. Not with your approval, not with a standing permission, not ever. Reconsidering this needs a written decision and a security review, not a rule change.",
+    "effect": "deny",
+    "riskClass": "critical",
+    "when": { "action": "finance.*.transfer" }
+  }
+]

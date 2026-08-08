@@ -14,6 +14,19 @@
 export { backoffFor, DEFAULT_RETRY_POLICY, type RetryPolicy } from './async-lane.js'
 export { announceStart, createEventBus, type EventBus, type EventBusOptions } from './event-bus.js'
 export {
+  type CompactionPlan,
+  DEFAULT_RETENTION,
+  isProtectedType,
+  PROTECTED_PATTERNS,
+  planCompaction,
+  protectedEventIds,
+  type RetentionPolicy,
+  RetentionPolicySchema,
+  TIERS,
+  type Tier,
+  tierOf,
+} from './retention.js'
+export {
   type AsyncSubscriber,
   matches,
   type SyncSubscriber,

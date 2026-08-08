@@ -51,6 +51,10 @@ Decisions taken since, as implementation met the design:
 | [0022](0022-toml-for-the-configuration-file.md) | TOML for the configuration file | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0023](0023-rotating-file-stream-for-log-rotation.md) | `rotating-file-stream` for log rotation | accepted | low | [22](../01-bible/22-logging-standards.md) |
 | [0024](0024-compaction-and-archival-are-milestone-2.md) | Compaction and archival are Milestone 2 work | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0025](0025-policy-evaluation-is-order-independent-and-fails-closed.md) | Policy evaluation is order-independent and fails closed | accepted | medium | [17](../01-bible/17-authentication-authorization.md) |
+| [0026](0026-capability-tokens-are-signed-handles-to-kernel-state.md) | Capability tokens are signed handles to kernel state | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
+| [0027](0027-the-guardians-stores-are-ports-that-can-fail.md) | The Guardian's stores are ports that can fail | accepted | medium | [30](../01-bible/30-coding-standards.md) |
+| [0028](0028-the-chain-covers-a-payload-digest-and-is-segmented.md) | The integrity chain covers a payload digest, and is segmented | accepted | **high** | [10](../01-bible/10-event-bus.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
