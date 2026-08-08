@@ -1,0 +1,40 @@
+{
+  "name": "@friday/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "friday-core — the kernel service and the API the dashboard reads.",
+  "license": "UNLICENSED",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist coverage .turbo",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@friday/config": "workspace:*",
+    "@friday/contracts": "workspace:*",
+    "@friday/storage": "workspace:*",
+    "@trpc/server": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@friday/tsconfig": "workspace:*",
+    "@friday/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}

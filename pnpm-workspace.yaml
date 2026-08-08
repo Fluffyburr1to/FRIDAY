@@ -57,6 +57,87 @@ catalog:
   # Chosen over pino-roll; the reasoning is in docs/adr/0023.
   rotating-file-stream: ^3.2.9
 
+  # Milestone 2 — Conscience: the thin dashboard
+  #
+  # The first dependencies since M1. Each was approved individually rather
+  # than as a stack, and the set is deliberately the minimum that makes one
+  # real screen work.
+  #
+  # See docs/adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md
+
+  # apps/core + apps/web. Chapter 20 specifies tRPC for the internal API: the client and
+  # server share types with no code generation and no schema file to keep in
+  # sync, so an invented endpoint or a wrong argument shape is a compile error
+  # rather than a runtime surprise the owner has to diagnose from a symptom.
+  # The standalone adapter runs on node:http, which is why there is no web
+  # framework in this list.
+  '@trpc/server': ^11.18.0
+  '@trpc/client': ^11.18.0
+  '@trpc/tanstack-react-query': ^11.18.0
+
+  # apps/web ONLY. Chapter 06 — the reasoning is explicitly that AI assistants
+  # write correct React far more reliably than correct anything else, which is
+  # a first-class engineering concern here rather than an embarrassing one.
+  react: ^19.2.8
+  'react-dom': ^19.2.8
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
+
+  # apps/web ONLY. Chapter 06 assigns server data to TanStack Query and states
+  # the rule it exists to enforce: server data is never copied into client
+  # state, because copying is how a screen ends up showing a stale approval
+  # that was already granted.
+  '@tanstack/react-query': ^5.101.4
+
+  # apps/web build tooling. Chapter 06 rejects the meta-frameworks — there is
+  # no SEO and no edge to deploy to, the server is your Mac — so Vite is the
+  # build tool without the server framework we would not use.
+  #
+  # Held at 7 rather than 8, and see `overrides` below for why that is
+  # load-bearing rather than caution.
+  vite: ^7.3.6
+
+  # Held at 5 because 6 requires Vite 8 as a peer and would drag it back in.
+  # The 5.2 line spans Vite 4 through 8, so it does not have to move again
+  # when Vite does.
+  '@vitejs/plugin-react': ^5.2.0
+
+  # apps/web tests ONLY. A component test asserting what the owner actually
+  # sees needs a DOM to render into and a way to query it as a person would —
+  # by role and by text, rather than by class name, so a test breaks when the
+  # screen stops being readable and not when the markup is rearranged.
+  #
+  # @friday/vitest-config already types `environment` as 'node' | 'jsdom', so
+  # jsdom is the one this repository was written expecting.
+  jsdom: ^30.0.1
+  '@testing-library/react': ^16.3.2
+  '@testing-library/dom': ^10.4.1 # peer of the above; pinned so there is one
+
+# ── Overrides ────────────────────────────────────────────────────────────────
+#
+# The catalog governs what OUR packages ask for. It does not govern what a
+# dependency asks for, and Vitest declares Vite as its own dependency with a
+# range spanning three majors.
+#
+# Declaring Vite here for the first time forced that range to re-resolve, and
+# it landed on Vite 8 for every package in the repository — including the ones
+# that have never heard of Vite. Vite 8 transforms with oxc, which reads a
+# package's tsconfig but does not call realpath on it, so
+# `extends: "@friday/tsconfig/library.json"` resolves through pnpm's symlink
+# and then looks for tsconfig.base.json inside that package's own
+# node_modules, where it is not. Every test file in the repository stopped
+# transforming.
+#
+# This is the same "one version of each shared dependency" rule the catalog
+# states, applied one level down where the catalog cannot reach. The
+# alternative fix is rewriting the `extends` in every package to a relative
+# path, which trades a real convention for a workaround.
+#
+# Revisit when Vitest itself moves to Vite 8, or when oxc resolves symlinked
+# tsconfig chains.
+overrides:
+  vite: ^7.3.6
+
 # pnpm blocks dependency install scripts by default — a good default, since an
 # install script runs arbitrary code with your privileges (supply chain, T2).
 # Each exception is an explicit decision recorded here.

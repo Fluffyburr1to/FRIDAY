@@ -109,7 +109,9 @@ export function fridayTest(options) {
             name: `${name}:unit`,
             environment,
             setupFiles,
-            include: ['test/unit/**/*.test.ts'],
+            // `?(x)` so a React component test can be written as JSX. Node
+            // packages never match it, so nothing changes for them.
+            include: ['test/unit/**/*.test.ts?(x)'],
             testTimeout: UNIT_TIMEOUT_MS,
             passWithNoTests: true,
           },
@@ -120,7 +122,7 @@ export function fridayTest(options) {
             name: `${name}:integration`,
             environment,
             setupFiles,
-            include: ['test/integration/**/*.test.ts'],
+            include: ['test/integration/**/*.test.ts?(x)'],
             testTimeout: INTEGRATION_TIMEOUT_MS,
             passWithNoTests: true,
 
@@ -138,8 +140,8 @@ export function fridayTest(options) {
         reporter: ['text-summary', 'json-summary', 'lcov'],
         // index.ts is deliberately NOT excluded. It is usually re-exports, but
         // "usually" is exactly where an untested line hides.
-        include: ['src/**/*.ts'],
-        exclude: ['src/**/*.test.ts'],
+        include: ['src/**/*.ts?(x)'],
+        exclude: ['src/**/*.test.ts?(x)'],
         thresholds: coverageThresholds ?? DEFAULT_COVERAGE_THRESHOLDS,
       },
     },

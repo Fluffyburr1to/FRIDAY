@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "FRIDAY browser test files",
+  "docs": "docs/01-bible/28-testing-strategy.md",
+
+  // The browser half of the test typecheck. It exists so that granting the DOM
+  // lib to `apps/web`'s tests does not grant it to every test in the
+  // repository.
+  //
+  // That distinction is the same one tools/tsconfig/library.json draws for
+  // source, and for the same reason: a kernel or storage test that can
+  // reference `document` and still typecheck is one erosion away from a
+  // package assuming it runs in a browser. Keeping two projects costs a file
+  // and a line in check-types.mjs; merging them would cost the guarantee.
+  //
+  // `pnpm check:types` runs this as a third pass, after the sources and the
+  // Node tests.
+  "extends": "./tsconfig.base.json",
+
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "jsx": "react-jsx",
+
+    // Matches tools/tsconfig/react-app.json: these tests import the same
+    // modules apps/web does, and must resolve them the way Vite will.
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+
+  "include": ["apps/web/test/**/*.ts", "apps/web/test/**/*.tsx"],
+
+  "exclude": ["node_modules", "**/dist", "**/coverage"]
+}

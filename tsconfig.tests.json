@@ -39,5 +39,8 @@
     "tests/**/*.ts"
   ],
 
-  "exclude": ["node_modules", "**/dist", "**/coverage"]
+  // apps/web's tests render components and need the DOM lib, which this
+  // project deliberately does not grant. They are typechecked by
+  // tsconfig.tests.browser.json instead.
+  "exclude": ["node_modules", "**/dist", "**/coverage", "apps/web/test"]
 }
