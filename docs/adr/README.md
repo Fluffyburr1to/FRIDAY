@@ -57,6 +57,8 @@ Decisions taken since, as implementation met the design:
 | [0028](0028-the-chain-covers-a-payload-digest-and-is-segmented.md) | The integrity chain covers a payload digest, and is segmented | accepted | **high** | [10](../01-bible/10-event-bus.md) |
 | [0029](0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md) | `apps/core` begins at Milestone 2 to serve the dashboard | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
 | [0030](0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md) | Loopback identifies the owner's machine, not the owner's presence | accepted | low* | [17](../01-bible/17-authentication-authorization.md) |
+| [0031](0031-the-clerk-records-what-the-guardian-decided.md) | The clerk records what the Guardian decided | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0032](0032-the-guardians-state-moves-into-the-event-log-database.md) | The Guardian's state moves into `events.db` | accepted | low→**high** | [09](../01-bible/09-database-design.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
@@ -69,13 +71,18 @@ rather than adjusted in a settings file.
 
 ### Where the real risk sits
 
-Two entries are worth watching more than the rest:
+Three entries are worth watching more than the rest:
 
 - **0011 (plan engine)** — Temporal is genuinely the stronger tool and we chose to build a small
   version instead. That is the most defensible-but-arguable call in the set.
 - **0009 (Tauri)** — the only decision resting on a technology whose maturity is unproven for our
   case. It is also the cheapest to reverse, which is why it was an acceptable bet. The M7 spike is
   the checkpoint.
+- **0032 (the Guardian's state moves to `events.db`)** — the only entry whose reverse cost *changes
+  over time*, which is what `low→high` in the table means. Today there is no data, so reversing is
+  the same one-line edit that applied it. After the owner's first real approval, reversing means
+  copying populated tables between two SQLite files — itself non-atomic, and needing its own
+  recovery procedure. The window is open now and closes on first use.
 
 ---
 

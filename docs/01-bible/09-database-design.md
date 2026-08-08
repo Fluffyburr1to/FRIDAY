@@ -41,9 +41,17 @@ Three separate database files, deliberately:
 
 | File | Contents | Backup cadence | Growth |
 |---|---|---|---|
-| `friday.db` | Everything current: plans, approvals, memory, settings, connectors | Continuous | Moderate, bounded |
-| `events.db` | The immutable event log — every action FRIDAY has ever taken | Continuous | Large, append-only |
+| `friday.db` | Everything current: plans, memory, settings, connectors | Continuous | Moderate, bounded |
+| `events.db` | The event log — every action FRIDAY has ever taken — **and the Guardian's authoritative state** | Continuous | Large, append-only |
 | `cache.db` | Regenerable data: embeddings cache, API response cache | Never | Unbounded, disposable |
+
+★ **The Guardian's four tables — `approvals`, `standing_grants`, `capabilities`, and
+`guardian_decisions` — live in `events.db`, not in `friday.db`.** They are the one piece of state
+that must be written in the *same transaction* as the event recording it: an approval that is
+answered in one file and recorded in another can crash between the two, leaving either an authorized
+action with no audit record or a log asserting an approval the state denies. Co-locating them makes
+that window impossible rather than merely unlikely.
+See [ADR-0032](../adr/0032-the-guardians-state-moves-into-the-event-log-database.md).
 
 ### Why three files rather than one
 
@@ -61,10 +69,18 @@ lock, which is the main practical constraint of SQLite.
 **Different growth rates.** The event log grows forever; main data plateaus. Separating them means
 archiving old events is a self-contained operation that cannot disturb live data.
 
-**The isolation cost:** you cannot write a transaction that spans two files. Accepted — the
-boundary is drawn where cross-file transactions are not needed, and the event-writing path uses
-SQLite's `ATTACH` for the one case where it is (recording an event and updating a projection
-atomically).
+**The isolation cost:** you cannot write a transaction that spans two files. Accepted — the boundary
+is drawn so that anything which must be written atomically with an event lives in `events.db`
+alongside it. That is why the Guardian's state is there.
+
+★ **`ATTACH` does not solve this, and an earlier version of this chapter said it did.** SQLite's
+write-ahead-log documentation is explicit: *"Transactions that involve changes against multiple
+ATTACHed databases are atomic for each individual database, but are not atomic across all databases
+as a set."* Atomic commit across attached files depends on a super-journal, which is a rollback-mode
+mechanism; WAL has no equivalent, and this chapter mandates WAL. The trap is that it *looks* like it
+works — a cross-`ATTACH` transaction commits, and an explicit rollback correctly reverts both files.
+Explicit rollback composes; crash atomicity does not. Co-location is the only remedy that holds.
+See [ADR-0032](../adr/0032-the-guardians-state-moves-into-the-event-log-database.md).
 
 ---
 
@@ -162,6 +178,11 @@ action carries a key derived from the plan step; connectors use it to deduplicat
 halts. This is the bulkhead from Chapter 05, expressed in the schema.
 
 ### Approvals — Article III in table form
+
+**In `events.db`**, with the rest of the Guardian's state, so that answering an approval and
+recording that it was answered are one transaction. The `plan_step.approval_id` reference above
+therefore crosses a file boundary; it is a soft reference and always has been, never an enforced
+foreign key.
 
 ```
 approvals
@@ -388,7 +409,7 @@ satisfies both Article II and Article IV simultaneously.
 | **Field-level encryption depends on correct classification.** | Accepted — mitigated by making sensitivity mandatory in every contract schema. |
 | **Forward-only migrations mean a bad migration requires a restore.** | Accepted — automatic pre-migration snapshots and a tested restore procedure make this a 10-minute inconvenience. |
 | **`principal_id` everywhere is overhead for a single user today.** | Accepted deliberately — one column now versus a security audit later. |
-| **Three files means no cross-file transactions.** | Accepted — boundaries chosen where this does not bind; `ATTACH` covers the one case that matters. |
+| **Three files means no cross-file transactions**, and `ATTACH` does not provide atomicity across them under WAL. | Accepted — anything that must be written atomically with an event lives in `events.db` beside it, which is why the Guardian's state is there ([ADR-0032](../adr/0032-the-guardians-state-moves-into-the-event-log-database.md)). |
 
 ---
 
