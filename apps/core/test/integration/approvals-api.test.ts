@@ -30,7 +30,7 @@ describe('the approvals API', () => {
   let previousDataDir: string | undefined
   let config: FridayConfig
   let keys: KeyProvider
-  let opened: OpenedContext
+  const opened: OpenedContext[] = []
 
   /** Raises a real approval request of a given risk, in the real store. */
   function raise(riskClass: RiskClass): string {
@@ -102,7 +102,10 @@ describe('the approvals API', () => {
   })
 
   afterEach(() => {
-    opened?.close()
+    // Every handle, not just the last. A test that opens two contexts and
+    // closes one leaves SQLite holding the first, which is the kind of leak
+    // that behaves differently under a different filesystem.
+    for (const context of opened.splice(0)) context.close()
 
     if (previousDataDir === undefined) delete process.env.FRIDAY_DATA_DIR
     else process.env.FRIDAY_DATA_DIR = previousDataDir
@@ -115,7 +118,7 @@ describe('the approvals API', () => {
     const result = openContext({ config, keys })
     if (!result.ok) throw new Error(result.error.message)
 
-    opened = result.value
+    opened.push(result.value)
     return appRouter.createCaller(result.value.context)
   }
 
