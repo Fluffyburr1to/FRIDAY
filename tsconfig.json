@@ -27,6 +27,7 @@
     { "path": "packages/storage" },
     { "path": "packages/kernel" },
     { "path": "apps/cli" },
-    { "path": "apps/core" }
+    { "path": "apps/core" },
+    { "path": "apps/web" }
   ]
 }

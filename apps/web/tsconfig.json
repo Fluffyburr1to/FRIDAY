@@ -1,0 +1,19 @@
+{
+  // Paths live here rather than in @friday/tsconfig, because TypeScript
+  // resolves relative paths against the file they were written in.
+  //
+  // react-app.json is the only config granting the DOM lib, so "this code may
+  // touch `window`" is visible from the line above rather than from a compiler
+  // option further down.
+  "extends": "@friday/tsconfig/react-app.json",
+  // No "rootDir": react-app.json sets noEmit, so there is no output tree for
+  // one to describe — and setting it would exclude vite.config.ts from being
+  // typechecked, which is the one file here most worth catching a mistake in.
+  //
+  // No "references": react-app.json sets composite: false, because Vite owns
+  // this build and tsc is only the typechecker here. The types this app needs
+  // from @friday/core resolve through the workspace link to its built dist/,
+  // which `tsc --build` produces before this project is checked.
+  "include": ["src/**/*", "vite.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage", "test"]
+}

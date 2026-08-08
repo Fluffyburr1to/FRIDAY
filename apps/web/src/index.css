@@ -1,0 +1,97 @@
+/*
+ * The whole stylesheet, for now.
+ *
+ * Chapter 06 specifies Tailwind and Radix, and neither is here yet: one screen
+ * does not need a design system, and installing one before the second screen
+ * exists would be deciding what the dashboard looks like before knowing what
+ * it contains. This file is expected to be deleted rather than grown.
+ *
+ * What is NOT deferred is the accessibility floor — semantic elements, visible
+ * focus, and contrast — because those are cheap now and a retrofit later.
+ *
+ * Reference: docs/01-bible/06-frontend-architecture.md
+ */
+
+:root {
+  color-scheme: light dark;
+  --ink: light-dark(#1a1a1a, #e8e8e8);
+  --quiet: light-dark(#5c5c5c, #a0a0a0);
+  --rule: light-dark(#e0e0e0, #333333);
+  --page: light-dark(#fdfdfc, #161616);
+  --warn: light-dark(#8a5300, #f0b429);
+}
+
+body {
+  margin: 0;
+  padding: 2rem;
+  background: var(--page);
+  color: var(--ink);
+  font:
+    15px / 1.5 ui-sans-serif,
+    -apple-system,
+    system-ui,
+    sans-serif;
+}
+
+h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0 0 1.5rem;
+}
+
+h2 {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--quiet);
+  margin: 0 0 0.75rem;
+}
+
+:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+.notice {
+  color: var(--quiet);
+  margin: 0;
+}
+
+.notice--stale {
+  color: var(--warn);
+  margin-bottom: 0.75rem;
+}
+
+.events {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  max-width: 60rem;
+}
+
+.events th {
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--quiet);
+  padding: 0 1rem 0.5rem 0;
+}
+
+.events td {
+  border-top: 1px solid var(--rule);
+  padding: 0.4rem 1rem 0.4rem 0;
+}
+
+.events__seq,
+.events__type {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.events__seq {
+  color: var(--quiet);
+}
