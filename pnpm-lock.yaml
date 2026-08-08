@@ -21,6 +21,12 @@ catalogs:
     drizzle-orm:
       specifier: ^0.45.2
       version: 0.45.2
+    hyparquet:
+      specifier: 1.27.1
+      version: 1.27.1
+    hyparquet-writer:
+      specifier: ^0.16.5
+      version: 0.16.5
     pino:
       specifier: ^10.3.1
       version: 10.3.1
@@ -251,6 +257,12 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
+      hyparquet:
+        specifier: 'catalog:'
+        version: 1.27.1
+      hyparquet-writer:
+        specifier: 'catalog:'
+        version: 0.16.5
     devDependencies:
       '@friday/tsconfig':
         specifier: workspace:*
@@ -1009,6 +1021,12 @@ packages:
 
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
+
+  hyparquet-writer@0.16.5:
+    resolution: {integrity: sha512-+f9/aOOiZrQU9MCinU79npYvyo62C4UOkbtk2+c8ViyPGBt4ihLpT+ZhEw8oBLroTbkJVO22y4ftcY/R9AYaQg==}
+
+  hyparquet@1.27.1:
+    resolution: {integrity: sha512-kvMGVKlB/xa9UHxWLJkySJYGC436nPeBWC9Fzo/BZtMEzFUjmzD1KuLz67EOpA3Ci6V7yF/yTG7QRSDSx5EDSg==}
 
   ignore@7.0.6:
     resolution: {integrity: sha512-BAg6QkE8W+TuQLrrw0Ugr7HegXduRuuj8/ti2kSOc+jz1dmx8/WNcjr6XGnq5YpDWxFwwaavqD0+jIUOKelTsw==}
@@ -1802,6 +1820,12 @@ snapshots:
       function-bind: 1.1.2
 
   html-escaper@2.0.2: {}
+
+  hyparquet-writer@0.16.5:
+    dependencies:
+      hyparquet: 1.27.1
+
+  hyparquet@1.27.1: {}
 
   ignore@7.0.6: {}
 

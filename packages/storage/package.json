@@ -25,7 +25,9 @@
   "dependencies": {
     "@friday/contracts": "workspace:*",
     "better-sqlite3": "catalog:",
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "hyparquet": "catalog:",
+    "hyparquet-writer": "catalog:"
   },
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
