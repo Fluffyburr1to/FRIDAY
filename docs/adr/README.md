@@ -51,6 +51,7 @@ Decisions taken since, as implementation met the design:
 | [0022](0022-toml-for-the-configuration-file.md) | TOML for the configuration file | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0023](0023-rotating-file-stream-for-log-rotation.md) | `rotating-file-stream` for log rotation | accepted | low | [22](../01-bible/22-logging-standards.md) |
 | [0024](0024-compaction-and-archival-are-milestone-2.md) | Compaction and archival are Milestone 2 work | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0029](0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md) | `apps/core` begins at Milestone 2 to serve the dashboard | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These four encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
@@ -72,3 +73,7 @@ Two entries are worth watching more than the rest:
 
 Sequential, four digits, never reused, never renumbered. `docs/adr/0014-choose-tauri.md` is a
 permanent address that other documents link to.
+
+**0025–0028 are held by the unmerged conscience branch.** The dashboard work branched from `main`
+and took 0029 rather than the next free number here, because reusing 0025 would collide on merge and
+renumbering afterwards is forbidden by the rule above. A gap in the index is the cheaper defect.
