@@ -13,6 +13,24 @@
 const en = {
   'app.title': 'FRIDAY',
 
+  'approvals.heading': 'Needs you',
+  'approvals.risk': 'Risk',
+  'approvals.reversible': 'Reversible',
+  'approvals.leaves': 'Data leaves this Mac',
+  'approvals.yes': 'Yes',
+  'approvals.no': 'No',
+  'approvals.approve': 'Approve',
+  'approvals.decline': 'Decline',
+
+  /**
+   * Said out loud rather than left as a greyed-out control. The owner should
+   * never have to guess whether FRIDAY is stuck or the button is deliberate.
+   */
+  'approvals.needsStepUp':
+    'This one needs you to prove it is you. A browser on this Mac can tell FRIDAY the ' +
+    'request came from your computer, not that you are sitting at it — so it waits for the ' +
+    'Mac app, which can ask for Touch ID.',
+
   'events.heading': 'Event log',
   'events.connecting': 'Connecting to FRIDAY…',
   'events.empty': 'Nothing has been recorded yet.',

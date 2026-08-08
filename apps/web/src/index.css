@@ -95,3 +95,81 @@ h2 {
 .events__seq {
   color: var(--quiet);
 }
+
+/* ── Needs you ─────────────────────────────────────────────────────────── */
+
+.count {
+  color: var(--ink);
+  background: var(--rule);
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.approvals {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+  max-width: 60rem;
+}
+
+.approval {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+}
+
+.approval__title {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+}
+
+.approval__why {
+  margin: 0 0 0.6rem;
+  color: var(--quiet);
+}
+
+.approval__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.75rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+}
+
+.approval__facts dt {
+  color: var(--quiet);
+}
+
+.approval__facts dd {
+  margin: 0;
+}
+
+.approval__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.approval__actions button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.approval__actions button:disabled {
+  color: var(--quiet);
+  cursor: not-allowed;
+}
+
+.approval__blocked {
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  color: var(--warn);
+}

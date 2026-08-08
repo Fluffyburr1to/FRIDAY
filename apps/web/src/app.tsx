@@ -1,4 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query'
+import { Approvals } from './approvals'
 import { EventList } from './event-list'
 import { t } from './i18n'
 import { queryClient } from './trpc'
@@ -18,6 +19,10 @@ export function App(): React.JSX.Element {
     <QueryClientProvider client={queryClient}>
       <main>
         <h1>{t('app.title')}</h1>
+
+        {/* Chapter 26: "needs you" is always first. */}
+        <Approvals />
+
         <h2>{t('events.heading')}</h2>
         <EventList />
       </main>
