@@ -41,8 +41,17 @@ This package is that job, and only that job.
 
 The split exists because Chapter 19's rules about an *answer* — has it expired, may this surface
 answer it, was step-up proved — live in the approval registry, not in `Guardian.authorize`. A
-consumer that only settles approvals therefore needs no Guardian, which is what keeps `apps/core`
-from constructing a policy engine, a capability signer, and a keychain entry it never uses.
+consumer that only settles approvals therefore needs no Guardian at all, and the two halves stay
+separable for whatever composes them next.
+
+**As of M3 Slice 3A, `apps/core` composes both**, so it does build a policy engine and a capability
+signer. That is a change from what this file said when the split was designed — the prediction was
+that the settling consumer would never need a Guardian, and the first production composition root
+turned out to be the same process.
+
+The split still earns its place, and now carries a sharper rule: `ApprovalClerk` is what
+`CoreContext` hands to tRPC procedures, and `AuthorizingClerk` is kept off it deliberately, because
+a procedure that could authorize is a procedure that decides when FRIDAY acts.
 
 ## Absolute rules
 

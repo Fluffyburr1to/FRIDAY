@@ -26,9 +26,11 @@ import { type CapturedWrite, deferWrites } from './deferred-store.js'
  * ★ This half of the clerk needs no Guardian. Chapter 19's rules about an
  * *answer* — has it expired, may this surface answer it, was step-up proved —
  * live in `ApprovalRegistry`, not in `Guardian.authorize`. A consumer that
- * only settles approvals therefore composes this and nothing else, which is
- * what keeps `apps/core` from having to build a policy engine, a capability
- * signer, and a keychain entry it never uses.
+ * only settles approvals therefore composes this and nothing else.
+ *
+ * `apps/core` composes both as of M3 Slice 3A. This is still the only half its
+ * tRPC procedures are given: a procedure that could authorize would be one that
+ * decides when FRIDAY acts.
  *
  * What it does not do: decide anything. Every rule applied here is applied by
  * the registry. The clerk chooses which event describes the outcome, and that

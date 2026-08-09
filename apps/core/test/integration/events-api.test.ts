@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { type FridayConfig, loadConfig } from '@friday/config'
 import { SYSTEM_ACTOR } from '@friday/contracts'
 import { appRouter, openContext, type RunningServer, startServer } from '@friday/core'
+import { CAPABILITY_KEY_REFERENCE } from '@friday/guardian'
 import {
   createInMemoryKeyProvider,
   KEY_LENGTH_BYTES,
@@ -27,9 +28,19 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 /** The field key reference the test log is written and read with. */
 const FIELD_KEY_REF = 'friday-field-key'
 
+/**
+ * The rules FRIDAY decides against in these tests: the ones she ships with.
+ *
+ * Pointed at the repository's own policy directory rather than a fixture, so
+ * these tests exercise the rules that actually govern her. ADR-0033 makes the
+ * location configuration, and configuration is what a test supplies.
+ */
+const POLICY_DIR = new URL('../../../../packages/guardian/policies', import.meta.url).pathname
+
 describe('the events API', () => {
   let directory: string
   let previousDataDir: string | undefined
+  let previousPoliciesDir: string | undefined
   let config: FridayConfig
   let keys: KeyProvider
 
@@ -65,6 +76,8 @@ describe('the events API', () => {
     directory = mkdtempSync(join(tmpdir(), 'friday-core-'))
     previousDataDir = process.env.FRIDAY_DATA_DIR
     process.env.FRIDAY_DATA_DIR = directory
+    previousPoliciesDir = process.env.FRIDAY_POLICIES_DIR
+    process.env.FRIDAY_POLICIES_DIR = POLICY_DIR
 
     const loaded = loadConfig({})
     if (!loaded.ok) throw new Error(`test setup could not load config: ${loaded.error.message}`)
@@ -74,12 +87,20 @@ describe('the events API', () => {
     // random so a decryption failure is reproducible.
     keys = createInMemoryKeyProvider({
       [FIELD_KEY_REF]: Buffer.alloc(KEY_LENGTH_BYTES, 7).toString('base64'),
+      [config.keychain.fieldKeyRef]: Buffer.alloc(KEY_LENGTH_BYTES, 7).toString('base64'),
+
+      // Composing a Guardian reads this at construction, even though a
+      // `schedule` actor presenting no capability never reaches the issuer.
+      [CAPABILITY_KEY_REFERENCE]: Buffer.alloc(KEY_LENGTH_BYTES, 9).toString('base64'),
     })
   })
 
   afterEach(() => {
     if (previousDataDir === undefined) delete process.env.FRIDAY_DATA_DIR
     else process.env.FRIDAY_DATA_DIR = previousDataDir
+
+    if (previousPoliciesDir === undefined) delete process.env.FRIDAY_POLICIES_DIR
+    else process.env.FRIDAY_POLICIES_DIR = previousPoliciesDir
 
     rmSync(directory, { recursive: true, force: true })
   })

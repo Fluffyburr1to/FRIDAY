@@ -14,7 +14,13 @@ import { isAbsolute, join, resolve } from 'node:path'
 export interface DeepPartialConfig {
   env?: string
   principalId?: string
-  paths?: { dataDir?: string; mainDb?: string; eventsDb?: string; cacheDb?: string }
+  paths?: {
+    dataDir?: string
+    mainDb?: string
+    eventsDb?: string
+    cacheDb?: string
+    policiesDir?: string
+  }
   server?: { host?: string; port?: number }
   logging?: { level?: string; directory?: string }
   keychain?: {
@@ -90,11 +96,18 @@ export function defaultConfig(): DeepPartialConfig {
 }
 
 /**
- * Fills in the database paths that were not set explicitly.
+ * Fills in the paths that were not set explicitly.
  *
- * Applied after every other layer, so setting `dataDir` alone moves all three
- * files — which is what someone means when they set it — while naming an
- * individual file still wins.
+ * Applied after every other layer, so setting `dataDir` alone moves everything
+ * under it — which is what someone means when they set it — while naming an
+ * individual path still wins.
+ *
+ * ★ `policiesDir` is derived here rather than pointed at the rules FRIDAY
+ * ships with. Those live inside the guardian package, are excluded from what
+ * it publishes, and would be overwritten by an update; the rules FRIDAY
+ * *decides against* have to be somewhere the owner keeps. Nothing creates this
+ * directory yet, so a fresh machine fails startup until it exists — which is
+ * deliberate, and is `friday init`'s to close. See ADR-0033.
  *
  * @param config - The merged configuration, before validation.
  * @returns The same configuration with `paths` complete and absolute.
@@ -109,6 +122,7 @@ export function deriveDatabasePaths(config: DeepPartialConfig): DeepPartialConfi
       mainDb: expandPath(config.paths?.mainDb ?? join(dataDir, 'friday.db')),
       eventsDb: expandPath(config.paths?.eventsDb ?? join(dataDir, 'events.db')),
       cacheDb: expandPath(config.paths?.cacheDb ?? join(dataDir, 'cache.db')),
+      policiesDir: expandPath(config.paths?.policiesDir ?? join(dataDir, 'policies')),
     },
     logging: {
       ...config.logging,

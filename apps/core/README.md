@@ -20,7 +20,7 @@ Why it exists a milestone before the Chief of Staff shapes it:
 
 ## What lives here
 
-- Process bootstrap and dependency wiring
+- Process bootstrap and dependency wiring — including composing the Guardian
 - The tRPC API server and WebSocket event stream
 - Static serving of `apps/web`
 - Sidecar process supervision (whisper, Piper, Ollama)
@@ -47,7 +47,7 @@ error code. Anything else belongs in a package.
 |---|---|---|
 | Opening the database, SQL, decryption | `@friday/storage` | Enforced by `.dependency-cruiser.cjs` — the SQLite drivers are deny-listed outside `packages/storage` |
 | The shape of an event, an approval, an error code | `@friday/contracts` | Defined once, or it drifts ([Chapter 20](../../docs/01-bible/20-api-standards.md)) |
-| Whether an action is permitted | `@friday/guardian` | [ADR-0005](../../docs/adr/0005-guardian-sole-authorization.md) — sole authorization point |
+| Whether an action is permitted | `@friday/guardian` | [ADR-0005](../../docs/adr/0005-guardian-sole-authorization.md) — sole authorization point. This app **composes** the Guardian and **asks** it; it never answers for it. |
 | Reconstructing why something happened | `@friday/audit` | Derived from the causal chain, never narrated |
 | Publishing events, subscriptions | `@friday/kernel` | The log is the bus |
 | Configuration and paths | `@friday/config` | Validated once at startup |
@@ -96,7 +96,11 @@ disguised as the other.
 ## Rules
 
 1. **Startup validates configuration and database integrity.** Failure → Safe Mode with an
-   explanation, never a silent partial start.
+   explanation, never a silent partial start. The authorization rules load **first**
+   ([ADR-0033](../../docs/adr/0033-authorization-rules-are-loaded-from-a-configured-directory.md)),
+   before any database is opened, so a run that cannot start leaves no trace of having tried.
+   Storage opens next, then the Guardian is composed — which reads the capability signing key from
+   the Keychain and fails startup if it is not there.
 2. **Graceful shutdown checkpoints in-flight plans** so nothing is lost on sleep or restart.
 3. **`Nice 5`** — FRIDAY yields to your foreground work.
 4. **Five crashes in 60 seconds → Safe Mode**, not an infinite restart loop.

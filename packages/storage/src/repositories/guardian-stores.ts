@@ -140,7 +140,11 @@ const unbool = (value: number): boolean => value === 1
 /**
  * Opens the Guardian's repositories over an already-migrated database.
  *
- * @param db - The `friday.db` handle.
+ * @param db - The **`events.db`** handle, not `friday.db`. These four tables
+ *   moved there so a Guardian state change can commit inside the append
+ *   transaction of the event that records it. Constructing them on the main
+ *   connection would compile, pass most tests, and silently reintroduce the
+ *   crash window ADR-0032 exists to close.
  * @returns The four stores.
  */
 export function createGuardianStores(db: Database): GuardianStores {
