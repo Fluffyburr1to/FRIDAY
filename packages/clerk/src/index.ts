@@ -14,8 +14,8 @@ import type { EventBus } from '@friday/kernel'
  *
  * - `createApprovalClerk` raises and settles approvals. It needs a store and a
  *   bus. **It needs no Guardian** — Chapter 19's rules about an answer live in
- *   the approval registry — which is what lets `apps/core` settle an approval
- *   without building a policy engine and a capability signer it never uses.
+ *   the approval registry — so it is the only half a tRPC procedure is ever
+ *   handed, even in a process that composed the other.
  * - `createAuthorizingClerk` asks the Guardian and records the answer. It
  *   needs a Guardian, and composes the first.
  *

@@ -59,6 +59,8 @@ Decisions taken since, as implementation met the design:
 | [0030](0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md) | Loopback identifies the owner's machine, not the owner's presence | accepted | low* | [17](../01-bible/17-authentication-authorization.md) |
 | [0031](0031-the-clerk-records-what-the-guardian-decided.md) | The clerk records what the Guardian decided | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0032](0032-the-guardians-state-moves-into-the-event-log-database.md) | The Guardian's state moves into `events.db` | accepted | low→**high** | [09](../01-bible/09-database-design.md) |
+| [0033](0033-authorization-rules-are-loaded-from-a-configured-directory.md) | Authorization rules are loaded from a configured directory | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
+| [0034](0034-guardian-counter-writes-happen-outside-the-append-transaction.md) | Guardian counter writes happen outside the append transaction | accepted | n/a | [17](../01-bible/17-authentication-authorization.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY

@@ -1,4 +1,10 @@
-import { type ApprovalClerk, createApprovalClerk, registerClerkEventTypes } from '@friday/clerk'
+import {
+  type ApprovalClerk,
+  type AuthorizingClerk,
+  createApprovalClerk,
+  createAuthorizingClerk,
+  registerClerkEventTypes,
+} from '@friday/clerk'
 import type { FridayConfig } from '@friday/config'
 import {
   err,
@@ -8,6 +14,12 @@ import {
   type PrincipalId,
   type Result,
 } from '@friday/contracts'
+import {
+  createCapabilityIssuer,
+  createGrantRegistry,
+  createGuardian,
+  loadPolicySet,
+} from '@friday/guardian'
 import { createEventBus } from '@friday/kernel'
 import { type EventStore, type KeyProvider, openStorage } from '@friday/storage'
 
@@ -38,6 +50,29 @@ export type EventReader = Pick<
   'readAfter' | 'readLatest' | 'latestSeq' | 'count' | 'verifyChain'
 >
 
+/**
+ * Narrows a store to the five reading methods, at runtime as well as in types.
+ *
+ * ★ `EventReader` alone is a `Pick<>`, which is a promise the compiler keeps
+ * and the running program does not: handing a procedure the whole `EventStore`
+ * under a narrower type leaves `append` sitting on the object, one `as` or one
+ * untyped call away. A test asserting the boundary found exactly that.
+ *
+ * Copying the five methods out is what makes ADR-0029's "translates, never
+ * stores" true by construction rather than by the type annotation nobody
+ * re-reads. The methods are closures over the store's own state and use no
+ * `this`, so they carry correctly.
+ */
+function readerOver(store: EventStore): EventReader {
+  return {
+    readAfter: store.readAfter,
+    readLatest: store.readLatest,
+    latestSeq: store.latestSeq,
+    count: store.count,
+    verifyChain: store.verifyChain,
+  }
+}
+
 export interface CoreContext {
   readonly events: EventReader
 
@@ -64,6 +99,20 @@ export interface CoreContext {
 /** A context, plus the handle that has to be released when the server stops. */
 export interface OpenedContext {
   readonly context: CoreContext
+
+  /**
+   * Asking the Guardian, and recording what it answered.
+   *
+   * ★ Deliberately **not** on `CoreContext`. A tRPC procedure that could
+   * authorize would be a procedure that decides when FRIDAY acts, and this app
+   * translates rather than decides (ADR-0029). It lives out here so that
+   * startup — which is not a request from anybody — can put FRIDAY's own
+   * housekeeping through the Guardian, and no procedure can reach it.
+   *
+   * See docs/adr/0031-the-clerk-records-what-the-guardian-decided.md
+   */
+  readonly authorizing: AuthorizingClerk
+
   close(): void
 }
 
@@ -88,6 +137,15 @@ export function openContext(input: {
   keys: KeyProvider
 }): Result<OpenedContext, FridayError> {
   const { config, keys } = input
+
+  // ★ Before anything is opened or created. A run that cannot load its rules
+  // is a run that must not start, and failing here means it has not yet made a
+  // database, a WAL file, or any other trace of an attempt. The loader already
+  // refuses an empty rule set for the reason that matters: a Guardian with no
+  // rules refuses everything, which is a broken system that looks like a
+  // strict one. See ADR-0033.
+  const policies = loadPolicySet(config.paths.policiesDir)
+  if (!policies.ok) return err(policies.error)
 
   const storage = openStorage({
     eventsDbPath: config.paths.eventsDb,
@@ -118,12 +176,38 @@ export function openContext(input: {
   // only a process that composed a clerk can record one. See ADR-0031.
   registerClerkEventTypes(bus)
 
+  // Read once, at construction, so a signing key FRIDAY cannot reach is
+  // reported now rather than discovered on the first action she was about to
+  // take. Nothing provisions this Keychain entry yet, so on a fresh machine
+  // this is where startup stops — deliberately, and with the key named. See
+  // ADR-0033's closing note.
+  const capabilities = createCapabilityIssuer({ store: storage.value.guardian.capabilities, keys })
+
+  if (!capabilities.ok) {
+    storage.value.close()
+    return err(capabilities.error)
+  }
+
+  const approvals = createApprovalClerk({ approvals: storage.value.guardian.approvals, bus })
+
   return ok({
     context: {
-      events: storage.value.events,
-      approvals: createApprovalClerk({ approvals: storage.value.guardian.approvals, bus }),
+      events: readerOver(storage.value.events),
+      approvals,
       principalId: config.principalId,
     },
+
+    authorizing: createAuthorizingClerk({
+      guardian: createGuardian({
+        policies: policies.value,
+        capabilities: capabilities.value,
+        grants: createGrantRegistry({ store: storage.value.guardian.grants }),
+      }),
+      clerk: approvals,
+      bus,
+      decisions: storage.value.guardian.decisions,
+    }),
+
     close: storage.value.close,
   })
 }

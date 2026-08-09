@@ -32,6 +32,21 @@ const PathsSchema = z.object({
 
   /** Regenerable. Never backed up; deleting it costs nothing. */
   cacheDb: z.string().min(1),
+
+  /**
+   * ★ The authorization rules FRIDAY decides against.
+   *
+   * A directory of JSON rule files, read once at startup. Missing, empty, or
+   * malformed is fatal — a Guardian whose rules failed to load refuses
+   * everything, which is a broken system wearing a strict system's face.
+   *
+   * Deliberately **not** resolved from `packages/guardian/policies`: that
+   * directory is the rules FRIDAY *ships with*, is not part of the published
+   * package, and would be replaced by her own updates. This one is the owner's.
+   *
+   * See docs/adr/0033-authorization-rules-are-loaded-from-a-configured-directory.md
+   */
+  policiesDir: z.string().min(1),
 })
 
 const ServerSchema = z.object({
