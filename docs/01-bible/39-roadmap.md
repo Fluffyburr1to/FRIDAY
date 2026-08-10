@@ -315,6 +315,14 @@ met. What is genuinely established is narrower, and it is the honest version of 
 **This is carried into M4 as a risk rather than an assumption**, and it is the first thing that
 milestone should close. See [M4](#m4--installable--23-weeks---she-runs-on-your-mac).
 
+> **Closed at M4 on 2026-08-10 — and this record is left standing.** The round trip was run and the
+> gap above is now shut; the evidence is in
+> [M4's Keychain gate](#-the-keychain-round-trip--closed-2026-08-10). **M3's record is deliberately
+> not rewritten.** What shipped at M3 shipped undemonstrated, and editing this section to read as
+> though it had been proven at the time would destroy the one thing it was written to preserve — the
+> difference between code that exists and behaviour that was watched. The gap was real, it was named
+> here before it was closed, and the closing belongs to the milestone that did the work.
+
 **The approval-event debt is closed.** M2 left `approval.requested`, `.granted`, `.declined`,
 `.expired`, and `.auto_granted` defined in `packages/contracts` with **nothing publishing them** —
 an approval was durable in a store and absent from the event log, which meant the causal chain
@@ -386,8 +394,8 @@ without demonstrating.
 
 | Deliverable | Notes |
 |---|---|
-| **★ A real Keychain round trip** | The M3 gap above. **Do this first** — see below |
-| **ADR-0036 — packaging and supervision** | Bundle layout, where shipped policy defaults travel, the launchd boundary. **Drafted, pending acceptance.** No packaging code lands before it is accepted. |
+| **★ A real Keychain round trip** | The M3 gap above. **✅ Demonstrated 2026-08-10** — see below |
+| **ADR-0036 — packaging and supervision** | Bundle layout, where shipped policy defaults travel, the launchd boundary. **✅ Accepted 2026-08-10**, after its build mechanism was corrected — see below. Packaging code is unblocked. |
 | **Chapter 34 amendment** | The field-encryption key on the recovery card and in the lost-machine procedure — see below |
 | `apps/cli` packaged | A runnable `friday`, with `friday init` delivered intact |
 | Startup failure names its own fix | `openContext` fails today with a message naming the missing directory but not the command that creates it |
@@ -413,6 +421,44 @@ it. Whether that proof is an opt-in test against a throwaway keychain, a manual 
 runbook, or something else is the implementation's to decide — this chapter requires only that it
 happen first and be written down.
 
+### ★ The Keychain round trip — closed 2026-08-10
+
+**It was done first, and it passed.** The production path was run end to end against a real macOS
+Keychain, before any packaging work was allowed to depend on it. The procedure, including the
+isolation that made it safe to run at all, is
+[`docs/runbooks/keychain-round-trip.md`](../runbooks/keychain-round-trip.md).
+
+What was demonstrated, each item observed rather than inferred:
+
+| | |
+|---|---|
+| **Real provisioning through the production path** | `friday init` → `createKeychainKeyProvisioner` → `/usr/bin/security`. Both keys created, each decoding to exactly the 32 bytes `decodeKey` requires. |
+| **Idempotent second run** | Rules left alone, both keys reported already present, nothing changed. |
+| **Persistence across a lock/unlock boundary** | The keys survived. A locked keychain refuses reads non-interactively; unlocking restores them, in a fresh process. |
+| **`apps/core` startup and Guardian composition** | Started on the provisioned state, composed a Guardian from the rules on disk, and passed its startup self-check. |
+| **Encrypted payload round trip** | The self-check's `guardian.decided` is stored as `enc:v1:…` ciphertext, and `friday events tail` read it back. The field key was genuinely exercised, not bypassed. |
+| **ADR-0035's ★ refusal** | With a database present and the field key removed, init refused, exited non-zero, explained why, and **minted nothing**. |
+| **The login keychain was untouched** | Audited before and after: default keychain unchanged, and no `com.friday.*` item present at any point. |
+
+**The claim this does and does not support.** It establishes that the path works on this Mac. It
+does **not** establish CI portability, and nothing here should be read as promising it — see the
+open question below. The failure surface is also still unobserved: a locked keychain at login, a
+wrong Node, an interrupted provision.
+
+**A note for whoever writes the test.** ADR-0035 §3 concluded that a real Keychain write "may not be
+exercisable in a non-interactive environment or in CI at all", and left the `execFileSync` boundary
+uncovered on that basis. **That conclusion is now known to be too pessimistic**, and the reason is
+narrow: ADR-0035 redirected `HOME` and stopped, which leaves *no default keychain*, so the write
+tries to prompt and dies. Creating a throwaway keychain inside the redirected `HOME` and making it
+the default fixes it — and, because the keychain is then never named on the command line, it also
+sidesteps the `-w`-versus-trailing-positional conflict that ADR-0035 records as having caused stray
+writes to a real login keychain once.
+
+**This does not amend ADR-0035, deliberately.** The evidence is recorded here; whether it becomes an
+enduring automated test contract is a separate decision, because a manual proof and a permanent CI
+requirement are different promises and the second one has not been earned yet — CI portability is
+untested. **Open, and owned by whoever takes the launchd work.**
+
 **`friday init` is not redesigned here.** It remains the provisioning primitive. Packaging delivers
 it; packaging does not absorb it. ADR-0035's review trigger asks whether *"a real installer subsumes
 `friday init` entirely"* — ADR-0036 answers that question explicitly and defers the subsumption,
@@ -426,6 +472,37 @@ field-encryption key** — so a by-the-book recovery today yields a database who
 cannot be read. That is a live data-loss hazard, it costs a documentation change to fix, and it gets
 worse the moment packaging puts FRIDAY on a machine that accumulates real encrypted data. Generating
 the card, and the setup flow around it, stays at M7.
+
+### The packaging mechanism was corrected before ADR-0036 was accepted
+
+The build command the ADR originally named — `pnpm deploy --filter @friday/cli --prod` — **does not
+work on this repository**, and was found by running it rather than by trusting it. The accepted
+mechanism is in [ADR-0036 §1](../adr/0036-packaging-delivers-friday-init-provisions.md); two things
+about it matter to whoever implements packaging:
+
+- The workspace-injection flag is passed **for the duration of the deploy command only**, never
+  written into `pnpm-workspace.yaml`. Putting it there would change how every developer's build
+  links its packages, permanently, for a property only the release script needs.
+- **`--legacy` is prohibited.** It is the option the error message steers you toward, it exits 0,
+  and it produces a bundle whose FRIDAY packages are symlinks escaping into the source checkout,
+  with no `better-sqlite3` and no shipped rules. It works on the machine that built it and nowhere
+  else — the exact failure ADR-0033 exists to prevent, wearing a green tick.
+
+The corrected bundle was tarred, extracted elsewhere, and run from there: it carried and resolved
+its own policies, provisioned keys, and appended an event. `better-sqlite3` ships a `darwin-arm64`
+prebuild, so nothing compiles at install time.
+
+### Carried M4 implementation risks
+
+Found during the M4 gates, recorded rather than fixed opportunistically. **None is a blocker; each
+is to be investigated when the implementation reaches it**, and none should be used as an excuse to
+widen a slice.
+
+| Risk | Why it matters at M4 | When to look at it |
+|---|---|---|
+| **`apps/core` exit-code mismatch.** It defines `EXIT_PROBLEM = 2`, commented as matching the CLI — but the CLI defines `problem: 1` and `usage: 2`. Core reports a fault using the code the CLI reserves for *being invoked wrongly*. | launchd reads exit codes, and any `KeepAlive` policy or diagnostic keyed on them will read this one. A fault that looks like a usage error is a fault that gets retried wrongly, or not at all. | With the launchd work, which is the first thing that consumes the code. |
+| **LaunchAgent startup against a locked login keychain.** A locked keychain refuses reads non-interactively — observed, exit 128. The login keychain unlocks at login, but a LaunchAgent's start and that unlock are not obviously ordered. | If the agent wins the race, `apps/core` fails at `createCapabilityIssuer` on a fresh login, and the message names a key rather than a timing problem. | With `friday service install`. Design the failure to be nameable before it is observed in the wild. |
+| **One unexplained Keychain anomaly.** A single spurious "the passphrase you entered is not correct" on unlocking the throwaway keychain, which did not reproduce across a clean four-step cycle afterwards. | Unreproduced, and against a temporary keychain rather than the login one, so it is recorded for honesty rather than as a known defect. | If it recurs. If it recurs during the launchd work, it stops being an anomaly and becomes the second risk above. |
 
 **Explicitly not in M4:** the Tauri shell, the dashboard's remaining layers, notifications, any
 connector, Apple Developer enrollment, notarization, and code signing of a `.app`. Signing matters
