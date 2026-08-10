@@ -84,11 +84,12 @@ The organizing rule, and the reason for the title:
 
 ### 1. Bundle layout
 
-One artifact per architecture: **`friday-<version>-darwin-<arch>.tar.gz`**.
+One compressed archive per architecture. Filenames and other surface naming in this section are
+**indicative** — the shape is the decision, the strings are the implementation's to settle.
 
 ```
 friday-0.1.0/
-  bin/friday                      the entry point — a shim that execs node on the CLI
+  bin/friday                      the CLI's own entry point, already executable
   lib/node_modules/@friday/…      the built workspace, as real package trees
                                     └── guardian/policies/*.json   ← ships here, unflattened
   lib/node_modules/…              production dependencies, including the
@@ -96,6 +97,11 @@ friday-0.1.0/
   share/com.friday.core.plist.tmpl  the LaunchAgent template
   VERSION
 ```
+
+`bin/friday` is `apps/cli`'s existing binary. [`apps/cli/src/index.ts`](../../apps/cli/src/index.ts)
+already begins `#!/usr/bin/env node` and `package.json` already declares
+`"bin": { "friday": "./dist/index.js" }`, so the entry point is executable as it stands. **Packaging
+adds no wrapper.**
 
 Installed to **`~/.local/friday/<version>/`**, with `~/.local/friday/current` a symlink to the
 active version and `~/.local/bin/friday` a symlink into it. Nothing is written outside `~`; the
@@ -114,6 +120,16 @@ resolution in the packaged artifact and **nowhere else**, which is the exact fai
 described: *"would work perfectly in development, in CI, and in every test, and would find no rules
 at all the first time FRIDAY is packaged."* Packaging adapts to the resolution mechanism. It does
 not change it.
+
+**That tree is produced by `pnpm deploy`, and this is not a detail.** A pnpm workspace's
+`node_modules` is a tree of symlinks into a virtual store, and this repository sets no `node-linker`
+override, so archiving `node_modules` as it sits on disk yields **broken links rather than a
+package**. `pnpm deploy --filter @friday/cli --prod` is what resolves the workspace into a real,
+self-contained directory. The decision recorded here is that packaging **must produce a genuine
+directory tree rather than copy the development one**; `pnpm deploy` is the mechanism that exists
+today and `--node-linker=hoisted` is the fallback if it disappoints. Naming it matters because the
+failure looks like the one ADR-0033 warned about — everything works in the workspace, and the
+artifact is empty in a way nobody sees until it is on a machine.
 
 **Node is not bundled.** The installer checks for Node 24 and refuses with a nameable message if it
 is absent. See [Alternative D](#d-bundle-the-node-runtime-into-a-single-executable) for the cost.
@@ -173,10 +189,12 @@ Recorded as a review trigger below, not as a closed question.
 
 ### 5. launchd provenance and the installation boundary
 
-**The plist is generated, never copied.** `friday service install` renders
+**The plist is generated, never copied.** A `friday` subcommand — called `service install` below,
+though the command names in this section are **indicative rather than decided** — renders
 `share/com.friday.core.plist.tmpl` with the absolute paths of the installed tree and writes
 `~/Library/LaunchAgents/com.friday.core.plist`. A copied plist carries whatever paths were true on
-the machine that built it; a generated one cannot.
+the machine that built it; a generated one cannot. What is decided is that **a `friday` subcommand
+owns this, and the installer does not**.
 
 **It inherits the creation-only bound.** `service install` refuses when the file already exists and
 names `friday service uninstall` as the way through. `service uninstall` removes a plist **only** if
@@ -250,8 +268,9 @@ rollback by symlink; the LaunchAgent template; checking that the runtime it need
 
 - **Article II (Transparency):** the installed tree is a directory you can list and `friday
   --version` reports what is running. **The install itself is not in the event log** — there is no
-  log until `friday init` has run. `system.started` gains its first publisher in the same milestone,
-  so the first thing recorded is the first time she actually starts.
+  log until `friday init` has run. `system.started` gains its first *production call site* in the
+  same milestone — the publisher itself, `announceStart()`, already exists in `packages/kernel` and
+  is called only by tests — so the first thing recorded is the first time she actually starts.
 - **Article III (Control):** nothing starts itself. The agent is written and loaded only by a
   command the owner runs, and `friday service uninstall` reverses it. No automatic updates.
 - **Article IV (Privacy):** the artifact is built and installed locally with no network in the path,
@@ -380,8 +399,8 @@ exist.
   a running copy.
 - **The install is invisible to the audit trail.** It necessarily precedes the log. Article II is
   satisfied from `friday init` onward and not before, and no amount of design fixes that ordering.
-- **Two commands to get running** (`install`, then `friday init`, then `friday service install`)
-  where a `.pkg` would present one. That is the cost of §4's boundary and is accepted deliberately.
+- **Three steps to get running** — install, then provision, then install the service — where a
+  `.pkg` would present one. That is the cost of §4's boundary and is accepted deliberately.
 - **Architecture-specific artifacts** mean an Intel Mac needs its own build. One user, one machine
   today; a second machine makes this a real chore.
 - `~/.local/bin` is not on the default macOS `PATH`. The installer prints the line to add, which is
