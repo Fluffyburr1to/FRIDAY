@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { loadConfig } from '@friday/config'
 import { createKeychainKeyProvider } from '@friday/storage'
 import { openContext } from './context.js'
+import { runStartupSelfCheck } from './self-check.js'
 import { startServer } from './server.js'
 
 /**
@@ -25,6 +26,8 @@ export {
   PendingApprovalsOutput,
   RespondInput,
 } from './router.js'
+export type { SelfCheckOutcome } from './self-check.js'
+export { runStartupSelfCheck } from './self-check.js'
 export type { RunningServer } from './server.js'
 export { startServer } from './server.js'
 
@@ -68,6 +71,27 @@ export async function main(): Promise<void> {
   if (!swept.ok) {
     process.stderr.write(`${swept.error.message}\n`)
     process.exit(EXIT_PROBLEM)
+  }
+
+  // README rule 1: startup validates database integrity. FRIDAY asks the
+  // Guardian before checking her own log, and the answer is recorded before
+  // the check runs — decide, record, then act.
+  const checked = await runStartupSelfCheck({
+    authorizing: opened.value.authorizing,
+    events: opened.value.context.events,
+    principalId: config.value.principalId,
+  })
+
+  if (!checked.ok) {
+    process.stderr.write(`${checked.error.message}\n`)
+    process.exit(EXIT_PROBLEM)
+  }
+
+  // A refusal is the owner's rules working, not a fault — so it is reported
+  // and startup continues. Silence here would leave FRIDAY running with an
+  // unverified log and nothing saying so.
+  if (checked.value.decision.decision !== 'allow') {
+    process.stderr.write(`Startup integrity check skipped: ${checked.value.decision.summary}\n`)
   }
 
   const server = await startServer({
