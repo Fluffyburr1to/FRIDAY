@@ -13,26 +13,42 @@ calendar, your code, your home, your notes, and your correspondence without repl
 
 ## Status
 
-**Pre-implementation.** The engineering foundation is complete and verified end to end; no
-application code exists yet.
+**Her decisions are written down.** Milestones 1 through 3 are complete: FRIDAY has an event log, a
+Guardian that can refuse, and a record of everything it decides. **She does not run on a machine
+yet** — nothing installs or supervises her. That is Milestone 4.
+
+```
+friday init                          prepare a machine for her
+friday events tail                   watch the log, live
+friday verify                        confirm the record has not been altered
+friday status                        is she healthy?
+```
 
 | | |
 |---|---|
-| Phase | Milestone 0 — Ground, complete · **ready to begin M1** |
+| Phase | Milestone 3 — Authority, complete 2026-08-10 · **ready to begin M4** |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
-| Architecture Decision Records | ✅ 18 |
-| Repository structure | ✅ Defined, every folder documented |
+| Architecture Decision Records | ✅ 35 |
 | Build tooling | ✅ pnpm workspaces · Turborepo · TypeScript strict · Biome · dependency-cruiser |
-| Testing | ✅ Vitest — unit, integration, and cross-cutting tiers, coverage thresholds |
+| Testing | ✅ Vitest — 802 tests |
 | Boundary enforcement | ✅ Verified firing, with regression tests |
-| M1 packages | ✅ `contracts` `config` `telemetry` `storage` `kernel` `cli` — scaffolded, deliberately empty |
-| M1 dependencies | ✅ Zod · Drizzle · SQLite · Pino — installed, confined to their packages |
-| CI pipeline | ✅ 5 staged gates |
-| Branch protection | ✅ Enforced, including for the owner |
-| Application code | ⬜ Not started — by design |
+| CI pipeline | ✅ 5 staged gates, green on `main` |
+| **Event log** | ✅ Append-only, gapless, hash-chained — enforced by database triggers |
+| **Tamper evidence** | ✅ `friday verify`, tested by editing the file behind the code's back |
+| **Field encryption** | ✅ AES-256-GCM for private data, keys in the Keychain |
+| **Event bus** | ✅ Durable before dispatch · sync and async lanes · at-least-once |
+| **System log** | ✅ Three-layer redaction, rotation inside a fixed budget |
+| **Guardian** | ✅ Composed at startup from rules on disk · fails closed · refuses an empty rule set |
+| **Approvals** | ✅ Requested, granted, declined, expired — each recorded as an event |
+| **Dashboard** | ✅ Read-only — live event stream and pending approvals |
+| **Startup self-check** | ✅ She asks her own permission, and will not start on a chain that does not verify |
+| **First-run provisioning** | ✅ `friday init` — creation-only, never replaces a key |
+| Packaging, launchd, releases | ⬜ Milestone 4 |
+| Agents, plans, model routing | ⬜ Milestone 5 |
+| Mac app, connectors | ⬜ Milestone 6 |
 
-This is deliberate. See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md).
+See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md) for what comes next and why in this order.
 
 ---
 
@@ -146,20 +162,25 @@ Reasoning and rejected alternatives: [Chapter 02](docs/01-bible/02-technology-st
 
 ## Roadmap
 
-| # | Milestone | Outcome | Target |
+| # | Milestone | Outcome | Status |
 |---|---|---|---|
-| M0 | Ground | Tooling, CI, branch protection, seed ADRs | Aug 2026 |
-| M1 | Heartbeat | Event bus, database, logging — she records | Oct 2026 |
-| M2 | Conscience | Guardian, approvals, audit — she can be told no | Nov 2026 |
-| M3 | Mind | Agents, Model Router, plans — she thinks | Jan 2027 |
-| M4 | **Face** | Dashboard, Mac app, first connector — **first useful day** | Mar 2027 |
-| M5 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | May 2027 |
-| M6 | Self-Improvement | FRIDAY opens her first pull request | Aug 2027 |
-| M7 | Reach | iPhone, notifications, voice | Nov 2027 |
-| M8 | Breadth | Additional departments | 2028+ |
+| M0 | Ground | Tooling, CI, branch protection, seed ADRs | ✅ 2026-08-06 |
+| M1 | Heartbeat | Event bus, database, logging — she records | ✅ 2026-08-07 |
+| M2 | Conscience | Guardian, approvals, audit — she can be told no | ✅ 2026-08-08 |
+| M3 | Authority | Rules on disk, decisions recorded, `friday init` | ✅ 2026-08-10 |
+| M4 | **Installable** | Packaging, launchd, releases — **she runs on your Mac** | ◆ next |
+| M5 | Mind | Agents, Model Router, plans — she thinks | |
+| M6 | **Face** | Dashboard, Mac app, first connector — **first useful day** | |
+| M7 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | |
+| M8 | Self-Improvement | FRIDAY opens her first pull request | |
+| M9 | Reach | iPhone, notifications, voice | |
+| M10 | Breadth | Additional departments | |
 
-Estimates assume 10–20 hrs/week. **Expect 30–50% slippage** — that is normal, not failure.
-Full detail: [Chapter 39](docs/01-bible/39-roadmap.md).
+**This chapter was re-baselined on 2026-08-10.** M3 delivered something the roadmap had not planned,
+and M4 changed from *Face* to *Installable* because *Face* depends on work that does not exist yet.
+Calendar targets past M4 are withdrawn until there is evidence to re-estimate from. Milestone numbers
+inside ADRs mean what they meant when written — the map is in
+[Chapter 39](docs/01-bible/39-roadmap.md#re-baselined-2026-08-10).
 
 ---
 
