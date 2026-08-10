@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 export { numberFlag, parseArgs, stringFlag } from './args.js'
-export { EXIT, formatBytes, formatTime } from './output.js'
+// ★ `runInit` and the pieces needed to call it are exported so its tests can
+// drive it with an INJECTED provisioner. Reaching it through `run` would build
+// the Keychain-backed one, and a test suite that writes real key material to
+// the developer's login Keychain is not a thing that may exist.
+export { runInit } from './commands/init.js'
+export { type CommandContext, createContext } from './context.js'
+export { createOutput, EXIT, formatBytes, formatTime } from './output.js'
 
+import { createKeychainKeyProvisioner } from '@friday/storage'
 import { numberFlag, type ParsedArgs, parseArgs, stringFlag } from './args.js'
 import { runEmit, runTail } from './commands/events.js'
 import { runInit } from './commands/init.js'
@@ -95,7 +102,16 @@ function dispatch(input: Dispatch): Promise<ExitCode> {
   const { args, context, out } = input
   const [command] = args.command
 
-  if (command === 'init') return Promise.resolve(runInit({ context }))
+  if (command === 'init') {
+    return Promise.resolve(
+      runInit({
+        context,
+        // Constructed here and nowhere else. A provisioner is the only thing in
+        // FRIDAY that can write key material, and exactly one command holds one.
+        provisioner: createKeychainKeyProvisioner({ service: context.config.keychain.service }),
+      }),
+    )
+  }
   if (command === 'status') return Promise.resolve(runStatus(context))
   if (command === 'verify') return Promise.resolve(dispatchVerify(input))
   if (command === 'events') return dispatchEvents(input)

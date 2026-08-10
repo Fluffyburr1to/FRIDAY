@@ -2,6 +2,8 @@ import { constants, copyFileSync, existsSync, mkdirSync, readdirSync } from 'nod
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { err, type FridayError, fridayError, ok, type Result } from '@friday/contracts'
+import { CAPABILITY_KEY_REFERENCE } from '@friday/guardian'
+import type { KeyProvisioner, ProvisionOutcome } from '@friday/storage'
 import type { CommandContext } from '../context.js'
 import { EXIT, type ExitCode } from '../output.js'
 
@@ -156,13 +158,88 @@ function seedPolicies(directory: string): Result<SeedOutcome, FridayError> {
   return ok({ kind: 'copied', files: shipped })
 }
 
+/** What provisioning did to each key, for the report. */
+interface KeyOutcome {
+  readonly reference: string
+  readonly outcome: ProvisionOutcome
+}
+
+/**
+ * Creates the two keys FRIDAY cannot start without.
+ *
+ * ── The refusal that matters ────────────────────────────────────────────────
+ *
+ * **A missing field-encryption key beside an existing database is not a fresh
+ * install. It is a disaster, and minting a replacement would quietly make it
+ * worse.** The chain would still verify — it covers a digest of the stored
+ * bytes and needs no key — so FRIDAY would start, report herself healthy, and
+ * be unable to read a single decision she had ever recorded. Every
+ * authorization event is written `private`, and `private` is what gets
+ * encrypted.
+ *
+ * That path is not exotic: it is restoring a data directory onto a new Mac,
+ * where the Keychain does not travel with the databases.
+ *
+ * So init refuses. It still never overwrites; it declines to create into a
+ * context where creating is destructive.
+ *
+ * ── What this does not catch ────────────────────────────────────────────────
+ *
+ * A key that is *present but stale* — from another machine, or another
+ * database — passes this check. Detecting it would mean reading key material
+ * or opening a database, and init does neither. That residual is loud rather
+ * than silent: AES-256-GCM is authenticated, so the first read under the wrong
+ * key fails its tag instead of returning plausible garbage.
+ *
+ * @param input - The provisioner, the key names, and whether a database exists.
+ * @returns What happened to each key, or why nothing did.
+ */
+function provisionKeys(input: {
+  provisioner: KeyProvisioner
+  fieldKeyRef: string
+  databaseExists: boolean
+}): Result<readonly KeyOutcome[], FridayError> {
+  const { provisioner, fieldKeyRef, databaseExists } = input
+
+  if (databaseExists && !provisioner.has(fieldKeyRef)) {
+    return err(
+      fridayError({
+        code: 'ENCRYPTION_KEY_UNAVAILABLE',
+        message:
+          'FRIDAY has databases here, but not the key that unlocks what is in them.\n\n' +
+          `  The key "${fieldKeyRef}" is missing from your Keychain, and these databases\n` +
+          '  hold entries encrypted with it — every decision FRIDAY has ever recorded.\n\n' +
+          '  She has NOT made a new key. A new one would not unlock the old entries, and\n' +
+          '  she would start up looking healthy while none of her history could be read.\n\n' +
+          '  The original key is in the Keychain of the machine that wrote these files, or\n' +
+          '  in a backup of it. Recovering it is something only you can do.',
+        detail: { reference: fieldKeyRef },
+      }),
+    )
+  }
+
+  const outcomes: KeyOutcome[] = []
+
+  // Order matters only for the message an interrupted run leaves behind, and
+  // both orders are safe: init is creation-only, so a failure after the first
+  // key leaves a correct partial state that running again completes.
+  for (const reference of [fieldKeyRef, CAPABILITY_KEY_REFERENCE]) {
+    const provisioned = provisioner.provision(reference)
+    if (!provisioned.ok) return err(provisioned.error)
+
+    outcomes.push({ reference, outcome: provisioned.value })
+  }
+
+  return ok(outcomes)
+}
+
 /**
  * Runs `friday init`.
  *
- * @param input - The loaded configuration and the output surface.
+ * @param input - The loaded configuration, output surface, and key provisioner.
  * @returns The exit code.
  */
-export function runInit(input: { context: CommandContext }): ExitCode {
+export function runInit(input: { context: CommandContext; provisioner: KeyProvisioner }): ExitCode {
   const { config, out } = input.context
   const directory = config.paths.policiesDir
 
@@ -174,18 +251,75 @@ export function runInit(input: { context: CommandContext }): ExitCode {
     return EXIT.problem
   }
 
-  const { kind, files } = seeded.value
-  out.json({ policies: { directory, action: kind, files } })
+  const keys = provisionKeys({
+    provisioner: input.provisioner,
+    fieldKeyRef: config.keychain.fieldKeyRef,
+    databaseExists: existsSync(config.paths.eventsDb) || existsSync(config.paths.mainDb),
+  })
 
-  if (kind === 'left-alone') {
-    out.line(`Your authorization rules are already in ${directory}.`)
-    out.line(`FRIDAY has left all ${files.length} of them exactly as they are.`)
-    return EXIT.ok
+  if (!keys.ok) {
+    // The rules were seeded and stay seeded — reporting the key problem does
+    // not undo work that was correct. Running again completes the rest.
+    out.problem(keys.error.message)
+    out.json({ policies: { directory, action: seeded.value.kind }, problem: keys.error })
+    return EXIT.problem
   }
 
-  out.line(`Put ${files.length} authorization rules in ${directory}.`)
-  out.line('These are the rules FRIDAY obeys. They are yours to read and to change,')
-  out.line('and she can never change them herself.')
+  out.json({
+    policies: { directory, action: seeded.value.kind, files: seeded.value.files },
+    keys: keys.value,
+  })
+
+  reportPolicies({ out, directory, seeded: seeded.value })
+  reportKeys({ out, keys: keys.value })
 
   return EXIT.ok
+}
+
+/** Says what happened to the rules, in the owner's terms. */
+function reportPolicies(input: {
+  out: CommandContext['out']
+  directory: string
+  seeded: SeedOutcome
+}): void {
+  const { out, directory, seeded } = input
+
+  if (seeded.kind === 'left-alone') {
+    out.line(`Your authorization rules are already in ${directory}.`)
+    out.line(`FRIDAY has left all ${seeded.files.length} of them exactly as they are.`)
+    return
+  }
+
+  out.line(`Put ${seeded.files.length} authorization rules in ${directory}.`)
+  out.line('These are the rules FRIDAY obeys. They are yours to read and to change,')
+  out.line('and she can never change them herself.')
+}
+
+/**
+ * Says what happened to the keys, and what one of them costs to lose.
+ *
+ * ★ The warning is required output, not a nicety. The owner cannot take a
+ * precaution nobody told them was needed, and the moment the key is created is
+ * the only moment they are certainly present to be told.
+ */
+function reportKeys(input: { out: CommandContext['out']; keys: readonly KeyOutcome[] }): void {
+  const { out, keys } = input
+  const created = keys.filter((key) => key.outcome === 'created')
+
+  out.line('')
+
+  if (created.length === 0) {
+    out.line('Both of her keys were already in your Keychain. Nothing was changed.')
+    return
+  }
+
+  out.line(`Created ${created.length} key${created.length === 1 ? '' : 's'} in your Keychain.`)
+  out.line('')
+  out.line('★ One of them cannot be replaced.')
+  out.line('')
+  out.line('  Everything private FRIDAY records — every decision, every approval — is')
+  out.line('  encrypted with a key that exists only in your Keychain. If you lose it,')
+  out.line('  those records stay on disk and can never be read again, by her or by you.')
+  out.line('')
+  out.line('  Your Mac backup covers the Keychain. Make sure you have one.')
 }

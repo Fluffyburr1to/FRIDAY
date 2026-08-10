@@ -44,6 +44,16 @@ friday export --all              take your data and leave
    design.
 3. **Every command is authorized by the Guardian**, exactly like any other surface. The CLI is not a
    back door.
+
+   **`friday init` is the one exception, and it is bounded by what it cannot do.** It runs before a
+   Guardian can exist — composing one needs the authorization rules and the capability signing key,
+   which are two of the three things it creates — so asking permission first is not stricter, it is
+   impossible. What keeps this from being a back door is that init **only creates**: it may bring the
+   policy directory, the field-encryption key, and the capability signing key into existence, and it
+   cannot overwrite, merge, delete, or author any of them. A command that cannot alter anything that
+   already exists has no power over a FRIDAY that already exists. It also writes no events, issues no
+   capability, and creates no standing grant.
+   See [ADR-0035](../../docs/adr/0035-first-run-provisioning-is-creation-only.md).
 4. **Output is human-readable by default, `--json` for machines.**
 
 Reference: [Chapter 34](../../docs/01-bible/34-disaster-recovery.md)
