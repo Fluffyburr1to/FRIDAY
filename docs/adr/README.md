@@ -61,6 +61,7 @@ Decisions taken since, as implementation met the design:
 | [0032](0032-the-guardians-state-moves-into-the-event-log-database.md) | The Guardian's state moves into `events.db` | accepted | low→**high** | [09](../01-bible/09-database-design.md) |
 | [0033](0033-authorization-rules-are-loaded-from-a-configured-directory.md) | Authorization rules are loaded from a configured directory | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
 | [0034](0034-guardian-counter-writes-happen-outside-the-append-transaction.md) | Guardian counter writes happen outside the append transaction | accepted | n/a | [17](../01-bible/17-authentication-authorization.md) |
+| [0035](0035-first-run-provisioning-is-creation-only.md) | First-run provisioning is creation-only | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
