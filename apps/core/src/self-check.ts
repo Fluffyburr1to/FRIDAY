@@ -2,6 +2,7 @@ import type { ApprovalExplanation, AuthorizingClerk } from '@friday/clerk'
 import {
   err,
   type FridayError,
+  fridayError,
   type GuardianDecision,
   ok,
   type Result,
@@ -83,9 +84,12 @@ export async function runStartupSelfCheck(input: {
   authorizing: AuthorizingClerk
   events: EventReader
   principalId: string
+
+  /** Supplied by a test that needs a known value; generated otherwise. */
+  correlationId?: string | undefined
 }): Promise<Result<SelfCheckOutcome, FridayError>> {
   const { authorizing, events, principalId } = input
-  const correlationId = uuidv7()
+  const correlationId = input.correlationId ?? uuidv7()
 
   const authorized = await authorizing.authorize({
     request: {
@@ -110,6 +114,38 @@ export async function runStartupSelfCheck(input: {
   if (!verification.ok) return err(verification.error)
 
   return ok({ decision, verification: verification.value, correlationId })
+}
+
+/**
+ * Turns a completed self-check into the reason to stop, if there is one.
+ *
+ * Split from the check so that "what happened" and "is that fatal" are two
+ * readable questions. A broken chain is fatal: Chapter 34 treats a log that
+ * fails verification as the one condition FRIDAY must not run through, because
+ * every explanation she gives afterwards would be assembled from records she
+ * cannot vouch for.
+ *
+ * @param outcome - What the self-check found.
+ * @returns The failure to report and exit on, or null to continue.
+ */
+export function fatalProblem(outcome: SelfCheckOutcome): FridayError | null {
+  const { verification } = outcome
+
+  if (verification === undefined || verification.intact) return null
+
+  return fridayError({
+    code: 'CHAIN_BROKEN',
+    message:
+      'FRIDAY’s audit trail does not verify, so she stopped rather than starting. ' +
+      `Everything she told you afterwards would be assembled from records she cannot ` +
+      `stand behind. ${verification.reason ?? ''}`.trim(),
+    detail: {
+      brokenAtSeq: verification.brokenAtSeq,
+      eventsChecked: verification.eventsChecked,
+      sequenceIntact: verification.sequenceIntact,
+      contentIntact: verification.contentIntact,
+    },
+  })
 }
 
 /**

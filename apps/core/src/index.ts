@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { loadConfig } from '@friday/config'
 import { createKeychainKeyProvider } from '@friday/storage'
 import { openContext } from './context.js'
-import { runStartupSelfCheck } from './self-check.js'
+import { fatalProblem, runStartupSelfCheck } from './self-check.js'
 import { startServer } from './server.js'
 
 /**
@@ -27,7 +27,7 @@ export {
   RespondInput,
 } from './router.js'
 export type { SelfCheckOutcome } from './self-check.js'
-export { runStartupSelfCheck } from './self-check.js'
+export { fatalProblem, runStartupSelfCheck } from './self-check.js'
 export type { RunningServer } from './server.js'
 export { startServer } from './server.js'
 
@@ -84,6 +84,13 @@ export async function main(): Promise<void> {
 
   if (!checked.ok) {
     process.stderr.write(`${checked.error.message}\n`)
+    process.exit(EXIT_PROBLEM)
+  }
+
+  const fatal = fatalProblem(checked.value)
+
+  if (fatal !== null) {
+    process.stderr.write(`${fatal.message}\n`)
     process.exit(EXIT_PROBLEM)
   }
 
