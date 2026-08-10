@@ -24,6 +24,12 @@ export {
   KEY_LENGTH_BYTES,
   type KeyProvider,
 } from './crypto/key-provider.js'
+export {
+  createInMemoryKeyProvisioner,
+  createKeychainKeyProvisioner,
+  type KeyProvisioner,
+  type ProvisionOutcome,
+} from './crypto/key-provisioner.js'
 export { openEventsReadOnly, openStorage, type Storage, type StorageOptions } from './database.js'
 export { GENESIS_HASH } from './event-hash.js'
 export { verifyArchive, type WrittenArchive, writeArchive } from './repositories/archive.js'
