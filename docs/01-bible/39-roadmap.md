@@ -103,7 +103,7 @@ PLANNED
 | **M0** | **Ground** | Tooling, repo, CI, first ADRs | 2–3 wks | ✅ 2026-08-06 |
 | **M1** | **Heartbeat** | Event bus, database, config, logging | 4–6 wks | ✅ 2026-08-07 |
 | **M2** | **Conscience** | Guardian, approvals, audit, thin dashboard | 4–5 wks | ✅ 2026-08-08 |
-| **M3** | **Authority** | Rules loaded from disk, decisions recorded, `friday init` | — | ✅ 2026-08-10 |
+| **M3** | **Authority** | Rules loaded from disk, decisions recorded, `friday init` | — | ✅ 2026-08-10 ⚠ |
 | **M4** | **Installable** | Packaging, launchd supervision, release machinery | 2–3 wks | ◆ next |
 | **M5** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | |
 | **M6** | **Face** | Dashboard, Mac app, first connector — **first useful day** | 6–8 wks | |
@@ -112,7 +112,9 @@ PLANNED
 | **M9** | **Reach** | iPhone, notifications, voice | 8–12 wks | |
 | **M10** | **Breadth** | Additional departments | Ongoing | |
 
-M3 carries no estimate because it was never estimated — it was not on the roadmap.
+M3 carries no estimate because it was never estimated — it was not on the roadmap. **⚠ marks a
+milestone whose code and tests shipped but whose done-when was never demonstrated end to end**; M3's
+gap is the real Keychain, and closing it is M4's first task.
 
 ---
 
@@ -240,8 +242,10 @@ Merged as [#6](https://github.com/Fluffyburr1to/FRIDAY/pull/6),
 A simulated action requests permission, blocks, appears in the dashboard with its explanation, waits
 across a core restart, and executes only after approval. The done-when condition is met.
 
-Seven ADRs came out of it — 0025 through 0031 — of which two are worth naming here because they
-changed the shape of later milestones:
+Six ADRs came out of it — 0025 through 0030 — of which two are worth naming here because they
+changed the shape of later milestones. (ADR-0031 is often read as M2's because it settles the
+approval record M2 left open; it landed in [#11](https://github.com/Fluffyburr1to/FRIDAY/pull/11)
+and belongs to M3.)
 
 - **[ADR-0029](../adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md)** brought
   `apps/core` forward to serve the dashboard. Its own review trigger — *"the Chief of Staff lands at
@@ -284,7 +288,32 @@ The gap was found while building, named rather than papered over, and closed her
 starts on it with a Guardian composed from rules on disk — or refuses to start, loudly, for a
 nameable reason.
 
-### ✅ Complete — 2026-08-10
+### ✅ Shipped 2026-08-10 — ⚠ done-when not demonstrated end to end
+
+**The code and its tests exist. The done-when above has never been run.** Those are different
+claims and this record keeps them apart deliberately, because every other completion record in this
+chapter describes something that was watched working.
+
+**What was not demonstrated: the real Keychain.** `friday init` mints both keys through a
+`KeyProvisioner`, and **every test injects the in-memory one.** The production implementation,
+`createKeychainKeyProvisioner`, has no test coverage and no recorded execution — nothing in this
+repository has ever run `friday init` against a real Keychain, or started `apps/core` on a machine
+that was not a checkout. [`apps/cli/test/integration/init.test.ts`](../../apps/cli/test/integration/init.test.ts)
+says so in its own header — *"No test in this repository starts FRIDAY against a real Keychain"* —
+and explains why: doing it would write to the developer's login keychain, and there is no safe way
+to do that in a test run.
+
+That is a defensible testing decision and it is **not** a defensible basis for calling the done-when
+met. What is genuinely established is narrower, and it is the honest version of this milestone:
+
+| Established | Not established |
+|---|---|
+| Every decision `friday init` makes, against an injected provisioner — 44 integration tests | That `security add-generic-password` is invoked correctly even once |
+| The refusal when a database predates a missing field-encryption key | That a fresh machine can be prepared end to end |
+| `apps/core` composing a Guardian from rules on disk, in tests | That `apps/core` starts on a machine it was not built on |
+
+**This is carried into M4 as a risk rather than an assumption**, and it is the first thing that
+milestone should close. See [M4](#m4--installable--23-weeks---she-runs-on-your-mac).
 
 **The approval-event debt is closed.** M2 left `approval.requested`, `.granted`, `.declined`,
 `.expired`, and `.auto_granted` defined in `packages/contracts` with **nothing publishing them** —
@@ -328,7 +357,9 @@ owner's machine. It must be settled *in* M4 — restricted, gated, or removed fr
 surface — rather than shipped as-is.
 
 **Actual versus estimated:** not applicable. This milestone had no estimate because it was not
-planned. Four days, five merged pull requests plus four direct commits, five ADRs (0031–0035).
+planned. Four days, ten merged pull requests
+([#11](https://github.com/Fluffyburr1to/FRIDAY/pull/11)–[#20](https://github.com/Fluffyburr1to/FRIDAY/pull/20))
+and no direct commits, five ADRs (0031–0035).
 
 **One process note, recorded because it is the kind of thing that is invisible later.** From
 [#17](https://github.com/Fluffyburr1to/FRIDAY/pull/17) onward, merge commits stopped carrying their
@@ -348,23 +379,39 @@ bypass, and during the drafting of this section it was briefly written up as one
 
 **Goal:** FRIDAY runs on your machine, starts when you log in, and can be updated.
 
-After M3 the gap is narrow and specific: `friday init` can prepare a machine, and **nothing in the
-repository installs FRIDAY onto one or keeps her running.** There is no bundle, no supervision, and
-no version. This milestone closes exactly that and nothing else.
+After M3 the gap is narrow and specific: `friday init` can prepare a machine **in tests**, and
+**nothing in the repository installs FRIDAY onto one or keeps her running.** There is no bundle, no
+supervision, and no version. This milestone closes exactly that, plus the one thing M3 shipped
+without demonstrating.
 
 | Deliverable | Notes |
 |---|---|
-| **ADR-0036 — packaging and supervision** | Bundle layout, where shipped policy defaults travel, the launchd boundary. **Written first.** |
+| **★ A real Keychain round trip** | The M3 gap above. **Do this first** — see below |
+| **ADR-0036 — packaging and supervision** | Bundle layout, where shipped policy defaults travel, the launchd boundary. **Drafted, pending acceptance.** No packaging code lands before it is accepted. |
 | **Chapter 34 amendment** | The field-encryption key on the recovery card and in the lost-machine procedure — see below |
 | `apps/cli` packaged | A runnable `friday`, with `friday init` delivered intact |
 | Startup failure names its own fix | `openContext` fails today with a message naming the missing directory but not the command that creates it |
 | `infra/launchd` | `com.friday.core.plist` and its install path — a LaunchAgent, never a LaunchDaemon ([Chapter 33](33-deployment-strategy.md)) |
-| `system.started` gets its first publisher | The contract exists and nothing publishes it ([ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) review trigger) |
+| `system.started` gets a production call site | The contract and the publisher both exist — `announceStart()` in `packages/kernel/src/event-bus.ts`, exported and tested. **Nothing calls it outside tests.** ([ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) review trigger) |
 | Release machinery | Changesets, `0.1.0`, `tools/scripts/release.ts`. `CHANGELOG.md` says versioning starts here. |
 | `friday events emit` settled | The deferred ADR-0021 question above |
 
 **Done when:** on a Mac that has never run FRIDAY, you install her, run `friday init`, log out, log
 back in, and she is already running — and `friday verify` passes against a log she started herself.
+
+**★ The Keychain round trip is the first task, not an assumption.** This milestone's done-when
+depends on `friday init` working against a real Keychain, and
+[M3 shipped that path unexercised](#-shipped-2026-08-10---done-when-not-demonstrated-end-to-end):
+`createKeychainKeyProvisioner` has never run. ADR-0035 records that the `security` command's
+`-w`-versus-positional argument handling *"is a real API constraint that had already caused stray
+writes to a real login keychain once"*, so this is a known-sharp edge rather than a formality.
+
+**It is called out because it is the most likely thing to break the 2–3 week estimate**, and because
+it is invisible: every test is green, and green tests are exactly what would keep being green if
+this path were wrong. Prove the round trip on a real machine before any packaging work depends on
+it. Whether that proof is an opt-in test against a throwaway keychain, a manual run recorded in a
+runbook, or something else is the implementation's to decide — this chapter requires only that it
+happen first and be written down.
 
 **`friday init` is not redesigned here.** It remains the provisioning primitive. Packaging delivers
 it; packaging does not absorb it. ADR-0035's review trigger asks whether *"a real installer subsumes

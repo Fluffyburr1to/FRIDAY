@@ -26,7 +26,7 @@ friday status                        is she healthy?
 
 | | |
 |---|---|
-| Phase | Milestone 3 — Authority, complete 2026-08-10 · **ready to begin M4** |
+| Phase | Milestone 3 — Authority, shipped 2026-08-10 · **ready to begin M4** |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
 | Architecture Decision Records | ✅ 35 |
@@ -43,7 +43,7 @@ friday status                        is she healthy?
 | **Approvals** | ✅ Requested, granted, declined, expired — each recorded as an event |
 | **Dashboard** | ✅ Read-only — live event stream and pending approvals |
 | **Startup self-check** | ✅ She asks her own permission, and will not start on a chain that does not verify |
-| **First-run provisioning** | ✅ `friday init` — creation-only, never replaces a key |
+| **First-run provisioning** | ⚠ `friday init` — creation-only, never replaces a key. Built and tested; **never yet run against a real Keychain** — M4's first task |
 | Packaging, launchd, releases | ⬜ Milestone 4 |
 | Agents, plans, model routing | ⬜ Milestone 5 |
 | Mac app, connectors | ⬜ Milestone 6 |
@@ -167,7 +167,7 @@ Reasoning and rejected alternatives: [Chapter 02](docs/01-bible/02-technology-st
 | M0 | Ground | Tooling, CI, branch protection, seed ADRs | ✅ 2026-08-06 |
 | M1 | Heartbeat | Event bus, database, logging — she records | ✅ 2026-08-07 |
 | M2 | Conscience | Guardian, approvals, audit — she can be told no | ✅ 2026-08-08 |
-| M3 | Authority | Rules on disk, decisions recorded, `friday init` | ✅ 2026-08-10 |
+| M3 | Authority | Rules on disk, decisions recorded, `friday init` | ✅ 2026-08-10 ⚠ |
 | M4 | **Installable** | Packaging, launchd, releases — **she runs on your Mac** | ◆ next |
 | M5 | Mind | Agents, Model Router, plans — she thinks | |
 | M6 | **Face** | Dashboard, Mac app, first connector — **first useful day** | |
@@ -181,6 +181,10 @@ and M4 changed from *Face* to *Installable* because *Face* depends on work that 
 Calendar targets past M4 are withdrawn until there is evidence to re-estimate from. Milestone numbers
 inside ADRs mean what they meant when written — the map is in
 [Chapter 39](docs/01-bible/39-roadmap.md#re-baselined-2026-08-10).
+
+**⚠ means the code and its tests shipped but the milestone's stated outcome was never demonstrated
+end to end.** M3's gap is that `friday init` has never run against a real Keychain. It is M4's first
+task, not an assumption.
 
 ---
 
