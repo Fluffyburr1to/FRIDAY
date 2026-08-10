@@ -4,6 +4,7 @@ export { EXIT, formatBytes, formatTime } from './output.js'
 
 import { numberFlag, type ParsedArgs, parseArgs, stringFlag } from './args.js'
 import { runEmit, runTail } from './commands/events.js'
+import { runInit } from './commands/init.js'
 import { runStatus } from './commands/status.js'
 import { runVerify } from './commands/verify.js'
 import { type CommandContext, createContext } from './context.js'
@@ -27,6 +28,7 @@ import { createOutput, EXIT, type ExitCode } from './output.js'
 
 const USAGE = `friday — FRIDAY's command line
 
+  friday init                      set her up for the first time
   friday status                    is she healthy?
   friday events tail               watch the event log live
   friday events emit [--note "…"]  record a test event
@@ -93,6 +95,7 @@ function dispatch(input: Dispatch): Promise<ExitCode> {
   const { args, context, out } = input
   const [command] = args.command
 
+  if (command === 'init') return Promise.resolve(runInit({ context }))
   if (command === 'status') return Promise.resolve(runStatus(context))
   if (command === 'verify') return Promise.resolve(dispatchVerify(input))
   if (command === 'events') return dispatchEvents(input)

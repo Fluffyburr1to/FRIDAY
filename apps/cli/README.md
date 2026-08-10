@@ -12,6 +12,7 @@ process running as you can reach it.
 ## Commands
 
 ```
+friday init                      set her up on this machine, once
 friday status                    is she healthy?
 friday events tail               watch the event log live
 friday verify                    check the audit hash chain
@@ -29,8 +30,16 @@ friday export --all              take your data and leave
 
 ## Rules
 
-1. **The recovery commands must work when everything else is broken.** Minimal dependencies, no
-   dependency on the dashboard or any department.
+1. **The recovery commands must work when everything else is broken.** No dependency on the
+   dashboard, on any department, or on anything that could itself be the thing that has failed.
+
+   The test is *what could take this command down with it*, not how long the dependency list is.
+   `@friday/guardian` is here because `friday init` copies the shipped authorization rules out of it
+   ([ADR-0035](../../docs/adr/0035-first-run-provisioning-is-creation-only.md)); it is pure, decides
+   nothing at import time, and cannot fail in a way that stops `friday verify` from running. A
+   workspace dependency that meets that bar is allowed. One that would make a recovery command
+   depend on the health of the thing being recovered is not — and neither is an extra abstraction
+   introduced only to keep the list looking short.
 2. **`panic` runs without confirmation.** A confirmation prompt during a compromise is the wrong
    design.
 3. **Every command is authorized by the Guardian**, exactly like any other surface. The CLI is not a

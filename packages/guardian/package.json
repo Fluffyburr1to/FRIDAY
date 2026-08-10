@@ -10,10 +10,12 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./policies/*": "./policies/*"
   },
   "files": [
-    "dist"
+    "dist",
+    "policies"
   ],
   "scripts": {
     "build": "tsc --build",
