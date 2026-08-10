@@ -28,6 +28,7 @@
   "dependencies": {
     "@friday/config": "workspace:*",
     "@friday/contracts": "workspace:*",
+    "@friday/guardian": "workspace:*",
     "@friday/kernel": "workspace:*",
     "@friday/storage": "workspace:*",
     "@friday/telemetry": "workspace:*"
