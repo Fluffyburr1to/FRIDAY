@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process'
 import { err, type FridayError, fridayError, ok, type Result } from '@friday/contracts'
+import { readPassword } from './keychain.js'
 
 /**
  * Where key material comes from.
@@ -29,18 +29,14 @@ export interface KeyProvider {
 /** AES-256 takes exactly this. A shorter key is a misconfiguration, not a hint. */
 export const KEY_LENGTH_BYTES = 32
 
-/** The Keychain lookup is a subprocess; it gets a timeout like any external call. */
-const KEYCHAIN_TIMEOUT_MS = 5_000
-
 /**
  * Reads keys from the macOS Keychain.
  *
- * Implemented by invoking `/usr/bin/security` rather than by linking a native
- * Keychain binding. The trade is deliberate: a subprocess costs milliseconds
- * on a path that runs once at startup, and it avoids a native dependency that
- * would have to be rebuilt for every Node and macOS version for the next
- * decade — on the component whose failure mode is "FRIDAY cannot decrypt
- * anything she has stored".
+ * The `security` invocation itself lives in [`keychain.ts`](./keychain.ts),
+ * shared with the provisioner — one timeout, one error shape, one place where
+ * this process talks to the OS. What stays here is what this port is *for*:
+ * turning a stored value into a validated key, or into a message about what
+ * its absence costs.
  *
  * @param options - The Keychain service every FRIDAY credential lives under.
  * @returns A provider that reads from the Keychain.
@@ -48,15 +44,9 @@ const KEYCHAIN_TIMEOUT_MS = 5_000
 export function createKeychainKeyProvider(options: { service: string }): KeyProvider {
   return {
     getKey(reference) {
-      try {
-        const value = execFileSync(
-          '/usr/bin/security',
-          ['find-generic-password', '-w', '-s', options.service, '-a', reference],
-          { encoding: 'utf8', timeout: KEYCHAIN_TIMEOUT_MS, stdio: ['ignore', 'pipe', 'ignore'] },
-        ).trim()
+      const read = readPassword({ service: options.service, account: reference })
 
-        return decodeKey(value, reference)
-      } catch (cause) {
+      if (!read.ok) {
         return err(
           fridayError({
             code: 'ENCRYPTION_KEY_UNAVAILABLE',
@@ -67,10 +57,12 @@ export function createKeychainKeyProvider(options: { service: string }): KeyProv
             // The reference is a name, not a secret. The value never appears
             // here, and must not be added to it.
             detail: { reference, service: options.service },
-            cause,
+            cause: read.failure.cause,
           }),
         )
       }
+
+      return decodeKey(read.value, reference)
     },
   }
 }
