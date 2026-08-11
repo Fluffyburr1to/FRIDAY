@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url'
 import { loadConfig } from '@friday/config'
 import { createKeychainKeyProvider } from '@friday/storage'
 import { openContext } from './context.js'
@@ -136,8 +135,27 @@ export async function main(): Promise<void> {
   process.once('SIGTERM', stop)
 }
 
-// Runs only when this file is the process entry point, so importing the router
-// for a test never starts a server.
-if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+/**
+ * The entry point.
+ *
+ * `import.meta.main` is Node 24's replacement for the `require.main === module`
+ * dance, and it is what keeps this file importable by a test without starting a
+ * server. `apps/cli` already guards itself this way; this file now matches it.
+ *
+ * ★ The comparison it replaces — `fileURLToPath(import.meta.url) === process.argv[1]`
+ * — was correct in the workspace and wrong everywhere FRIDAY is actually
+ * installed. A published copy is reached through a symlink
+ * (`node_modules/@friday/core` points into pnpm's virtual store), Node resolves
+ * `import.meta.url` to the real path, and `process.argv[1]` stays the path that
+ * was invoked. The two never match, so `main()` was never called.
+ *
+ * The failure had no symptom. The process exited 0, immediately, having written
+ * nothing to any stream — so under the supervision that starts FRIDAY at login
+ * (`RunAtLoad`, unconditional `KeepAlive`, `ThrottleInterval 10`) she would have
+ * relaunched silently every ten seconds forever, reporting success each time,
+ * with nothing in any log to say otherwise. The code that opens the log is
+ * below this line.
+ */
+if (import.meta.main) {
   await main()
 }
