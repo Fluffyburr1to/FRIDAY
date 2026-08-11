@@ -1,6 +1,6 @@
 # ADR-0036 — Packaging delivers; `friday init` provisions
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-08-10
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none
@@ -63,8 +63,12 @@ argument below about signing, about update channels, and about "the artifact is 
 you made it" rests on that, and **all of it changes the first time a build travels.** That is named
 here rather than discovered later.
 
-We also do not know what first-run failure looks like in practice. `friday init` has never run on a
-machine that was not a test fixture or a developer's checkout.
+We also do not know what first-run failure looks like in practice. **We now know what first-run
+*success* looks like:** before acceptance, `friday init` was run against a real macOS Keychain — from
+the workspace and again from an extracted bundle — and the full round trip was observed, including
+`apps/core` starting on the provisioned state. What remains unobserved is the failure surface: a
+machine where the Keychain is locked, the runtime is the wrong Node, or the owner interrupts
+provisioning half way. Those are the paths still reasoned about rather than watched.
 
 ---
 
@@ -124,12 +128,60 @@ not change it.
 **That tree is produced by `pnpm deploy`, and this is not a detail.** A pnpm workspace's
 `node_modules` is a tree of symlinks into a virtual store, and this repository sets no `node-linker`
 override, so archiving `node_modules` as it sits on disk yields **broken links rather than a
-package**. `pnpm deploy --filter @friday/cli --prod` is what resolves the workspace into a real,
-self-contained directory. The decision recorded here is that packaging **must produce a genuine
-directory tree rather than copy the development one**; `pnpm deploy` is the mechanism that exists
-today and `--node-linker=hoisted` is the fallback if it disappoints. Naming it matters because the
-failure looks like the one ADR-0033 warned about — everything works in the workspace, and the
-artifact is empty in a way nobody sees until it is on a machine.
+package**. The decision recorded here is that packaging **must produce a genuine directory tree
+rather than copy the development one**. Naming it matters because the failure looks like the one
+ADR-0033 warned about — everything works in the workspace, and the artifact is empty in a way nobody
+sees until it is on a machine.
+
+**The mechanism, verified against this repository rather than assumed:**
+
+```
+pnpm --config.inject-workspace-packages=true deploy --filter @friday/cli --prod <dir>
+```
+
+The plain `pnpm deploy --filter @friday/cli --prod` named in this ADR's first draft **does not
+work here**. On pnpm 11.20.0 it refuses outright with `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`:
+since pnpm v10, deploying is only supported from workspaces that inject their workspace packages.
+
+**The injection flag is deliberately deploy-scoped, and that scoping is part of the decision.** It
+is passed on the command line, for the duration of one command. It is **not** added to
+`pnpm-workspace.yaml`, because setting `inject-workspace-packages` repository-wide changes how every
+workspace dependency is linked during ordinary development — the day-to-day edit-and-rerun loop
+would be paying, permanently, for a property only the release script needs. If a future requirement
+genuinely needs it repo-wide, that is a change to this ADR and not a convenience.
+
+**`--legacy` is not an acceptable production packaging mechanism, and it is the trap.** pnpm offers
+it as the other way past the refusal, and it *appears* to succeed — exit 0, a populated-looking
+directory. What it actually emits is a bundle whose workspace packages are **symlinks that escape
+into the source checkout**:
+
+| | `--legacy` | injected |
+|---|---|---|
+| Tree size | 340 KB | 58 MB |
+| `@friday/*` | symlinks to `/Users/…/Projects/friday/packages/*` | real directories |
+| `better-sqlite3` | **absent** | present |
+| `guardian/policies/*.json` | **absent** | all present |
+
+The `--legacy` bundle runs correctly on the machine that built it, because the symlinks resolve to
+the live checkout — and it is inert anywhere else. That is precisely the failure ADR-0033 exists to
+prevent, dressed as a success, so it is prohibited here by name rather than left to be rediscovered.
+
+**Evidence the injected bundle is genuinely self-contained.** Produced, archived with `tar`,
+extracted at a different path, and executed from the extraction:
+
+- no symlink escapes the bundle root, and none dangles after extraction
+- `guardian/policies/*.json` ship inside the bundle, and `friday init` **resolved them through the
+  `exports` subpath from the extracted copy** — the mechanism §1 depends on, exercised where it
+  actually matters
+- `better-sqlite3@13.0.3` is carried as a **prebuild** (`darwin-arm64.node`); no compiler runs at
+  install time, and the architecture-specificity ADR-0018 predicts is a property of which prebuild
+  is present
+- `friday init` provisioned into a Keychain, and `friday events emit` opened SQLite and appended —
+  from the extracted tarball, not from the workspace
+- 15 MB compressed
+
+This is the "genuine directory tree" requirement above, discharged with an artifact rather than with
+an argument.
 
 **Node is not bundled.** The installer checks for Node 24 and refuses with a nameable message if it
 is absent. See [Alternative D](#d-bundle-the-node-runtime-into-a-single-executable) for the cost.
@@ -181,9 +233,14 @@ reasons:
    the key was lost, and creating a new one there destroys every encrypted field permanently. That
    refusal needs to be read by a person, in a terminal, with the reasoning attached. Inside an
    installer it becomes a failed step.
-3. **There is no evidence yet.** Nobody has run `friday init` on a machine that was not a checkout.
-   Deciding that an installer should absorb it, before observing it work once, is deciding without
-   the thing this ADR criticises ADR-0033 and ADR-0035 for not having.
+3. **The evidence now exists, and it does not argue for subsumption.** This reason read "nobody has
+   run `friday init` on a machine that was not a checkout" when this ADR was drafted. That has since
+   been done — including from an extracted bundle — so the argument from ignorance is spent and is
+   not being quietly re-asserted. What the run showed is that init's most important behaviour is a
+   **refusal**: with a database present and the field key absent, it declined to mint a replacement
+   and explained why. Watching that refusal print in a terminal is what reasons 1 and 2 are about,
+   and it is the thing an installer step would have swallowed. The observation strengthens the
+   deferral rather than weakening it.
 
 Recorded as a review trigger below, not as a closed question.
 
@@ -448,6 +505,12 @@ exist.
   reopening — which is allowed, with an ADR.
 - **The installer needs root, the network, or a write outside `~/.local/friday`.** Any one of these
   contradicts §5 and §8.
+- **`inject-workspace-packages` is wanted repository-wide**, rather than for the duration of the
+  deploy command. §1 scopes it deliberately; moving it into `pnpm-workspace.yaml` changes every
+  developer's linking behaviour and is a change to this decision, not a tidy-up.
+- **pnpm changes its deploy contract again.** The mechanism in §1 is pinned to observed behaviour on
+  pnpm 11.20.0, and this is the second contract in two major versions. The packaging test is what
+  should catch it; if it is caught by a broken release instead, the test was in the wrong place.
 - **A second person or a second machine.** The "you built it, so you trust it" model ends.
 - **Chapter 33's Homebrew note is acted on.** A formula wrapping this tarball is compatible; a
   formula that builds independently is a second packaging path and a new decision.
@@ -492,7 +555,28 @@ conclude §2 of this ADR is wrong.
    already lives — would be more native. I kept code and data apart deliberately; someone could
    reasonably weigh that the other way.
 
-**What would have made this ADR better:** having watched `friday init` succeed once on a machine
-that was not a checkout. Every claim here about what the owner experiences on first run is reasoned
-rather than observed, and ADR-0035's own review found that the reasoned parts of its first draft
-were where the errors were.
+**What would have made this ADR better** was having watched `friday init` succeed once on a machine
+that was not a checkout — every claim about first-run experience was reasoned rather than observed,
+and ADR-0035's own review found that the reasoned parts of its first draft were where the errors
+were. **That gap was closed before acceptance rather than after**, and it found an error, exactly as
+that pattern predicted.
+
+**Amended before acceptance, after empirical validation.** This document was validated against the
+repository before any packaging code was written, and the validation changed it materially. Recorded
+here because the findings are more useful than the fact of the validation:
+
+- **§1's packaging mechanism was wrong.** `pnpm deploy --filter @friday/cli --prod`, stated as the
+  thing that "resolves the workspace into a real, self-contained directory", **fails outright** on
+  this repository. The corrected, verified invocation and the deploy-scoped reasoning replaced it.
+- **`--legacy` was found and prohibited.** It was not considered in the first draft. It is the
+  option a reader hitting the error would most naturally reach for, it exits 0, and it produces the
+  precise failure ADR-0033 exists to prevent — a bundle that works only on the machine that built
+  it. A mechanism decision that did not name it would have been actively unsafe.
+- **The `better-sqlite3` question resolved more cheaply than expected.** It ships prebuilds, so
+  nothing compiles at install time. The first draft reasoned about native rebuilds it does not need.
+- **Two claims of ignorance expired.** "Nobody has run `friday init` on a machine that was not a
+  checkout" was true when written and is not now; §4 and the context section were corrected rather
+  than left to imply an evidence gap that has since been filled.
+
+The first draft would have passed review by anyone reading it for internal consistency. It was
+internally consistent and named a build command that does not work.
