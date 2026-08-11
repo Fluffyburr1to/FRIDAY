@@ -31,8 +31,26 @@ export { fatalProblem, runStartupSelfCheck } from './self-check.js'
 export type { RunningServer } from './server.js'
 export { startServer } from './server.js'
 
-/** Process exit codes. `2` is a stated problem, matching the CLI's convention. */
-const EXIT_PROBLEM = 2
+/**
+ * The exit code for a stated problem, matching the CLI's convention.
+ *
+ * ★ The CLI reserves `1` for *a problem it found* and `2` for *being invoked
+ * wrongly* ([`apps/cli/src/output.ts`](../../cli/src/output.ts)). This constant
+ * said `2` while claiming to match that, so every fatal startup fault reported
+ * itself with the code meaning "you typed the command wrong" — a claim core
+ * cannot make, since it takes no arguments to get wrong.
+ *
+ * It matters now because launchd is the first thing that reads it. `KeepAlive`
+ * is unconditional (Chapter 33), so restarts do not turn on the code, but
+ * `launchctl list` reports the last exit status and that is what the owner and
+ * the diagnostics will be reading when FRIDAY will not start. A fault that
+ * reports itself as a usage error sends whoever is looking at it to the wrong
+ * question.
+ *
+ * There is no `usage` counterpart here deliberately: core has no arguments, so
+ * the state that code names cannot arise.
+ */
+const EXIT_PROBLEM = 1
 
 /**
  * Starts friday-core.
