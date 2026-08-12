@@ -62,8 +62,13 @@ Decisions taken since, as implementation met the design:
 | [0033](0033-authorization-rules-are-loaded-from-a-configured-directory.md) | Authorization rules are loaded from a configured directory | accepted | low | [17](../01-bible/17-authentication-authorization.md) |
 | [0034](0034-guardian-counter-writes-happen-outside-the-append-transaction.md) | Guardian counter writes happen outside the append transaction | accepted | n/a | [17](../01-bible/17-authentication-authorization.md) |
 | [0035](0035-first-run-provisioning-is-creation-only.md) | First-run provisioning is creation-only | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
-| [0036](0036-packaging-delivers-friday-init-provisions.md) | Packaging delivers; `friday init` provisions | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
-| [0037](0037-the-bundle-is-a-package-that-names-what-ships.md) | The bundle is a package that names what ships | **proposed** | low | [33](../01-bible/33-deployment-strategy.md) |
+| [0036](0036-packaging-delivers-friday-init-provisions.md) | Packaging delivers; `friday init` provisions | accepted † | low | [33](../01-bible/33-deployment-strategy.md) |
+| [0037](0037-the-bundle-is-a-package-that-names-what-ships.md) | The bundle is a package that names what ships | accepted | low | [03](../01-bible/03-repository-structure.md) |
+
+† **0036 is amended in part, not superseded.** ADR-0037 replaces its §1 deploy target and nothing
+else. The body of 0036 is left exactly as accepted, per the immutability rule above — the amendment
+lives in 0037's §7, which is the same pattern ADR-0035 used when it amended ADR-0033's manifest
+claim. Only 0036's `Status` line is annotated, so a reader meets the qualification before §1.
 
 \* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY

@@ -1,0 +1,12 @@
+{
+  "name": "@friday/bundle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The installable artifact — names what ships, and contains no source of its own.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@friday/cli": "workspace:*",
+    "@friday/core": "workspace:*"
+  }
+}

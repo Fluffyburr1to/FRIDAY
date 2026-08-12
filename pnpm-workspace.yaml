@@ -4,6 +4,7 @@ packages:
   - 'departments/*'
   - 'connectors/*'
   - 'tools/*'
+  - 'packaging/*'
 
 # ── Catalog: one version of each shared dependency, declared once ────────────
 #
