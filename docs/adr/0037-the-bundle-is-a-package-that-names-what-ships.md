@@ -1,6 +1,6 @@
 # ADR-0037 — The bundle is a package that names what ships
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-08-11
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none

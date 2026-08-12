@@ -107,6 +107,9 @@ friday/
 │   ├── scripts/                 Setup, migration, release, maintenance scripts
 │   └── evals/                   ★ Agent evaluation harness — how we test non-deterministic AI
 │
+├── packaging/                   ── WHAT SHIPS ──
+│   └── bundle/                  One manifest naming the artifact's contents. No source.
+│
 ├── tests/                       ── CROSS-CUTTING TESTS ──
 │   ├── constitutional/          ★ The founding guarantees. Protected; FRIDAY may never touch.
 │   ├── architecture/            That the boundary rules below can actually fire
@@ -285,6 +288,33 @@ roughly eight — the same mechanical move anticipated for `packages/` past thir
 
 Full reasoning, including the alternatives: [ADR-0017](../adr/0017-shared-tool-configuration-packages.md).
 
+### Why `packaging/` is a top-level folder and not an entry in `tools/`
+
+**It holds the description of the installable artifact — one manifest, no code.** `@friday/bundle`
+declares that what ships is the CLI and the core, and nothing else. It is not built, not tested, and
+not imported.
+
+It is not in `tools/` because that folder's charter opens with *"None of this ships"*, and this is
+the one thing in the repository whose entire purpose is to ship. It is not in `packages/` because a
+package may never import from `apps/` and this manifest names two of them; not in `apps/` because
+every app has an entry point, a lifecycle, and a process, and this has none of the three. Each of
+those rules would still have been *technically* satisfiable — a manifest with no source imports
+nothing, so no boundary check fires either way — and that is the problem. **A charter a reader is
+asked to disregard stops being a charter.**
+
+The unusual property is worth stating plainly, because nothing else here has it: **this package
+contributes no edges to the dependency graph at all.** It has no source for `dependency-cruiser` to
+cruise. That is what lets it name two applications without inverting the direction the rest of this
+chapter depends on — and it is why the moment it gains a `bin`, a script, or a single source file, it
+has stopped being a manifest and become a component whose placement is a new question.
+
+**Expected to stay one folder.** Unlike `tools/`, this is not a pattern. There is one artifact, so
+there is one entry; growth here is a signal that the decision to commit a manifest rather than
+generate one has expired.
+
+Full reasoning, including the alternatives:
+[ADR-0037](../adr/0037-the-bundle-is-a-package-that-names-what-ships.md).
+
 ### Why `_template/` folders exist
 
 `departments/_template/` and `connectors/_template/` are complete, documented, working skeletons.
@@ -462,3 +492,4 @@ somewhere convenient.
 | 1.0 | 2026-08-06 | Initial ratification |
 | 1.1 | 2026-08-07 | `tools/vitest-config/` added to the tree; `tools/<tool>-config` stated as a pattern rather than a closed list ([ADR-0017](../adr/0017-shared-tool-configuration-packages.md), closing [RFC 0001](../rfc/0001-shared-test-configuration.md)) |
 | 1.2 | 2026-08-07 | `tests/constitutional/` added to the tree — it was already required by Chapters 27 and 28 and missing here. `tests/architecture/` added, with the rule that a boundary rule must be accompanied by a test proving it can fire, after Rules 4 and 5 were found inert since Milestone 0 |
+| 1.3 | 2026-08-12 | `packaging/` added to the tree as a new top level, holding the manifest that names what the installable artifact contains ([ADR-0037](../adr/0037-the-bundle-is-a-package-that-names-what-ships.md)). Recorded with the reasoning for why it is neither a package, an app, nor development machinery — and with the property that makes it possible: a manifest with no source contributes no edges to the boundary graph |

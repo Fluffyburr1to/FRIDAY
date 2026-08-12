@@ -1,6 +1,7 @@
 # ADR-0036 — Packaging delivers; `friday init` provisions
 
-- **Status:** accepted
+- **Status:** accepted — **§1's deploy target is amended by [ADR-0037](0037-the-bundle-is-a-package-that-names-what-ships.md)**;
+  everything else stands
 - **Date:** 2026-08-10
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none
