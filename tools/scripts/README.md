@@ -43,3 +43,21 @@ mode.
    must never be able to email your actual contacts.
 3. **Release signing is never scripted.** The signing key is the most dangerous key in the system
    ([Chapter 18](../../docs/01-bible/18-security-model.md)).
+
+## release.ts — building the installable artifact
+
+`node tools/scripts/release.ts`
+
+Runs **build → deploy → audit → extract → run**, and refuses to hand over an artifact that would
+only work on the machine that made it.
+
+It never runs pnpm in this checkout. `pnpm deploy --prod` leaves the workspace it ran in marked
+production-only, and the next ordinary `pnpm` command there offers to delete every development
+dependency — which has already happened once. The script clones to a fixed staging directory and
+works only there.
+
+`release-audit.ts` holds the gate: no build-machine path anywhere in the tree, no symlink that
+dangles or escapes, and the four things that have gone missing before — the CLI, the core, the
+shipped rules, and the macOS driver prebuild. Its logic is tested in
+[`tests/architecture/release-audit.test.ts`](../../tests/architecture/release-audit.test.ts) against
+planted fixtures, which run on any platform.
