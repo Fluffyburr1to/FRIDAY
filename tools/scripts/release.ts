@@ -301,6 +301,31 @@ function findBinDirectories(root: string): string[] {
 }
 
 /**
+ * Copies the LaunchAgent template into the artifact.
+ *
+ * `share/com.friday.core.plist.tmpl` is part of the bundle layout ADR-0036 §1
+ * describes, and `friday service install` renders it at install time with the
+ * absolute paths of wherever the artifact ended up. It has to travel: a plist
+ * copied from the build machine carries that machine's paths, which is the
+ * failure the whole generate-never-copy rule exists to prevent.
+ *
+ * It lives outside `node_modules` deliberately. It is not a package, nothing
+ * imports it, and putting it in the bundle root keeps it findable by someone
+ * looking at an installed FRIDAY and wondering what starts her.
+ */
+function carryServiceTemplate(source: string, artifact: string): void {
+  const name = 'com.friday.core.plist.tmpl'
+  const from = join(source, 'infra/launchd', name)
+
+  if (!existsSync(from)) {
+    throw new Error(`The LaunchAgent template is missing from the source tree: ${from}`)
+  }
+
+  mkdirSync(join(artifact, 'share'), { recursive: true })
+  cpSync(from, join(artifact, 'share', name))
+}
+
+/**
  * Fails the release unless the artifact is genuinely self-contained.
  *
  * The forbidden set is the staging path and the builder's home. Both are
@@ -473,6 +498,7 @@ function main(): void {
 
   const artifact = deploy(source)
   stripBuildMetadata(artifact)
+  carryServiceTemplate(source, artifact)
   say('  deployed @friday/bundle')
 
   audit(artifact, 'as deployed')

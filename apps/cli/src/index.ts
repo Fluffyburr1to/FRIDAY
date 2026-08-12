@@ -5,6 +5,13 @@ export { numberFlag, parseArgs, stringFlag } from './args.js'
 // the Keychain-backed one, and a test suite that writes real key material to
 // the developer's login Keychain is not a thing that may exist.
 export { runInit } from './commands/init.js'
+export {
+  isOurs,
+  renderPlist,
+  resolveServicePaths,
+  SERVICE_LABEL,
+  type ServicePaths,
+} from './commands/service.js'
 export { type CommandContext, createContext } from './context.js'
 export { createOutput, EXIT, formatBytes, formatTime } from './output.js'
 
@@ -12,6 +19,7 @@ import { createKeychainKeyProvisioner } from '@friday/storage'
 import { numberFlag, type ParsedArgs, parseArgs, stringFlag } from './args.js'
 import { runEmit, runTail } from './commands/events.js'
 import { runInit } from './commands/init.js'
+import { runServiceInstall, runServiceUninstall } from './commands/service.js'
 import { runStatus } from './commands/status.js'
 import { runVerify } from './commands/verify.js'
 import { type CommandContext, createContext } from './context.js'
@@ -40,6 +48,8 @@ const USAGE = `friday — FRIDAY's command line
   friday events tail               watch the event log live
   friday events emit [--note "…"]  record a test event
   friday verify [--from <seq>]     check the audit hash chain
+  friday service install           start her when you log in
+  friday service uninstall         stop her starting when you log in
 
 Options
   --json                           machine-readable output
@@ -115,8 +125,18 @@ function dispatch(input: Dispatch): Promise<ExitCode> {
   if (command === 'status') return Promise.resolve(runStatus(context))
   if (command === 'verify') return Promise.resolve(dispatchVerify(input))
   if (command === 'events') return dispatchEvents(input)
+  if (command === 'service') return Promise.resolve(dispatchService(input))
 
   return Promise.resolve(unknown(out, `friday ${command ?? ''}`))
+}
+
+function dispatchService({ args, context, out }: Dispatch): ExitCode {
+  const subcommand = args.command[1]
+
+  if (subcommand === 'install') return runServiceInstall({ context })
+  if (subcommand === 'uninstall') return runServiceUninstall({ context })
+
+  return unknown(out, `friday service ${subcommand ?? ''}`)
 }
 
 function dispatchVerify({ args, context, out }: Dispatch): ExitCode {
