@@ -63,6 +63,7 @@ Decisions taken since, as implementation met the design:
 | [0034](0034-guardian-counter-writes-happen-outside-the-append-transaction.md) | Guardian counter writes happen outside the append transaction | accepted | n/a | [17](../01-bible/17-authentication-authorization.md) |
 | [0035](0035-first-run-provisioning-is-creation-only.md) | First-run provisioning is creation-only | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0036](0036-packaging-delivers-friday-init-provisions.md) | Packaging delivers; `friday init` provisions | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
+| [0037](0037-the-bundle-is-a-package-that-names-what-ships.md) | The bundle is a package that names what ships | **proposed** | low | [33](../01-bible/33-deployment-strategy.md) |
 
 \* **Low cost to reverse technically, but constitutional in effect.** These encode founding
 guarantees rather than engineering convenience. Changing any of them is a change to what FRIDAY
