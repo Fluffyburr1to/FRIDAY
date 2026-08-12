@@ -21,6 +21,12 @@
     "incremental": false,
     "types": ["node"],
 
+    // `tools/scripts/release.ts` is run directly by Node 24's type stripping,
+    // which requires the real `.ts` specifier on its imports. Safe here because
+    // this project only typechecks — `noEmit` above — so nothing is ever built
+    // from these paths.
+    "allowImportingTsExtensions": true,
+
     // Vitest resolves `@friday/*` through the workspace's node_modules links,
     // which point at each package's built `dist/`. `tsc --build` runs first,
     // so those declarations exist by the time this pass reads them.
@@ -36,6 +42,12 @@
     "connectors/*/test/**/*.ts",
     "tools/*/test/**/*.ts",
     "tools/*/vitest.config.ts",
+
+    // The release machinery. TypeScript run directly by Node rather than built,
+    // so this pass is the only thing that typechecks it — and an untypechecked
+    // release script is exactly the kind of code that fails on the day it runs.
+    "tools/scripts/*.ts",
+
     "tests/**/*.ts"
   ],
 

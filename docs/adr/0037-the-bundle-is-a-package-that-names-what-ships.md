@@ -1,6 +1,9 @@
 # ADR-0037 — The bundle is a package that names what ships
 
-- **Status:** accepted
+- **Status:** accepted — **§6a is answered by
+  [ADR-0038](0038-the-artifact-is-deployed-flat-and-carries-nothing-of-its-builder.md)**, which found
+  the build-machine paths to be structural rather than strippable and changed the deploy mechanism
+  instead. §1–§5 and §6b stand
 - **Date:** 2026-08-11
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none

@@ -1,7 +1,10 @@
 # ADR-0036 — Packaging delivers; `friday init` provisions
 
-- **Status:** accepted — **§1's deploy target is amended by [ADR-0037](0037-the-bundle-is-a-package-that-names-what-ships.md)**;
-  everything else stands
+- **Status:** accepted — **§1's deploy command is amended twice: its target by
+  [ADR-0037](0037-the-bundle-is-a-package-that-names-what-ships.md), and its linker by
+  [ADR-0038](0038-the-artifact-is-deployed-flat-and-carries-nothing-of-its-builder.md)**.
+  §1's *"preserved rather than flattened"* rule is reaffirmed by ADR-0038 §3, not relaxed.
+  Everything else stands
 - **Date:** 2026-08-10
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none

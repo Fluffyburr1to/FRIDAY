@@ -82,3 +82,7 @@ temp/
 # ─── Local overrides ─────────────────────────────────────────────────────────
 config.local.toml
 *.local.json
+
+# The release artifact. Built by tools/scripts/release.ts into the repository
+# root for convenience; it is 20 MB and is never committed.
+friday.tgz

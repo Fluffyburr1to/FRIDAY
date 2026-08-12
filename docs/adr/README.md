@@ -64,6 +64,7 @@ Decisions taken since, as implementation met the design:
 | [0035](0035-first-run-provisioning-is-creation-only.md) | First-run provisioning is creation-only | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0036](0036-packaging-delivers-friday-init-provisions.md) | Packaging delivers; `friday init` provisions | accepted † | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0037](0037-the-bundle-is-a-package-that-names-what-ships.md) | The bundle is a package that names what ships | accepted | low | [03](../01-bible/03-repository-structure.md) |
+| [0038](0038-the-artifact-is-deployed-flat-and-carries-nothing-of-its-builder.md) | The artifact is deployed flat, and carries nothing of its builder | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 
 † **0036 is amended in part, not superseded.** ADR-0037 replaces its §1 deploy target and nothing
 else. The body of 0036 is left exactly as accepted, per the immutability rule above — the amendment
