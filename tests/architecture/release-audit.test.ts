@@ -28,18 +28,32 @@ import { auditArtifact } from '../../tools/scripts/release-audit.ts'
  * Reference: docs/adr/0037-the-bundle-is-a-package-that-names-what-ships.md §6
  */
 
-/** A minimal tree that passes, so each test can break exactly one thing. */
-function buildValidArtifact(root: string): void {
+/**
+ * A minimal tree that passes, so each test can break exactly one thing.
+ *
+ * Shaped like the **hoisted** layout ADR-0038 chose: real directories directly
+ * under `node_modules`, no virtual store. The `layout` parameter exists so the
+ * suite can also assert the audit is not anchored to that shape — the previous
+ * version of this fixture used the virtual store, and an audit written against
+ * either one alone reports the payloads missing after a layout change that did
+ * not remove them.
+ */
+function buildValidArtifact(root: string, layout: 'hoisted' | 'virtual-store' = 'hoisted'): void {
   mkdirSync(join(root, 'node_modules/@friday/cli'), { recursive: true })
   mkdirSync(join(root, 'node_modules/@friday/core'), { recursive: true })
   mkdirSync(join(root, 'node_modules/.bin'), { recursive: true })
   writeFileSync(join(root, 'node_modules/.bin/friday'), '#!/usr/bin/env node\n')
 
-  const guardian = join(root, 'node_modules/.pnpm/g/node_modules/@friday/guardian/policies')
+  const base =
+    layout === 'hoisted'
+      ? join(root, 'node_modules')
+      : join(root, 'node_modules/.pnpm/x/node_modules')
+
+  const guardian = join(base, '@friday/guardian/policies')
   mkdirSync(guardian, { recursive: true })
   writeFileSync(join(guardian, '00-defaults.json'), '[]\n')
 
-  const prebuilds = join(root, 'node_modules/.pnpm/better-sqlite3@13.0.3/prebuilds')
+  const prebuilds = join(base, 'better-sqlite3/prebuilds')
   mkdirSync(prebuilds, { recursive: true })
   writeFileSync(join(prebuilds, 'darwin-arm64.node'), 'binary')
 }
@@ -65,7 +79,7 @@ describe('the release relocation gate', () => {
     // The defect this gate exists for. ADR-0037 predicted the leak would be in
     // the root manifest; measuring a real artifact found it in four other
     // places, including node-gyp leftovers nobody would think to open.
-    const buried = join(root, 'node_modules/.pnpm/better-sqlite3@13.0.3/build')
+    const buried = join(root, 'node_modules/better-sqlite3/build')
     mkdirSync(buried, { recursive: true })
     writeFileSync(join(buried, 'Makefile'), 'INC=/Users/somebody/Library/node-gyp\n')
 
@@ -80,7 +94,7 @@ describe('the release relocation gate', () => {
     // Read as bytes on purpose: a path compiled into a native addon is a leak,
     // and a gate that only parsed JSON would ship it.
     writeFileSync(
-      join(root, 'node_modules/.pnpm/better-sqlite3@13.0.3/prebuilds/darwin-arm64.node'),
+      join(root, 'node_modules/better-sqlite3/prebuilds/darwin-arm64.node'),
       Buffer.concat([Buffer.from([0x00, 0x01, 0xff]), Buffer.from('/Users/somebody/build')]),
     )
 
@@ -94,6 +108,7 @@ describe('the release relocation gate', () => {
     // points at the build machine through them, but they carry it.
     mkdirSync(
       join(root, 'node_modules/.pnpm/@friday+cli@file++++tmp+friday-release-build+apps+cli'),
+      { recursive: true },
     )
 
     expect(auditArtifact({ root, forbidden: FORBIDDEN })).toContainEqual(
@@ -131,7 +146,7 @@ describe('the release relocation gate', () => {
   })
 
   it('fails an artifact missing the shipped authorization rules', () => {
-    rmSync(join(root, 'node_modules/.pnpm/g'), { recursive: true })
+    rmSync(join(root, 'node_modules/@friday/guardian'), { recursive: true })
 
     expect(auditArtifact({ root, forbidden: FORBIDDEN })).toContainEqual(
       expect.objectContaining({ kind: 'missing' }),
@@ -139,11 +154,30 @@ describe('the release relocation gate', () => {
   })
 
   it('fails an artifact with no macOS prebuild for the SQLite driver', () => {
-    rmSync(join(root, 'node_modules/.pnpm/better-sqlite3@13.0.3'), { recursive: true })
+    rmSync(join(root, 'node_modules/better-sqlite3'), { recursive: true })
 
     expect(auditArtifact({ root, forbidden: FORBIDDEN })).toContainEqual(
       expect.objectContaining({ kind: 'missing' }),
     )
+  })
+
+  it('finds the shipped rules and the driver wherever the layout puts them', () => {
+    // ★ A regression guard for a defect this suite caused. The audit located
+    // both payloads by searching `node_modules/.pnpm`, which was correct while
+    // the artifact carried a virtual store and reported both *missing* the
+    // moment ADR-0038 hoisted them — a passing release turning into a failing
+    // one because of where files sit rather than whether they are there.
+    const other = mkdtempSync(join(tmpdir(), 'friday-audit-store-'))
+
+    try {
+      rmSync(other, { recursive: true, force: true })
+      mkdirSync(other, { recursive: true })
+      buildValidArtifact(other, 'virtual-store')
+
+      expect(auditArtifact({ root: other, forbidden: FORBIDDEN })).toEqual([])
+    } finally {
+      rmSync(other, { recursive: true, force: true })
+    }
   })
 
   it('does not fail on an upstream document string that merely looks like a path', () => {
@@ -151,7 +185,7 @@ describe('the release relocation gate', () => {
     // and `/Users/maciej` in comments. A gate that flagged those could never be
     // satisfied, and an unsatisfiable gate gets switched off.
     writeFileSync(
-      join(root, 'node_modules/.pnpm/g/node_modules/@friday/guardian/policies/00-defaults.json'),
+      join(root, 'node_modules/@friday/guardian/policies/00-defaults.json'),
       '["see /Users/me/example and /Users/maciej/notes"]\n',
     )
 

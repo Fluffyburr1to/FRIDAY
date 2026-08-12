@@ -53,7 +53,7 @@
  *            docs/adr/0037-the-bundle-is-a-package-that-names-what-ships.md §5, §6
  */
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import {
   cpSync,
   existsSync,
@@ -128,11 +128,30 @@ function build(source: string): void {
 /**
  * Deploys the bundle root — never `@friday/cli`.
  *
- * The injection flag is passed here and only here. Written into
- * `pnpm-workspace.yaml` it would change how every developer's build links its
- * packages, permanently, for a property only this script needs (ADR-0036 §1).
- * `--legacy` is prohibited: it exits 0 and produces a bundle whose FRIDAY
- * packages are symlinks escaping into the source checkout.
+ * ── The two flags, and why both are scoped to this command ──────────────────
+ *
+ * **`inject-workspace-packages`** makes the deploy resolve FRIDAY's own
+ * packages into real content rather than links into the source checkout
+ * (ADR-0036 §1).
+ *
+ * **`node-linker=hoisted`** lays the result out flat, and it is here for a
+ * specific reason rather than a preference. pnpm identifies an injected
+ * workspace package by the `file://` URL of the directory it came from, and
+ * that identifier is what names the virtual store's directories, what
+ * `.package-map.json` records, and what `.bin/friday` bakes into `NODE_PATH`.
+ * The build path is therefore the package's *name*, not a stray note about it,
+ * and no amount of deleting files reaches it — measured, eleven findings
+ * survived a full strip. Hoisting removes the concept those names belong to:
+ * real directories, no virtual store, nothing to name after a source path.
+ * ADR-0038.
+ *
+ * Neither flag is written into `pnpm-workspace.yaml`. Both change how packages
+ * link, and a developer's workspace must not inherit either for a property only
+ * this script needs.
+ *
+ * **`--legacy` is prohibited** (ADR-0036 §1) and is unaffected by any of this:
+ * it produces symlinks that escape into the source checkout, which the audit
+ * fails on a different rule and which no linker setting makes acceptable.
  */
 function deploy(source: string): string {
   const out = join(STAGING, 'out')
@@ -141,6 +160,7 @@ function deploy(source: string): string {
     'pnpm',
     [
       '--config.inject-workspace-packages=true',
+      '--config.node-linker=hoisted',
       'deploy',
       '--filter',
       '@friday/bundle',
@@ -184,12 +204,13 @@ function stripBuildMetadata(artifact: string): void {
 
   removeUnrunnableShims(artifact)
 
-  const driverBuild = join(
-    artifact,
-    'node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/build',
-  )
+  // Located by search, not by a fixed path: the driver sits at
+  // `node_modules/better-sqlite3` under the hoisted layout and sat inside the
+  // virtual store before it, and a hard-coded path would silently stop removing
+  // anything the day the layout moved — leaving the leak it exists to remove.
+  const driverBuild = findDriverBuild(join(artifact, 'node_modules'))
 
-  rmSync(driverBuild, { recursive: true, force: true })
+  if (driverBuild !== undefined) rmSync(driverBuild, { recursive: true, force: true })
 
   // The deployed manifest names its workspace dependencies by absolute
   // `file://` URL into the staging tree. Nothing resolves through it — the
@@ -234,6 +255,28 @@ function removeUnrunnableShims(artifact: string): void {
       if (unused.has(name)) rmSync(join(binDirectory, name), { force: true })
     }
   }
+}
+
+/** The SQLite driver's leftover node-gyp directory, wherever the layout put it. */
+function findDriverBuild(modules: string): string | undefined {
+  const visit = (directory: string): string | undefined => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue
+
+      const path = join(directory, entry.name)
+
+      if (entry.name === 'better-sqlite3' && existsSync(join(path, 'build'))) {
+        return join(path, 'build')
+      }
+
+      const found = visit(path)
+      if (found !== undefined) return found
+    }
+
+    return undefined
+  }
+
+  return visit(modules)
 }
 
 /** Every `.bin` directory beneath a root, without following symlinks. */
@@ -299,13 +342,25 @@ function proveRelocation(archive: string): void {
   run('tar', ['-xzf', archive, '-C', elsewhere], elsewhere)
   audit(elsewhere, 'after extraction')
 
-  const cli = execFileSync(join(elsewhere, 'node_modules/.bin/friday'), ['status', '--help'], {
+  // ★ `spawnSync` rather than `execFileSync`, and stderr rather than stdout.
+  // `createOutput().problem()` writes to stderr in both modes deliberately, so
+  // that `friday verify --json | jq` still shows the reason when it fails —
+  // which means the usage text this asserts on never appears on stdout. Reading
+  // the wrong stream made a working artifact look broken.
+  const cli = spawnSync(join(elsewhere, 'node_modules/.bin/friday'), ['status', '--help'], {
     encoding: 'utf8',
     timeout: 60_000,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  if (!cli.includes('friday')) throw new Error('The relocated CLI printed nothing recognisable.')
+  if (cli.status !== 0) {
+    throw new Error(`The relocated CLI exited ${cli.status}:\n${cli.stderr}`)
+  }
+
+  if (!`${cli.stdout}${cli.stderr}`.includes('friday')) {
+    throw new Error('The relocated CLI printed nothing recognisable.')
+  }
+
   say('  relocated CLI ran')
 
   const data = mkdtempSync(join(tmpdir(), 'friday-relocated-data-'))

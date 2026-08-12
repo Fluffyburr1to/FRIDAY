@@ -240,31 +240,37 @@ function readlinkSafe(path: string): string | undefined {
  */
 function auditRequiredPayload(root: string): Finding[] {
   const findings: Finding[] = []
-  const store = join(root, 'node_modules/.pnpm')
+
+  // ★ Searched from `node_modules` rather than from a fixed subdirectory,
+  // because the layout is not this audit's to know. It was `node_modules/.pnpm`
+  // when the artifact carried a virtual store, and hoisting (ADR-0038) put both
+  // payloads somewhere else — a check anchored to either shape would have
+  // reported them missing after a change that did not remove them.
+  const modules = join(root, 'node_modules')
 
   const policies = findFirst(
-    store,
-    (path, entry) => entry.endsWith('.json') && path.includes(`${'guardian'}/policies/`),
+    modules,
+    (path, entry) => entry.endsWith('.json') && path.includes('guardian/policies/'),
   )
 
   if (policies === undefined) {
     findings.push({
       kind: 'missing',
-      path: 'node_modules/.pnpm/**/guardian/policies/*.json',
+      path: 'node_modules/**/guardian/policies/*.json',
       detail:
         'the shipped authorization rules are not in the artifact; `friday init` seeds from them',
     })
   }
 
   const prebuild = findFirst(
-    store,
+    modules,
     (_path, entry) => entry === 'darwin-arm64.node' || entry === 'darwin-x64.node',
   )
 
   if (prebuild === undefined) {
     findings.push({
       kind: 'missing',
-      path: 'node_modules/.pnpm/better-sqlite3@*/**/prebuilds/darwin-*.node',
+      path: 'node_modules/**/better-sqlite3/prebuilds/darwin-*.node',
       detail: 'no macOS prebuild for the SQLite driver; the artifact would need a compiler',
     })
   }

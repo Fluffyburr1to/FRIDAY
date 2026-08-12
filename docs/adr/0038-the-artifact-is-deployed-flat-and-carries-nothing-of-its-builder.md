@@ -1,6 +1,6 @@
 # ADR-0038 — The artifact is deployed flat, and carries nothing of its builder
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-08-12
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none — **amends [ADR-0036](0036-packaging-delivers-friday-init-provisions.md) §1**
