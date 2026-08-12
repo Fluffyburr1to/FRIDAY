@@ -101,7 +101,7 @@ catalog:
   # Held at 5 because 6 requires Vite 8 as a peer and would drag it back in.
   # The 5.2 line spans Vite 4 through 8, so it does not have to move again
   # when Vite does.
-  '@vitejs/plugin-react': ^5.2.0
+  '@vitejs/plugin-react': ^6.0.5
 
   # apps/web tests ONLY. A component test asserting what the owner actually
   # sees needs a DOM to render into and a way to query it as a person would —
