@@ -20,23 +20,24 @@
  * artifact that has not been executed from a path it was not built at is an
  * artifact whose central claim is untested.
  *
- * ── Why the staging directory is fixed rather than random ───────────────────
+ * ── Why the artifact is deployed flat ───────────────────────────────────────
  *
- * `pnpm deploy` with injected workspace packages encodes the *source path* into
- * the names of the directories in the virtual store:
+ * pnpm identifies an injected workspace package by the `file://` URL of the
+ * directory it came from, and under the default linker that identifier becomes
+ * the *name* of a directory in the virtual store:
  *
  *   @friday+cli@file++++private+tmp+friday-release-build+src+apps+cli
  *
- * Those names are not references — nothing points at the build machine through
- * them, and the artifact relocates and runs — but they are derived from wherever
- * the build happened, so building in a home directory bakes that into every
- * release. Renaming them afterwards would mean rewriting pnpm's generated layout
- * and every symlink into it, which is exactly the kind of repair that works
- * until it silently does not.
+ * The build path is therefore what the package is called, not a note about it,
+ * so no amount of deleting files reaches it — measured, eleven findings survived
+ * a full strip, including the `NODE_PATH` inside `.bin/friday`. `node-linker=hoisted`
+ * removes the concept those names belong to: real directories, no store, nothing
+ * to name after a source path. Zero findings. ADR-0038.
  *
- * Staging at one fixed, generic path solves it at the source instead: the
- * encoded string becomes a **constant, identical on every machine**, disclosing
- * nothing about the person who ran the build.
+ * The staging directory is still fixed and generic rather than random. That is
+ * no longer load-bearing for the audit, but a release should not vary with where
+ * it happened to be built, and the two lockfiles and the node-gyp leftovers the
+ * strip removes below would otherwise carry whatever path was used.
  *
  * ── The safety property ─────────────────────────────────────────────────────
  *
