@@ -33,6 +33,39 @@ const SECURITY = '/usr/bin/security'
 /** `security` exits with this when an item exists and `-U` was not given. */
 const ITEM_ALREADY_EXISTS = 45
 
+/** `security` exits with this when there is no such item. */
+const ITEM_NOT_FOUND = 44
+
+/**
+ * `security` exits with this when it needed to ask the owner and could not.
+ *
+ * ★ This is what a **locked** keychain looks like to a non-interactive process,
+ * and it is the difference between "FRIDAY has not been set up" and "FRIDAY was
+ * started before you unlocked your Mac". Chapter 39 carries the second as an M4
+ * risk precisely because the two are indistinguishable unless something looks
+ * at this number.
+ */
+const INTERACTION_NOT_ALLOWED = 128
+
+/** What a failed read means, as far as the exit status can say. */
+export type KeychainReadProblem = 'locked' | 'absent' | 'unknown'
+
+/**
+ * Classifies a failed Keychain read.
+ *
+ * Exported because the message a caller should print differs completely between
+ * these, and because it is the one piece of this module testable without a Mac.
+ *
+ * @param failure - What the invocation reported.
+ * @returns Which of the three situations this is.
+ */
+export function classifyReadFailure(failure: KeychainFailure): KeychainReadProblem {
+  if (failure.status === INTERACTION_NOT_ALLOWED) return 'locked'
+  if (failure.status === ITEM_NOT_FOUND) return 'absent'
+
+  return 'unknown'
+}
+
 /** What a failed `security` invocation tells us, without its output. */
 export interface KeychainFailure {
   readonly status: number | null

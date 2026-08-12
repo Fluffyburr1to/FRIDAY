@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  FRIDAY's core, as a LaunchAgent.
+
+  ★ This file is a TEMPLATE. It is never installed as it stands: every
+  double-braced placeholder below is replaced by `friday service install`,
+  which knows the absolute paths of the copy it is running from. A plist copied
+  rather than generated carries whatever paths were true on the machine that
+  built it.
+
+  A LaunchAgent, never a LaunchDaemon: it runs as you, in your login session,
+  with access to your Keychain — which a root daemon would not have, while
+  holding privilege FRIDAY does not need. Article V.
+
+  ★ Nothing secret appears here, and nothing secret may be added. A plist is
+  world-readable and survives in backups. Key material reaches FRIDAY through
+  the Keychain and by no other route.
+
+  Reference: docs/01-bible/33-deployment-strategy.md
+             docs/adr/0036-packaging-delivers-friday-init-provisions.md §5
+             infra/launchd/README.md
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>{{LABEL}}</string>
+
+  <!-- Absolute, both of them. A LaunchAgent starts with a minimal environment
+       and no useful PATH, so nothing here may rely on one being found. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{NODE}}</string>
+    <string>{{CORE_ENTRY}}</string>
+  </array>
+
+  <!-- She should be there when you are. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Unconditional: restart whatever the exit status. Chapter 33. A policy
+       keyed on exit codes would make FRIDAY's own diagnosis of why she stopped
+       into a decision about whether to try again, and those are different
+       questions. -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- ★ The one setting that prevents the worst operational failure. Without
+       it, a crash at startup is an unbounded restart loop that consumes the
+       machine and fills the disk with logs. Ten seconds between attempts. -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <!-- Yields to your foreground work. An assistant that makes your Mac feel
+       slow has failed the Manifesto regardless of how well she works. -->
+  <key>Nice</key>
+  <integer>5</integer>
+
+  <!-- Where a failure to start is actually readable. `launchctl` reports only
+       the last exit status; the reason is whatever the process wrote before it
+       stopped, and without these two lines launchd discards it. -->
+  <key>StandardOutPath</key>
+  <string>{{STDOUT_LOG}}</string>
+  <key>StandardErrorPath</key>
+  <string>{{STDERR_LOG}}</string>
+
+  <key>WorkingDirectory</key>
+  <string>{{WORKING_DIRECTORY}}</string>
+</dict>
+</plist>

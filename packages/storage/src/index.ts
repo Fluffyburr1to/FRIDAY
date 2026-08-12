@@ -21,6 +21,7 @@
 export {
   createInMemoryKeyProvider,
   createKeychainKeyProvider,
+  describeReadFailure,
   KEY_LENGTH_BYTES,
   type KeyProvider,
 } from './crypto/key-provider.js'
@@ -30,6 +31,11 @@ export {
   type KeyProvisioner,
   type ProvisionOutcome,
 } from './crypto/key-provisioner.js'
+export {
+  classifyReadFailure,
+  type KeychainFailure,
+  type KeychainReadProblem,
+} from './crypto/keychain.js'
 export { openEventsReadOnly, openStorage, type Storage, type StorageOptions } from './database.js'
 export { GENESIS_HASH } from './event-hash.js'
 export { verifyArchive, type WrittenArchive, writeArchive } from './repositories/archive.js'

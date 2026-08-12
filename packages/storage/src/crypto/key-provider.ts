@@ -1,5 +1,5 @@
 import { err, type FridayError, fridayError, ok, type Result } from '@friday/contracts'
-import { readPassword } from './keychain.js'
+import { classifyReadFailure, type KeychainFailure, readPassword } from './keychain.js'
 
 /**
  * Where key material comes from.
@@ -48,23 +48,88 @@ export function createKeychainKeyProvider(options: { service: string }): KeyProv
 
       if (!read.ok) {
         return err(
-          fridayError({
-            code: 'ENCRYPTION_KEY_UNAVAILABLE',
-            message:
-              `FRIDAY could not read the key "${reference}" from your Keychain. ` +
-              'Without it she cannot read anything she has stored privately, so she stops ' +
-              'rather than continuing with the encrypted fields unreadable.',
-            // The reference is a name, not a secret. The value never appears
-            // here, and must not be added to it.
-            detail: { reference, service: options.service },
-            cause: read.failure.cause,
-          }),
+          describeReadFailure({ reference, service: options.service, failure: read.failure }),
         )
       }
 
       return decodeKey(read.value, reference)
     },
   }
+}
+
+/**
+ * Explains why a key could not be read, in terms of what is actually wrong.
+ *
+ * ── Why this is not one message ─────────────────────────────────────────────
+ *
+ * The three reasons a read fails need three different actions from the owner,
+ * and naming the key is only the useful part of one of them.
+ *
+ * **Locked** is the one this exists for. FRIDAY runs as a LaunchAgent started
+ * at login, and a locked keychain refuses reads to a process that cannot ask
+ * anyone — so the first thing she does on a fresh login can fail for a reason
+ * that has nothing to do with her setup being wrong. Chapter 39 carries this as
+ * a known M4 risk and predicted the failure would "name a key rather than a
+ * timing problem". Leading with the key name would send the owner to check
+ * their Keychain for an entry that is present and readable, and tell them
+ * nothing about *when* she tried.
+ *
+ * **Absent** is a setup problem, and `friday init` is the answer.
+ *
+ * ★ The reference is a name, not a secret, and the key's value never appears
+ * here. ADR-0020 and Chapter 18 both forbid it in an error, a log line, or an
+ * event payload.
+ *
+ * @param input - The key's name, the Keychain service, and what `security` said.
+ * @returns The error to report.
+ */
+export function describeReadFailure(input: {
+  reference: string
+  service: string
+  failure: KeychainFailure
+}): FridayError {
+  const { reference, service, failure } = input
+  const detail = { reference, service, status: failure.status }
+
+  if (classifyReadFailure(failure) === 'locked') {
+    return fridayError({
+      code: 'ENCRYPTION_KEY_UNAVAILABLE',
+      message:
+        'FRIDAY started before your Keychain was available, so she has stopped.\n\n' +
+        '  Your login Keychain unlocks when you log in. She runs at login too, and this\n' +
+        '  time she got there first — a locked Keychain refuses to answer a program that\n' +
+        '  cannot ask you for a password, so she could not read what she needs to start.\n\n' +
+        '  Nothing is wrong with her setup and nothing has been lost. She is supervised\n' +
+        '  and will try again shortly; if she does not recover, unlocking your Mac and\n' +
+        '  running `friday status` will say whether she can reach the Keychain now.',
+      detail,
+      cause: failure.cause,
+    })
+  }
+
+  if (classifyReadFailure(failure) === 'absent') {
+    return fridayError({
+      code: 'ENCRYPTION_KEY_UNAVAILABLE',
+      message:
+        'FRIDAY has not been set up on this Mac yet, so she has stopped.\n\n' +
+        `  The key she needs ("${reference}") is not in your Keychain. She creates her\n` +
+        '  keys once, the first time she is set up, and she has not been.\n\n' +
+        '  Run `friday init`.',
+      detail,
+      cause: failure.cause,
+    })
+  }
+
+  return fridayError({
+    code: 'ENCRYPTION_KEY_UNAVAILABLE',
+    message:
+      `FRIDAY could not read the key "${reference}" from your Keychain, and the reason\n` +
+      `  is not one she recognises (your Mac reported ${failure.status ?? 'no status'}).\n\n` +
+      '  Without it she cannot read anything she has stored privately, so she stops\n' +
+      '  rather than continuing with the encrypted fields unreadable.',
+    detail,
+    cause: failure.cause,
+  })
 }
 
 /**
