@@ -50,7 +50,7 @@ catalog:
   # earlier — which pnpm then wanted to add a minimum-release-age exclusion
   # for. A brand-new release is precisely what that policy exists to keep out,
   # and silently excluding a package defeats it.
-  hyparquet: 1.27.1
+  hyparquet: 1.28.1
   'hyparquet-writer': ^0.16.5
 
   # telemetry ONLY. Chapter 22's rotation rules — daily, 100 MB per file, 30
