@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url'
 import { loadConfig } from '@friday/config'
 import { createKeychainKeyProvider } from '@friday/storage'
 import { openContext } from './context.js'
@@ -31,8 +30,26 @@ export { fatalProblem, runStartupSelfCheck } from './self-check.js'
 export type { RunningServer } from './server.js'
 export { startServer } from './server.js'
 
-/** Process exit codes. `2` is a stated problem, matching the CLI's convention. */
-const EXIT_PROBLEM = 2
+/**
+ * The exit code for a stated problem, matching the CLI's convention.
+ *
+ * ★ The CLI reserves `1` for *a problem it found* and `2` for *being invoked
+ * wrongly* ([`apps/cli/src/output.ts`](../../cli/src/output.ts)). This constant
+ * said `2` while claiming to match that, so every fatal startup fault reported
+ * itself with the code meaning "you typed the command wrong" — a claim core
+ * cannot make, since it takes no arguments to get wrong.
+ *
+ * It matters now because launchd is the first thing that reads it. `KeepAlive`
+ * is unconditional (Chapter 33), so restarts do not turn on the code, but
+ * `launchctl list` reports the last exit status and that is what the owner and
+ * the diagnostics will be reading when FRIDAY will not start. A fault that
+ * reports itself as a usage error sends whoever is looking at it to the wrong
+ * question.
+ *
+ * There is no `usage` counterpart here deliberately: core has no arguments, so
+ * the state that code names cannot arise.
+ */
+const EXIT_PROBLEM = 1
 
 /**
  * Starts friday-core.
@@ -118,8 +135,27 @@ export async function main(): Promise<void> {
   process.once('SIGTERM', stop)
 }
 
-// Runs only when this file is the process entry point, so importing the router
-// for a test never starts a server.
-if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+/**
+ * The entry point.
+ *
+ * `import.meta.main` is Node 24's replacement for the `require.main === module`
+ * dance, and it is what keeps this file importable by a test without starting a
+ * server. `apps/cli` already guards itself this way; this file now matches it.
+ *
+ * ★ The comparison it replaces — `fileURLToPath(import.meta.url) === process.argv[1]`
+ * — was correct in the workspace and wrong everywhere FRIDAY is actually
+ * installed. A published copy is reached through a symlink
+ * (`node_modules/@friday/core` points into pnpm's virtual store), Node resolves
+ * `import.meta.url` to the real path, and `process.argv[1]` stays the path that
+ * was invoked. The two never match, so `main()` was never called.
+ *
+ * The failure had no symptom. The process exited 0, immediately, having written
+ * nothing to any stream — so under the supervision that starts FRIDAY at login
+ * (`RunAtLoad`, unconditional `KeepAlive`, `ThrottleInterval 10`) she would have
+ * relaunched silently every ten seconds forever, reporting success each time,
+ * with nothing in any log to say otherwise. The code that opens the log is
+ * below this line.
+ */
+if (import.meta.main) {
   await main()
 }
