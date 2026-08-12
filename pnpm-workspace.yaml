@@ -96,7 +96,7 @@ catalog:
   #
   # Held at 7 rather than 8, and see `overrides` below for why that is
   # load-bearing rather than caution.
-  vite: ^7.3.6
+  vite: ^8.2.1
 
   # Held at 5 because 6 requires Vite 8 as a peer and would drag it back in.
   # The 5.2 line spans Vite 4 through 8, so it does not have to move again
@@ -137,7 +137,7 @@ catalog:
 # Revisit when Vitest itself moves to Vite 8, or when oxc resolves symlinked
 # tsconfig chains.
 overrides:
-  vite: ^7.3.6
+  vite: ^8.2.1
 
 # pnpm blocks dependency install scripts by default — a good default, since an
 # install script runs arbitrary code with your privileges (supply chain, T2).
