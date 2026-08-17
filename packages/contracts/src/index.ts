@@ -179,6 +179,23 @@ export {
   type Intent,
   IntentSchema,
 } from './intent.js'
+// ── Thinking ────────────────────────────────────────────────────────────────
+export {
+  MODEL_CAPABILITIES,
+  MODEL_ROLES,
+  type ModelCapability,
+  ModelCapabilitySchema,
+  type ModelMessage,
+  ModelMessageSchema,
+  type ModelRequest,
+  ModelRequestSchema,
+  type ModelResponse,
+  ModelResponseSchema,
+  type ModelRole,
+  ModelRoleSchema,
+  type ModelUsage,
+  ModelUsageSchema,
+} from './model.js'
 // ── Work ────────────────────────────────────────────────────────────────────
 export {
   isAwaitingOwner,

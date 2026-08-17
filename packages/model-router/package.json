@@ -1,0 +1,35 @@
+{
+  "name": "@friday/model-router",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The only chokepoint where an AI vendor may be named. Capability in, provider out.",
+  "license": "UNLICENSED",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist coverage .turbo",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@friday/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@friday/tsconfig": "workspace:*",
+    "@friday/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
