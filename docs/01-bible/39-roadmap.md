@@ -85,17 +85,18 @@ re-estimating from four data points that compressed by two orders of magnitude w
 number with no information in it. They are re-set at the M4 boundary, against evidence.
 
 ```
-DELIVERED ─ 2026-08-06 → 2026-08-10
-  M0 ───── M1 ──────── M2 ────────── M3
-  Ground   Heartbeat   Conscience    Authority
-           she records she can be    her rules load, her
-                       told no       decisions are written down
+DELIVERED ─ 2026-08-06 → 2026-08-17
+  M0 ───── M1 ──────── M2 ────────── M3 ──────────── M4
+  Ground   Heartbeat   Conscience    Authority       Installable
+           she records she can be    her rules load, ★ she runs
+                       told no       decisions are     on your Mac
+                                     written down      · v0.1.0
 
 PLANNED
-  M4 ─────────── M5 ───── M6 ──── M7 ────────── M8 ────────── M9 ───── M10
-  Installable    Mind     Face    Memory &      Self-         Reach    Breadth
-  ★ she runs              ★ first Endurance     Improvement
-    on your Mac             useful day
+  M5 ───── M6 ──── M7 ────────── M8 ────────── M9 ───── M10
+  Mind     Face    Memory &      Self-         Reach    Breadth
+           ★ first Endurance     Improvement
+             useful day
 ```
 
 | # | Name | What exists at the end | Estimate | Status |
@@ -104,7 +105,7 @@ PLANNED
 | **M1** | **Heartbeat** | Event bus, database, config, logging | 4–6 wks | ✅ 2026-08-07 |
 | **M2** | **Conscience** | Guardian, approvals, audit, thin dashboard | 4–5 wks | ✅ 2026-08-08 |
 | **M3** | **Authority** | Rules loaded from disk, decisions recorded, `friday init` | — | ✅ 2026-08-10 ⚠ |
-| **M4** | **Installable** | Packaging, launchd supervision, release machinery | 2–3 wks | ◆ next |
+| **M4** | **Installable** | Packaging, launchd supervision, release machinery | 2–3 wks | ✅ 2026-08-17 · `v0.1.0` |
 | **M5** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | |
 | **M6** | **Face** | Dashboard, Mac app, first connector — **first useful day** | 6–8 wks | |
 | **M7** | **Memory & Endurance** | Four-layer memory, always-on host, DR | 6–8 wks | |
@@ -114,7 +115,22 @@ PLANNED
 
 M3 carries no estimate because it was never estimated — it was not on the roadmap. **⚠ marks a
 milestone whose code and tests shipped but whose done-when was never demonstrated end to end**; M3's
-gap is the real Keychain, and closing it is M4's first task.
+gap was the real Keychain, and M4 closed it first, before any packaging work was allowed to depend
+on it.
+
+**M4, actual versus estimated** — rule 5, recorded at the boundary. Estimated 2–3 weeks; elapsed
+seven days, 2026-08-10 to 2026-08-17, across eleven pull requests
+[#25](https://github.com/Fluffyburr1to/FRIDAY/pull/25)–[#35](https://github.com/Fluffyburr1to/FRIDAY/pull/35)
+and five accepted ADRs (0036, 0037, 0038, 0043, 0044). Seven days against a 2–3 week estimate is
+still under, but **it is the first milestone whose elapsed time is the same order of magnitude as
+its estimate** rather than two below it, and the reason is worth carrying forward: M4's work was
+mostly *not* transcription from a settled Bible.
+Packaging, launchd, and the release process were specified in a sentence each, and the time went
+into deciding — three ADRs were written to answer questions the Bible had not, and one of them
+(ADR-0036) had to be corrected after its build command was found not to work. **M1's lesson holds
+in the negative:** where the Bible is specific, implementation compresses; where it is not, the
+original estimates are about right. M5 is described in less operational detail than M1 was, which
+is the note the estimate below should be read against.
 
 ---
 
@@ -343,13 +359,15 @@ between the Guardian and the log. `packages/clerk/src/approval-clerk.ts` now pub
 > be picked up by whichever milestone next touches the clerk, and M4 does not.
 
 **Deferred from M3, explicitly, so it is not carried forward silently a third time.**
-[ADR-0021](../adr/0021-the-cli-reads-the-event-log-in-process-until-m3.md) has two review triggers
-that were due at this milestone and were not done:
+[ADR-0021](../adr/0021-the-cli-reads-the-event-log-in-process-until-m3.md) left two obligations due
+at this milestone and neither was done. **Only the first is a review trigger**; the second is a
+commitment recorded in that ADR's **Notes**. This table described both as review triggers until it
+was corrected on 2026-08-14.
 
-| Trigger | Status | Reconsidered at |
+| Obligation | Status | Reconsidered at |
 |---|---|---|
-| *"`apps/core` ships — move `status`, `events tail`, and `verify` onto the API and keep the read-only path as the documented fallback."* | **Deferred.** `apps/core` actually shipped at M2, not M3, so this has been due since then. | **M6 (Face)** |
-| *"`friday events emit` opens the log for writing — a way to record something FRIDAY did not do."* | **Deferred.** | **M4** |
+| **Review trigger** — *"`apps/core` ships — move `status`, `events tail`, and `verify` onto the API and keep the read-only path as the documented fallback."* | **Deferred.** `apps/core` actually shipped at M2, not M3, so this has been due since then. | **M6 (Face)** |
+| **Notes** — *"It should be re-examined at M3: once a real service is publishing events, a CLI that can write directly to the log is a way to record something FRIDAY did not do."* | **Settled at M4** by [ADR-0043](../adr/0043-friday-events-emit-records-the-owner-not-the-kernel.md) — restricted, not gated or removed. The command cannot append arbitrary events; the defect was that it recorded the owner's action as the kernel's, and it now records the owner. | **Closed** |
 
 **Why the API migration is deferred:** it is a change to how the CLI reaches its data, and the CLI is
 about to become the thing an installer delivers. Moving it onto the API in the same stretch as
@@ -396,16 +414,20 @@ without demonstrating.
 |---|---|
 | **★ A real Keychain round trip** | The M3 gap above. **✅ Demonstrated 2026-08-10** — see below |
 | **ADR-0036 — packaging and supervision** | Bundle layout, where shipped policy defaults travel, the launchd boundary. **✅ Accepted 2026-08-10**, after its build mechanism was corrected — see below. Packaging code is unblocked. |
-| **Chapter 34 amendment** | The field-encryption key on the recovery card and in the lost-machine procedure — see below |
-| `apps/cli` packaged | A runnable `friday`, with `friday init` delivered intact |
-| Startup failure names its own fix | `openContext` fails today with a message naming the missing directory but not the command that creates it |
-| `infra/launchd` | `com.friday.core.plist` and its install path — a LaunchAgent, never a LaunchDaemon ([Chapter 33](33-deployment-strategy.md)) |
+| **Chapter 34 amendment** | **✅ Applied.** The field-encryption key is on the recovery card, and the lost-machine procedure restores both keys before `friday restore` — see [Chapter 34](34-disaster-recovery.md). Drafted 2026-08-14, merged 2026-08-17 in [#35](https://github.com/Fluffyburr1to/FRIDAY/pull/35) — see [the close-out](#-m4-is-closed--2026-08-17) |
+| `apps/cli` packaged | **✅ Demonstrated 2026-08-17.** A runnable `friday` ran from the extracted artifact, and `friday init` was delivered intact and provisioned the machine — see below |
+| Startup failure names its own fix | **✅ Done 2026-08-17.** Both cases now name theirs. An absent Keychain key says *"Run `friday init`"*, a locked one names the timing rather than the key, and a missing or empty rules directory names the command that creates it rather than pointing at a repository path — [#33](https://github.com/Fluffyburr1to/FRIDAY/pull/33) |
+| `infra/launchd` | **✅ Demonstrated 2026-08-17.** `com.friday.core.plist` generated by `friday service install` with absolute paths into the artifact, `RunAtLoad` true, and a LaunchAgent rather than a LaunchDaemon ([Chapter 33](33-deployment-strategy.md)) |
 | `system.started` gets a production call site | **✅ Settled by [ADR-0044](../adr/0044-apps-core-records-that-friday-started-before-she-checks-herself.md)** — `apps/core` announces it before the startup self-check, so a fresh log now opens with it. ADR-0035's initialization-record question rides on separately and **stays open** |
-| Release machinery | Changesets, `0.1.0`, `tools/scripts/release.ts`. `CHANGELOG.md` says versioning starts here. |
-| `friday events emit` settled | The deferred ADR-0021 question above |
+| Release machinery | **✅ Done 2026-08-17.** `tools/scripts/release.ts` builds and verifies the artifact; **Changesets is adopted** per [ADR-0036 §6](../adr/0036-packaging-delivers-friday-init-provisions.md), `packaging/bundle` is at `0.1.0` with every other manifest deliberately held at `0.0.0`, `CHANGELOG.md` opens with the 0.1.0 entry, and the release is tagged — [#33](https://github.com/Fluffyburr1to/FRIDAY/pull/33) |
+| `friday events emit` settled | **✅ Settled by [ADR-0043](../adr/0043-friday-events-emit-records-the-owner-not-the-kernel.md)** — restricted, not gated or removed. The ADR-0021 question above |
 
 **Done when:** on a Mac that has never run FRIDAY, you install her, run `friday init`, log out, log
 back in, and she is already running — and `friday verify` passes against a log she started herself.
+
+**✅ Demonstrated on the owner's Mac, 2026-08-17**, and every clause was watched working — see
+[The done-when, demonstrated](#-the-done-when-demonstrated--2026-08-17). Every deliverable above is
+closed, and **[the milestone is closed](#-m4-is-closed--2026-08-17)** at `v0.1.0`.
 
 **★ The Keychain round trip is the first task, not an assumption.** This milestone's done-when
 depends on `friday init` working against a real Keychain, and
@@ -465,13 +487,16 @@ it; packaging does not absorb it. ADR-0035's review trigger asks whether *"a rea
 because init's creation-only bound is the whole of its safety argument and an installer that
 provisions is an installer that can overwrite.
 
-**The Chapter 34 amendment is pulled into this milestone deliberately.** ADR-0035 surfaced it and
-correctly refused to solve it: [Chapter 34](34-disaster-recovery.md)'s recovery card lists the backup
-encryption key, the B2 credentials, and the passkey recovery codes, and **does not list the
-field-encryption key** — so a by-the-book recovery today yields a database whose private payloads
-cannot be read. That is a live data-loss hazard, it costs a documentation change to fix, and it gets
-worse the moment packaging puts FRIDAY on a machine that accumulates real encrypted data. Generating
-the card, and the setup flow around it, stays at M7.
+**The Chapter 34 amendment was pulled into this milestone deliberately.** ADR-0035 surfaced it and
+correctly refused to solve it: [Chapter 34](34-disaster-recovery.md)'s recovery card listed the
+backup encryption key, the B2 credentials, and the passkey recovery codes, and **did not list the
+field-encryption key** — so a by-the-book recovery yielded a database whose private payloads could
+not be read. That was a live data-loss hazard, it cost a documentation change to fix, and it would
+have got worse the moment packaging put FRIDAY on a machine that accumulates real encrypted data.
+**Applied in [#35](https://github.com/Fluffyburr1to/FRIDAY/pull/35)**, which also ordered the
+lost-machine procedure so that both keys are restored before provisioning runs — creation-only
+provisioning would otherwise mint a fresh field key on a bare machine and leave the backup
+unreadable. Generating the card, and the setup flow around it, stays at M7.
 
 ### The packaging mechanism was corrected before ADR-0036 was accepted
 
@@ -503,6 +528,105 @@ widen a slice.
 | **`apps/core` exit-code mismatch.** It defines `EXIT_PROBLEM = 2`, commented as matching the CLI — but the CLI defines `problem: 1` and `usage: 2`. Core reports a fault using the code the CLI reserves for *being invoked wrongly*. | launchd reads exit codes, and any `KeepAlive` policy or diagnostic keyed on them will read this one. A fault that looks like a usage error is a fault that gets retried wrongly, or not at all. | With the launchd work, which is the first thing that consumes the code. |
 | **LaunchAgent startup against a locked login keychain.** A locked keychain refuses reads non-interactively — observed, exit 128. The login keychain unlocks at login, but a LaunchAgent's start and that unlock are not obviously ordered. | If the agent wins the race, `apps/core` fails at `createCapabilityIssuer` on a fresh login, and the message names a key rather than a timing problem. | With `friday service install`. Design the failure to be nameable before it is observed in the wild. |
 | **One unexplained Keychain anomaly.** A single spurious "the passphrase you entered is not correct" on unlocking the throwaway keychain, which did not reproduce across a clean four-step cycle afterwards. | Unreproduced, and against a temporary keychain rather than the login one, so it is recorded for honesty rather than as a known defect. | If it recurs. If it recurs during the launchd work, it stops being an anomaly and becomes the second risk above. |
+
+**Both of the first two risks were closed in passing**, and each is worth naming because it was
+predicted here before it was fixed. `apps/core`'s exit code is now `1`, the code the CLI reserves
+for a fault it found. And the locked-Keychain failure now *"names the timing rather than the key"* —
+the wording this chapter used when it recorded the risk. The third never recurred.
+
+### ★ The done-when, demonstrated — 2026-08-17
+
+**It was run on the owner's Mac, end to end, and every clause was observed rather than inferred.**
+The artifact was built by `tools/scripts/release.ts` from committed `df2a40b`
+(SHA-256 `b5bb677153b6a3795ce018099173c3a00745614f3ab7ea5599c1d15b62cde7dd`), extracted to a fresh
+directory, and nothing outside it was used.
+
+| Clause | What was observed |
+|---|---|
+| **A Mac that has never run FRIDAY** | No data directory, no log directory, no `com.friday.credentials` item, no LaunchAgent, no process. Checked before anything was run |
+| **You install her** | The artifact extracted; only its own `friday` binary used thereafter |
+| **Run `friday init`** | Exit 0. Three rules seeded, both keys created, and **no database** — provisioning stayed creation-only exactly as [ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) §5 describes |
+| **Log out, log back in** | Performed by the owner |
+| **She is already running** | A **new process id** after login. The pre-login process had died and launchd had started a fresh one from `RunAtLoad` |
+| **`friday verify` passes** | `The record is intact. 4 events checked, 1 to 4.` Exit 0 |
+| **Against a log she started herself** | Event 1 is `system.started`, actor `system:kernel`, sensitivity `internal`, payload `{version, nodeVersion, pid}` |
+
+### Why the log holds four events and not two
+
+The obvious expectation was one start: two events, `system.started` then `guardian.decided`. **What
+happened was two starts, and the record is left saying so.**
+
+```
+1  system.started    system:kernel            ← installing the agent loaded it
+2  guardian.decided  schedule:integrity-check
+3  system.started    system:kernel            ← the login boundary
+4  guardian.decided  schedule:integrity-check
+```
+
+`friday service install` does not merely write the plist; it loads the agent, and `RunAtLoad` fires
+on load rather than waiting for a login. So she started once at install and again at login.
+
+**This strengthens the evidence rather than weakening it**, and that is why the extra pair is
+recorded rather than tidied away. Event 3's payload carries the process id of the copy that was
+running after the owner logged back in, and event 1 carries the earlier one. **The log itself
+distinguishes the login start from the install start**, which is the exact claim the done-when
+makes and which a single-start run could not have separated from a process that merely never
+stopped.
+
+It also confirms [ADR-0044](../adr/0044-apps-core-records-that-friday-started-before-she-checks-herself.md)
+in production: `system.started` precedes `guardian.decided` in both pairs. Until this milestone the
+first thing in a fresh log was FRIDAY asking permission to verify a log that was empty.
+
+### ★ M4 is closed — 2026-08-17
+
+**The done-when was demonstrated and every deliverable is now merged.** Those were separate promises
+and this chapter kept them apart deliberately; on the day of the demonstration two rows were still
+open, and both have since been closed rather than waived.
+
+| Closed after the demonstration | How |
+|---|---|
+| **The policy-directory startup message** | A missing or empty rules directory now names `friday init` rather than pointing at `packages/guardian/policies/`, a repository path that does not exist on an installed machine ([#33](https://github.com/Fluffyburr1to/FRIDAY/pull/33)) |
+| **Release machinery** | Changesets adopted, `packaging/bundle` at `0.1.0`, `CHANGELOG.md` opening with the 0.1.0 entry, and the release tagged ([#33](https://github.com/Fluffyburr1to/FRIDAY/pull/33)) |
+| **The Chapter 34 amendment** | Merged at [#35](https://github.com/Fluffyburr1to/FRIDAY/pull/35). It had been drafted on 2026-08-14 and left uncommitted, and was found during this close-out — see the note below |
+
+**The release.** `v0.1.0`, an SSH-signed tag on `main` at
+[`af81b56`](https://github.com/Fluffyburr1to/FRIDAY/commit/af81b566d3cac979e997b6127a8bdcf3a47e5deb).
+**The tag is immutable and must never be moved** ([Chapter 32](32-branch-strategy.md)) — including
+by this close-out, which is documentation and changes nothing that shipped.
+
+**★ The record was written late, and that is the finding worth keeping.** Between 2026-08-14 and
+2026-08-17 this chapter's M4 sections, and the Chapter 34 amendment, existed only in an uncommitted
+working tree. `main` said M4 was *next* while the milestone was being demonstrated and released, so
+for three days **the roadmap described work nobody was doing and omitted work that was shipping** —
+the exact failure rule 6 was added to prevent, recurring in a new form. Rule 6 catches work built
+without being planned; it did not catch work *finished* without being recorded, because writing the
+record and merging it are different acts and only the first had a rule. Rule 8 below is added from
+this experience.
+
+### What the demonstration did not establish
+
+- **Nothing about retention.** `system.started` is not a protected type and nothing prunes the log.
+  A supervised restart loop appends one of these per attempt, which this run did not provoke and did
+  not disprove.
+- **Nothing about the failure surface at login.** The locked-keychain race in the risk table above
+  was designed for, not observed. It names the timing correctly when it happens; nobody has made it
+  happen.
+- **Nothing about update.** The goal line says *"and can be updated"*. A first install was
+  demonstrated; **installing 0.1.1 over 0.1.0 was not**, and no upgrade path has been exercised.
+  Carried into the next milestone that ships a second version.
+
+### Built during M4, unmerged, and not an M4 deliverable
+
+Recorded under rule 6 so it is not rediscovered as a surprise. A **HUD vitals slice** — a
+FRIDAY-scoped CPU, memory, disk, and uptime reader in `packages/diagnostics`, served by `apps/core`
+as `vitals.current` and rendered by `apps/web` — was built during M4 by owner decision of
+2026-08-12, along with four proposed ADRs numbered 0039–0042 and a `friday service` reworking.
+
+**None of it is merged.** It exists as uncommitted work on a local branch, so it is not in this
+repository, and nothing in it closes an M4 exit criterion. It is written here as an open item rather
+than as a delivery, and the ADRs are not linked because the files do not exist on `main`. **It is
+neither a milestone nor a slice of one until it lands**; whichever milestone merges it records it
+then.
 
 **Explicitly not in M4:** the Tauri shell, the dashboard's remaining layers, notifications, any
 connector, Apple Developer enrollment, notarization, and code signing of a `.app`. Signing matters
@@ -729,17 +853,27 @@ It will. Rules for changing it:
 7. **Renumbering is allowed here and never in `docs/adr/`.** When a milestone is inserted, the map
    in [Re-baselined 2026-08-10](#re-baselined-2026-08-10) is extended rather than the ADRs being
    edited.
+8. **A milestone is closed in this chapter on `main` before the next one starts, and the close-out
+   is merged, not drafted.** M4's done-when was demonstrated and released while `main` still said
+   the milestone was next, because its record sat uncommitted in a working tree for three days.
+   Rule 6 covers work that was built without being planned; this covers work that was finished
+   without being written down where anyone can read it. **A record that exists only locally does
+   not exist.** Added 2026-08-17, from experience.
 
 ---
 
 ## The honest summary
 
-**FRIDAY records, she can be told no, her decisions are written down, and a machine can be prepared
-for her.** She does not yet run on one, think, or connect to anything.
+**FRIDAY records, she can be told no, her decisions are written down, and she runs on the owner's
+Mac and starts when he logs in.** She does not yet think or connect to anything.
 
 The foundation-first decision is what makes the remaining list long, and it is also what made the
 first four milestones land in five days: every one of them was implementing a design the Bible had
-already settled. That trade is now evidenced rather than argued.
+already settled. That trade is now evidenced rather than argued — **and M4 is the counter-example
+that gives it a scale.** Where the Bible had specified a milestone completely, implementation took
+a day; where it had specified packaging and release in a sentence each, the same assistant took a
+week and wrote three ADRs to fill the gap. The compression is a property of the design being
+settled, not of who is writing the code.
 
 The single greatest risk was named as the months between M0 and *first useful day* where the work is
 real and the output is invisible. **That risk has changed shape rather than passed.** The dashboard
@@ -757,3 +891,4 @@ manage that. They are worth protecting when they seem like overhead.
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial ratification |
 | 2.0 | 2026-08-10 | Re-baselined after M3. M1 and M2 completion recorded; M3 recorded as **Authority**, a milestone that was built without being planned; **M4 becomes Installable**; *Mind* and *Face* move to M5 and M6 and everything after shifts by two. ADR-0021's deferrals and the `approval.auto_granted` residual recorded rather than carried silently. |
+| 2.1 | 2026-08-17 | **M4 closed at `v0.1.0`** and its whole record brought onto `main` in one change. The done-when demonstrated on the owner's Mac, with its four-event result and why installing the agent produces a start of its own; every deliverable row resolved, including the two that were still open on the day of the demonstration and were closed afterwards. `friday events emit` (ADR-0043) and `system.started` (ADR-0044) marked settled, and ADR-0021's second obligation corrected — it is that ADR's **Notes**, not a review trigger. M4's actual-versus-estimated recorded under rule 5: seven days against 2–3 weeks, the first milestone whose elapsed time is the same order of magnitude as its estimate, and why. **Rule 8 added** after this chapter was found describing M4 as *next* for three days while the milestone was being released, its record uncommitted. The HUD vitals slice and ADRs 0039–0042 recorded as built-but-unmerged rather than as delivered. Dates inside each section are when the work was done and observed, not when this entry was written. |
