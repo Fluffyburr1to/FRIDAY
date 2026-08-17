@@ -11,6 +11,7 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
+    "friday": "node apps/cli/dist/index.js",
     "check": "pnpm run check:format && pnpm run check:lint && pnpm run check:types && pnpm run check:boundaries && pnpm run check:docs && pnpm run check:workflows && pnpm run test",
     "check:format": "biome format .",
     "check:lint": "biome lint .",

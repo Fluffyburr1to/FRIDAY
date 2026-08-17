@@ -1,11 +1,20 @@
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir, userInfo } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { err, type FridayError, fridayError, ok, type Result } from '@friday/contracts'
 import type { CommandContext } from '../context.js'
 import { EXIT, type ExitCode } from '../output.js'
+import {
+  isOurs,
+  isRegistered,
+  launchctlFailure,
+  runLaunchctl,
+  SERVICE_LABEL,
+  serviceTarget,
+} from './launchd.js'
+
+export { isOurs, SERVICE_LABEL } from './launchd.js'
 
 /**
  * `friday service install` / `friday service uninstall` — keeping her alive.
@@ -41,9 +50,6 @@ import { EXIT, type ExitCode } from '../output.js'
  * Reference: docs/adr/0036-packaging-delivers-friday-init-provisions.md §5
  *            docs/01-bible/33-deployment-strategy.md
  */
-
-/** The agent's name. Hard-coded: `uninstall` proves ownership by it. */
-export const SERVICE_LABEL = 'com.friday.core'
 
 /** Where a LaunchAgent lives. Per-user, never `/Library/LaunchDaemons`. */
 function agentPath(): string {
@@ -166,46 +172,6 @@ function readTemplate(artifact: string): Result<string, FridayError> {
 }
 
 /**
- * Reports whether a plist is one FRIDAY wrote.
- *
- * ★ Both halves are required, and the second is the one that matters. A file
- * named `com.friday.core.plist` proves nothing — anyone can write one. What
- * `uninstall` needs before deleting is evidence that this file points at a
- * FRIDAY, and the program path is that evidence.
- *
- * Exported for its tests: a deletion guard nobody has watched refuse is a
- * deletion guard that is assumed to work.
- *
- * @param contents - The plist on disk.
- * @returns Whether it is safe to remove.
- */
-export function isOurs(contents: string): boolean {
-  const labelled = contents.includes(`<string>${SERVICE_LABEL}</string>`)
-  const pointsAtFriday = /<string>[^<]*node_modules\/@friday\/core\/dist\/index\.js<\/string>/.test(
-    contents,
-  )
-
-  return labelled && pointsAtFriday
-}
-
-/** Runs `launchctl`, returning its complaint rather than throwing. */
-function launchctl(args: readonly string[]): Result<void, string> {
-  try {
-    execFileSync('/bin/launchctl', args, {
-      encoding: 'utf8',
-      timeout: 30_000,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    })
-
-    return ok(undefined)
-  } catch (cause) {
-    const failure = cause as { stderr?: unknown }
-
-    return err(typeof failure.stderr === 'string' ? failure.stderr.trim() : String(cause))
-  }
-}
-
-/**
  * Runs `friday service install`.
  *
  * @param input - The loaded context.
@@ -256,15 +222,32 @@ export function runServiceInstall(input: { context: CommandContext }): ExitCode 
 
   writeFileSync(plistPath, renderPlist(template.value, paths.value), { mode: 0o644 })
 
-  const loaded = launchctl(['load', '-w', plistPath])
+  // ★ `bootstrap` rather than `load`. `launchctl load` is the legacy interface
+  // and is the one whose failures arrive as exit 0 with a complaint on stderr;
+  // `bootstrap` addresses the per-user domain explicitly, which is also what
+  // makes the confirmation below addressable. Both are still LaunchAgents in
+  // `gui/<uid>` — this changes the verb, not the kind of service (ADR-0036 §5).
+  const uid = userInfo().uid
+  const started = launchctlFailure(runLaunchctl(['bootstrap', `gui/${uid}`, plistPath]))
 
-  if (!loaded.ok) {
+  // Whether the command complained or not, the only thing that settles it is
+  // asking launchd what it now knows. `bootstrap` accepting a file proves the
+  // file parsed.
+  if (started !== undefined || !isRegistered(uid)) {
     out.problem(
-      `FRIDAY wrote her service definition to ${plistPath}, but macOS refused to start it:\n\n` +
-        `  ${loaded.error}\n\n` +
-        '  The file is still there. `friday service uninstall` removes it.',
+      `FRIDAY wrote her service definition to ${plistPath}, but macOS did not start it.\n\n` +
+        `  ${started ?? `launchd does not report a service at ${serviceTarget(uid)}.`}\n\n` +
+        '  She is NOT set to start at login. The file is still there — remove it with\n' +
+        '  `friday service uninstall`, then try again once the reason above is fixed.',
     )
-    out.json({ problem: { code: 'LOAD_FAILED', path: plistPath, detail: loaded.error } })
+    out.json({
+      problem: {
+        code: 'START_FAILED',
+        path: plistPath,
+        target: serviceTarget(uid),
+        detail: started,
+      },
+    })
 
     return EXIT.problem
   }
@@ -346,23 +329,33 @@ export function runServiceUninstall(input: { context: CommandContext }): ExitCod
     return EXIT.problem
   }
 
-  // Unload first. Removing the file from underneath a running agent leaves
+  // Stop it first. Removing the file from underneath a running agent leaves
   // launchd supervising a process whose definition no longer exists.
-  const unloaded = launchctl(['unload', '-w', plistPath])
+  //
+  // ★ `bootout`'s complaint is deliberately not fatal, and the check below is
+  // what makes that safe. A plist that was written but never started — the
+  // exact state a failed `install` leaves behind, and the state its message
+  // tells the owner to fix with this command — cannot be booted out, and
+  // treating that as an error would strand them with a file nothing removes.
+  // What must not happen is deleting the definition while the job is still
+  // registered, so it is launchd's answer, not the verb's, that decides.
+  const uid = userInfo().uid
+  const stopped = launchctlFailure(runLaunchctl(['bootout', serviceTarget(uid)]))
 
-  if (!unloaded.ok) {
+  if (isRegistered(uid)) {
     out.problem(
-      `macOS would not stop FRIDAY's service:\n\n  ${unloaded.error}\n\n` +
+      `macOS would not stop FRIDAY's service:\n\n  ${stopped ?? 'it is still registered.'}\n\n` +
         '  Her service definition has been left in place rather than removed while she\n' +
-        '  is still supervised.',
+        '  is still supervised — removing it now would leave launchd running a FRIDAY\n' +
+        '  whose definition no longer exists.',
     )
-    out.json({ problem: { code: 'UNLOAD_FAILED', path: plistPath, detail: unloaded.error } })
+    out.json({ problem: { code: 'STOP_FAILED', path: plistPath, detail: stopped } })
 
     return EXIT.problem
   }
 
   try {
-    execFileSync('/bin/rm', ['-f', plistPath], { timeout: 10_000, stdio: 'ignore' })
+    rmSync(plistPath, { force: true })
   } catch (cause) {
     out.problem(`FRIDAY stopped her service but could not remove ${plistPath}.`)
     out.json({ problem: { code: 'REMOVE_FAILED', path: plistPath, detail: String(cause) } })
