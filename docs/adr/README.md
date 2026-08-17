@@ -72,6 +72,7 @@ Decisions taken since, as implementation met the design:
 | [0043](0043-friday-events-emit-records-the-owner-not-the-kernel.md) | `friday events emit` records the owner, not the kernel | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0044](0044-apps-core-records-that-friday-started-before-she-checks-herself.md) | `apps/core` records that FRIDAY started, before she checks herself | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0045](0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md) | The plan record is completed to Chapter 12 before the engine is built | accepted ‡ | low→**high** | [12](../01-bible/12-chief-of-staff.md) |
+| [0046](0046-durable-execution-stays-hand-built-at-m5.md) | Durable execution stays hand-built at M5 | **proposed** | medium | [12](../01-bible/12-chief-of-staff.md) |
 
 ‡ **Amended before acceptance, not after.** Three of these were drafted on 2026-08-12 or later,
 reviewed on 2026-08-17, and **edited in the same change that accepted them** — 0039 gained a §0
