@@ -79,6 +79,20 @@ export async function main(): Promise<void> {
     process.exit(EXIT_PROBLEM)
   }
 
+  // ★ She records that she started before she does anything else, including
+  // checking herself. Chapter 10: "She will not act if she cannot record" — so
+  // this is a write-liveness gate, not a formality, and a gate that ran after
+  // the work it guards would not be one. It also puts the log in the order the
+  // events happened: she started, then she asked to verify herself.
+  //
+  // See docs/adr/0044-apps-core-records-that-friday-started-before-she-checks-herself.md
+  const started = await opened.value.announceStarted()
+
+  if (!started.ok) {
+    process.stderr.write(`${started.error.message}\n`)
+    process.exit(EXIT_PROBLEM)
+  }
+
   // A request that ran out of time while FRIDAY was not running must be
   // settled before anything reads it as still pending. Chapter 19 is explicit
   // that an approval is never auto-granted by timing out, and a lapsed request

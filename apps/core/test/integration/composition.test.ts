@@ -198,5 +198,26 @@ describe('composing a context', () => {
 
       expect('authorizing' in context.context).toBe(false)
     })
+
+    it('keeps the startup announcement off the context procedures are given', () => {
+      const context = open()
+
+      // ADR-0044 put `announceStarted` on the opened context beside
+      // `authorizing`, for the same reason: startup is not a request from
+      // anybody, and no procedure may reach it.
+      expect('announceStarted' in context.context).toBe(false)
+      expect(typeof context.announceStarted).toBe('function')
+    })
+
+    it('never exposes the bus itself', () => {
+      const context = open()
+
+      // ★ The announcement is one closure over one call, not the bus. A bus on
+      // either object would be a way to record an arbitrary event — ADR-0021's
+      // concern, and the reason it is built inside `openContext` and stays
+      // there.
+      expect('bus' in context.context).toBe(false)
+      expect('bus' in context).toBe(false)
+    })
   })
 })
