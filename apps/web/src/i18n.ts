@@ -46,6 +46,33 @@ const en = {
   'events.column.time': 'Time',
   'events.column.type': 'Event',
   'events.column.actor': 'Actor',
+
+  // ── The HUD ───────────────────────────────────────────────────────────────
+
+  'vitals.title': 'System vitals',
+
+  /**
+   * ★ The scope line, and it is load-bearing rather than decorative.
+   *
+   * Chapter 29's metrics are FRIDAY-scoped. A row labelled MEMORY showing
+   * 90 MB, on a panel the owner reads as his Mac's vitals, is the same
+   * substitution ADR-0042 forbids — just in the other direction.
+   */
+  'vitals.scope': 'The FRIDAY runtime, not this Mac',
+  'vitals.unavailable': 'UNAVAILABLE',
+
+  /**
+   * Said about the connection, never about FRIDAY.
+   *
+   * A reachable socket is not a working assistant. Whether she is *well* needs
+   * Chapter 23's health aggregation, which nothing implements yet.
+   */
+  'link.online': 'LINK ONLINE',
+  'link.offline': 'LINK OFFLINE',
+  'link.connecting': 'CONNECTING',
+
+  /** Short form for a panel heading. The sentence form is `events.stale`. */
+  'link.stale': 'stale',
 } as const
 
 /** A key into the message table. Unknown keys are a compile error. */

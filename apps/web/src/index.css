@@ -1,57 +1,335 @@
 /*
- * The whole stylesheet, for now.
+ * The HUD's stylesheet.
  *
- * Chapter 06 specifies Tailwind and Radix, and neither is here yet: one screen
- * does not need a design system, and installing one before the second screen
- * exists would be deciding what the dashboard looks like before knowing what
- * it contains. This file is expected to be deleted rather than grown.
+ * ── Dark only, and monospaced throughout ─────────────────────────────────────
  *
- * What is NOT deferred is the accessibility floor — semantic elements, visible
- * focus, and contrast — because those are cheap now and a retrofit later.
+ * The previous version used `light-dark()` and a sans stack. Both are dropped:
+ * this screen stays open all day on one machine, and an instrument panel that
+ * also reflows into a light theme is two designs maintained as one. Chapter 06
+ * still specifies Tailwind and Radix for the component library; neither is here
+ * yet, for the reason the old file gave — a design system installed before the
+ * second surface exists is a guess.
+ *
+ * ── The rules this encodes ───────────────────────────────────────────────────
+ *
+ * Hairlines and tabular numerals. No gradients, shadows, rounded cards, or
+ * decorative motion. ADR-0041 §3 adds two that matter more than taste: nothing
+ * animates without meaning, and nothing moves that the owner is not being asked
+ * to look at.
+ *
+ * ── Viewport ─────────────────────────────────────────────────────────────────
+ *
+ * No repository document specifies a supported size, so none is asserted here.
+ * The invariant is what is tested, at 1280×800, 1440×900, and 1920×1080: the
+ * page never scrolls, the event feed is the only scrolling region, and no panel
+ * overflows or clips. Those three are test viewports, not a product contract.
  *
  * Reference: docs/01-bible/06-frontend-architecture.md
  */
 
 :root {
-  color-scheme: light dark;
-  --ink: light-dark(#1a1a1a, #e8e8e8);
-  --quiet: light-dark(#5c5c5c, #a0a0a0);
-  --rule: light-dark(#e0e0e0, #333333);
-  --page: light-dark(#fdfdfc, #161616);
-  --warn: light-dark(#8a5300, #f0b429);
+  color-scheme: dark;
+
+  --page: #08090b;
+  --panel: #0e1114;
+  --rule: #1b2126;
+  --ink: #c6d0d7;
+  --quiet: #6b7b87;
+  --dim: #43515b;
+
+  --healthy: #4d9d8f;
+  --warn: #c2952f;
+  --critical: #c15743;
+
+  /* An absent reading is not an error, and must not be coloured like one. */
+  --absent: #55646f;
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 2rem;
   background: var(--page);
   color: var(--ink);
-  font:
-    15px / 1.5 ui-sans-serif,
-    -apple-system,
-    system-ui,
-    sans-serif;
-}
+  font: 13px / 1.45 var(--mono);
+  font-variant-numeric: tabular-nums;
 
-h1 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  margin: 0 0 1.5rem;
-}
-
-h2 {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--quiet);
-  margin: 0 0 0.75rem;
+  /* No page scroll. Anything needing to scroll does it inside its panel. */
+  overflow: hidden;
 }
 
 :focus-visible {
-  outline: 2px solid currentcolor;
+  outline: 1px solid var(--healthy);
   outline-offset: 2px;
+}
+
+/* ── Shell ───────────────────────────────────────────────────────────────────
+ *
+ * `minmax(0, 1fr)` rather than `1fr` so grid children may shrink below their
+ * content and hand the overflow to the one element that scrolls.
+ */
+
+.hud {
+  block-size: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.hud__head {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  padding: 0.6rem 1rem;
+  border-block-end: 1px solid var(--rule);
+}
+
+.hud__mark {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+.hud__clock {
+  margin-inline-start: auto;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+.hud__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+}
+
+.hud__link .dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.hud__link--online {
+  color: var(--healthy);
+}
+.hud__link--offline {
+  color: var(--critical);
+}
+.hud__link--connecting {
+  color: var(--quiet);
+}
+
+/* ── Slots ───────────────────────────────────────────────────────────────────
+ *
+ * Vitals left, approvals right, the feed filling the rest. Slot names are
+ * positions rather than contents, so moving a panel is one word in
+ * hud/layout.ts and never a change here.
+ */
+
+.hud__grid {
+  display: grid;
+  grid-template-columns: 19rem minmax(0, 1fr) 21rem;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "left main right";
+  gap: 1px;
+  background: var(--rule);
+  min-block-size: 0;
+}
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  background: var(--rule);
+  gap: 1px;
+  min-block-size: 0;
+}
+
+.slot--left {
+  grid-area: left;
+}
+.slot--main {
+  grid-area: main;
+}
+.slot--right {
+  grid-area: right;
+}
+
+/* ── Panel frame ─────────────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--panel);
+  padding: 0.7rem 0.9rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block-end: 0.5rem;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--quiet);
+}
+
+.panel__note {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.panel__body {
+  min-block-size: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+
+  /*
+   * Never engages at the tested sizes. It exists because the alternative to
+   * scrolling is silent truncation, and a clipped vitals list looks exactly
+   * like a complete one — the owner could not tell that the row he is not
+   * seeing is missing rather than unavailable.
+   */
+  overflow-y: auto;
+}
+
+/* ── Vitals ──────────────────────────────────────────────────────────────── */
+
+/*
+ * The scope line. Load-bearing, not decoration: these are FRIDAY's process
+ * metrics, and a MEMORY row read as the Mac's would be the substitution
+ * ADR-0042 forbids, in the other direction.
+ */
+.vitals__scope {
+  margin: 0 0 0.7rem;
+  font-size: 0.66rem;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+}
+
+.vitals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.vital {
+  display: grid;
+  grid-template-columns: 4rem 5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.1rem 0.6rem;
+}
+
+.vital__label {
+  color: var(--quiet);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.vital__value {
+  font-size: 0.95rem;
+  text-align: end;
+}
+
+.vital__unit {
+  color: var(--dim);
+  font-size: 0.68rem;
+  margin-inline-start: 0.15rem;
+}
+
+/*
+ * A bar, not a chart. It encodes the same number as the digits beside it, for
+ * reading at a glance across a room — core keeps no vitals history, so there is
+ * no trend here to plot and a sparkline would be inventing one.
+ */
+.vital__bar {
+  block-size: 3px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.vital__bar--none {
+  background: none;
+}
+
+.vital__fill {
+  display: block;
+  block-size: 100%;
+  background: currentcolor;
+}
+
+.vital__qualifier {
+  grid-column: 2 / -1;
+  color: var(--dim);
+  font-size: 0.68rem;
+}
+
+.vital--healthy {
+  color: var(--healthy);
+}
+.vital--warning {
+  color: var(--warn);
+}
+.vital--critical {
+  color: var(--critical);
+}
+
+/* Measured, with no threshold to judge it against — uptime. Neutral ink, so it
+   reads as information rather than as a verdict. */
+.vital--unjudged {
+  color: var(--ink);
+}
+
+.vital--absent {
+  color: var(--absent);
+}
+
+.vital--absent .vital__value {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+
+.vital__why {
+  grid-column: 2 / -1;
+  color: var(--dim);
+  font-size: 0.68rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+}
+
+/* ── The event feed ──────────────────────────────────────────────────────────
+ *
+ * The only scrolling element on the screen, and it scrolls inside itself so
+ * nothing above it can be pushed out of view.
+ */
+
+.feed {
+  min-block-size: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .notice {
@@ -61,86 +339,106 @@ h2 {
 
 .notice--stale {
   color: var(--warn);
-  margin-bottom: 0.75rem;
+  margin-block-end: 0.5rem;
 }
 
 .events {
   border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-  width: 100%;
-  max-width: 60rem;
+  inline-size: 100%;
 }
 
 .events th {
-  text-align: left;
-  font-size: 0.7rem;
+  text-align: start;
+  font-size: 0.66rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--quiet);
-  padding: 0 1rem 0.5rem 0;
+  letter-spacing: 0.09em;
+  color: var(--dim);
+  padding: 0 1rem 0.4rem 0;
+  position: sticky;
+  inset-block-start: 0;
+  background: var(--panel);
 }
 
 .events td {
-  border-top: 1px solid var(--rule);
-  padding: 0.4rem 1rem 0.4rem 0;
-}
-
-.events__seq,
-.events__type {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85rem;
+  border-block-start: 1px solid var(--rule);
+  padding: 0.28rem 1rem 0.28rem 0;
+  white-space: nowrap;
 }
 
 .events__seq {
-  color: var(--quiet);
+  color: var(--dim);
 }
 
-/* ── Needs you ─────────────────────────────────────────────────────────── */
+/* ── Needs you ───────────────────────────────────────────────────────────────
+ *
+ * Rendered without a panel frame, because it renders nothing at all when
+ * nothing is waiting — a permanent empty box announcing no news is exactly the
+ * noise the Manifesto asks this screen not to make.
+ */
+
+[aria-labelledby="needs-you"] {
+  background: var(--panel);
+  padding: 0.7rem 0.9rem 0.8rem;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+[aria-labelledby="needs-you"] h2 {
+  margin: 0 0 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--warn);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 
 .count {
-  color: var(--ink);
-  background: var(--rule);
-  border-radius: 999px;
-  padding: 0.05rem 0.45rem;
-  font-size: 0.75rem;
+  color: var(--page);
+  background: var(--warn);
+  border-radius: 2px;
+  padding: 0 0.35rem;
+  font-size: 0.7rem;
 }
 
 .approvals {
   list-style: none;
-  margin: 0 0 2rem;
+  margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.75rem;
-  max-width: 60rem;
+  gap: 0.5rem;
 }
 
 .approval {
   border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 0.9rem 1rem;
+  padding: 0.6rem 0.7rem;
 }
 
 .approval__title {
-  margin: 0 0 0.2rem;
+  margin: 0 0 0.15rem;
   font-weight: 600;
 }
 
 .approval__why {
-  margin: 0 0 0.6rem;
+  margin: 0 0 0.5rem;
   color: var(--quiet);
+  font-size: 0.75rem;
 }
 
 .approval__facts {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.1rem 0.75rem;
-  margin: 0 0 0.75rem;
-  font-size: 0.85rem;
+  gap: 0.05rem 0.6rem;
+  margin: 0 0 0.6rem;
+  font-size: 0.72rem;
 }
 
 .approval__facts dt {
-  color: var(--quiet);
+  color: var(--dim);
 }
 
 .approval__facts dd {
@@ -149,27 +447,58 @@ h2 {
 
 .approval__actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .approval__actions button {
   font: inherit;
-  font-size: 0.85rem;
-  padding: 0.3rem 0.9rem;
-  border: 1px solid var(--rule);
-  border-radius: 5px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.8rem;
+  border: 1px solid var(--dim);
   background: transparent;
   color: var(--ink);
   cursor: pointer;
 }
 
+.approval__actions button:hover:not(:disabled) {
+  border-color: var(--healthy);
+  color: var(--healthy);
+}
+
 .approval__actions button:disabled {
-  color: var(--quiet);
+  color: var(--dim);
+  border-color: var(--rule);
   cursor: not-allowed;
 }
 
 .approval__blocked {
-  margin: 0.6rem 0 0;
-  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
   color: var(--warn);
 }
+
+/* ── Narrower windows ────────────────────────────────────────────────────────
+ *
+ * Below 1200px the three columns cannot hold their content without crushing the
+ * feed, so the right rail folds under. Tested at 1280×800, where the three
+ * columns still hold.
+ */
+
+@media (max-width: 1200px) {
+  .hud__grid {
+    grid-template-columns: 18rem minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "left main"
+      "right right";
+  }
+}
+
+/*
+ * There is no `prefers-reduced-motion` block, deliberately. This stylesheet
+ * declares no animation and no transition, so there is nothing to reduce — and
+ * a blanket `animation: none` would override rules that do not exist. The first
+ * panel that genuinely needs motion adds the query back beside it.
+ */

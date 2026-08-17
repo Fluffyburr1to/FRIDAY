@@ -9,5 +9,6 @@ scratch, which is what tutorials are for.
 | Guide | For |
 |---|---|
 | [working-in-the-monorepo.md](working-in-the-monorepo.md) | Installing, building, linting, testing, and adding a package |
+| [hud.md](hud.md) | Running FRIDAY's face, adding a section to it, and connecting a new data source |
 
 Reference: [Chapter 38](../../01-bible/38-documentation-standards.md)
