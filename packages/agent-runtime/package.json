@@ -1,0 +1,36 @@
+{
+  "name": "@friday/agent-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runs agents in isolation, with no ambient authority. An agent can only ask.",
+  "license": "UNLICENSED",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist coverage .turbo",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@friday/contracts": "workspace:*",
+    "@friday/guardian": "workspace:*"
+  },
+  "devDependencies": {
+    "@friday/tsconfig": "workspace:*",
+    "@friday/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
