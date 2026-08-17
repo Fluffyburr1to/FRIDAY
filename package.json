@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
-    "@changesets/cli": "^2.29.7",
+    "@changesets/cli": "^3.0.0",
     "@friday/contracts": "workspace:*",
     "@friday/guardian": "workspace:*",
     "@friday/storage": "workspace:*",
