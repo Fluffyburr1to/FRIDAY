@@ -194,3 +194,74 @@ describe('the owner acting directly', () => {
     expect(evaluation.riskClass).toBe('critical')
   })
 })
+
+describe('what M5 lets her do, and what it still asks about', () => {
+  const SCHEDULE = { actorType: 'schedule', actorId: 'schedule:integrity-check' }
+
+  it('lets an agent think without asking', () => {
+    // ★ Thinking on its own changes nothing outside FRIDAY. What she decides
+    // to DO afterwards is a separate action with its own rule, which is the
+    // whole reason this one can be `allow` without widening anything.
+    const evaluation = evaluatePolicies(
+      policies,
+      { ...AGENT, action: 'model.invoke', resource: 'model:reasoning/strong' },
+      NO_GRANT,
+    )
+
+    expect(evaluation.effect).toBe('allow')
+    expect(evaluation.riskClass).toBe('low')
+  })
+
+  it('does not let anyone but an agent invoke a model on that rule', () => {
+    // Least privilege: the rule names agents. A schedule reaching for a model
+    // is not covered by it, and an unclassified action fails closed.
+    const evaluation = evaluatePolicies(
+      policies,
+      { ...SCHEDULE, action: 'model.invoke', resource: 'model:reasoning/strong' },
+      NO_GRANT,
+    )
+
+    expect(evaluation.matched).not.toContain('agents-may-think')
+  })
+
+  it('lets an agent run a self-check, as a scheduled job already could', () => {
+    const evaluation = evaluatePolicies(
+      policies,
+      { ...AGENT, action: 'diagnostics.self-check.run', resource: 'diagnostics:self-check/all' },
+      NO_GRANT,
+    )
+
+    expect(evaluation.effect).toBe('allow')
+    expect(evaluation.riskClass).toBe('low')
+  })
+
+  it('★ asks before compacting the log, and a standing grant cannot cover it', () => {
+    // ★ Compaction rewrites the record of everything FRIDAY has done. It is
+    // the one M5 capability that touches the audit trail, so it carries no
+    // `unless.standingGrant` — the owner is asked every single time, and there
+    // is no permission he can leave in place that stops him being asked.
+    const request = {
+      ...AGENT,
+      action: 'operations.log.compact',
+      resource: 'events:log/segments',
+    }
+
+    expect(evaluatePolicies(policies, request, NO_GRANT).effect).toBe('require_approval')
+    expect(evaluatePolicies(policies, request, GRANT).effect).toBe('require_approval')
+    expect(evaluatePolicies(policies, request, GRANT).riskClass).toBe('high')
+  })
+
+  it('leaves the M5 actions nothing for a grant to take', () => {
+    const exemptible = policies.policies.filter(
+      (policy) =>
+        policy.unless?.standingGrant === true &&
+        [
+          'agents-may-think',
+          'agents-may-run-diagnostics',
+          'rewriting-the-record-needs-approval',
+        ].includes(policy.id),
+    )
+
+    expect(exemptible).toEqual([])
+  })
+})
