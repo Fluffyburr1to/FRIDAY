@@ -139,6 +139,25 @@ catalog:
 overrides:
   vite: ^7.3.6
 
+  # GHSA-2v37-7h3g-55p8 — nanoid before 3.3.18 loops forever when a custom
+  # generator is asked for zero bytes. Nothing here calls nanoid: it arrives
+  # under postcss, under vite, under vitest, and so reaches developer machines
+  # and CI but never the artifact — `pnpm deploy --prod` drops the whole chain,
+  # and the built bundle contains no copy of it.
+  #
+  # ★ Held inside the 3.x line on purpose. postcss asks for `^3.3.16`, and
+  # 3.3.18 is the patch that fixes this — so the floor moves by two patch
+  # versions and nothing else. Written first as `>=3.3.18`, which resolved
+  # nanoid to 6.0.1: three majors above what postcss was written against, to
+  # fix a loop in a code path this repository never calls. A security patch
+  # that silently performs a major upgrade is a second change wearing the
+  # first one's justification.
+  #
+  # Remove when postcss's own floor reaches 3.3.18 and this stops doing
+  # anything — an override that no longer changes a resolution is a comment
+  # pretending to be configuration.
+  nanoid@<3.3.18: ^3.3.18
+
 # pnpm blocks dependency install scripts by default — a good default, since an
 # install script runs arbitrary code with your privileges (supply chain, T2).
 # Each exception is an explicit decision recorded here.
