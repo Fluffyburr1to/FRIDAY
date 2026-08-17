@@ -34,16 +34,16 @@
     "test:cross": "turbo run build && vitest run"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.7",
+    "@biomejs/biome": "^2.5.8",
     "@changesets/cli": "^2.29.7",
     "@friday/contracts": "workspace:*",
     "@friday/guardian": "workspace:*",
     "@friday/storage": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "dependency-cruiser": "^18.1.1",
+    "dependency-cruiser": "^18.2.0",
     "js-yaml": "^5.2.3",
-    "turbo": "^2.5.0",
+    "turbo": "^2.10.10",
     "typescript": "^5.6.3",
     "vitest": "catalog:"
   }
