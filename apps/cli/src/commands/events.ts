@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs'
-import { SYSTEM_ACTOR } from '@friday/contracts'
 import { createEventBus } from '@friday/kernel'
 import { openEventsReadOnly, openStorage } from '@friday/storage'
 import type { CommandContext } from '../context.js'
@@ -106,11 +105,18 @@ function writeEvent(
 }
 
 /**
- * Emits a test event.
+ * Emits a test event, recorded as the owner.
  *
  * The one command at Milestone 1 that opens the log for writing. It exists so
  * the tail has something to show, and it stays afterwards as the cheapest
  * possible end-to-end check that the bus is alive.
+ *
+ * ★ The actor is the owner, never `SYSTEM_ACTOR`. A person typing this command
+ * is a person acting, and recording it as `system:kernel` would put a human
+ * action in the log under a machine's name — the exact distinction
+ * `packages/contracts/src/actor.ts` separates actor from principal to keep.
+ *
+ * Reference: docs/adr/0043-friday-events-emit-records-the-owner-not-the-kernel.md
  *
  * @param input - The context and the note to record.
  * @returns The exit code.
@@ -136,7 +142,8 @@ export async function runEmit(input: { context: CommandContext; note: string }):
 
     const published = await bus.publish({
       type: 'test.event.emitted',
-      actor: SYSTEM_ACTOR,
+      // The owner ran this command, so the log says the owner acted (ADR-0043).
+      actor: { type: 'user', id: config.principalId },
       principalId: config.principalId,
       payload: { note },
       sensitivity: 'internal',

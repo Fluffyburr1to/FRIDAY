@@ -105,19 +105,46 @@ describe('loading from disk', () => {
     expect(result.error.message).toContain('list of rules')
   })
 
-  it('fails when the directory cannot be read', () => {
-    const result = loadPolicySet(join(directory, 'does-not-exist'))
+  it('fails when the directory cannot be read, and names the command that fixes it', () => {
+    const missing = join(directory, 'does-not-exist')
+    const result = loadPolicySet(missing)
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.code).toBe('POLICY_INVALID')
+
+    // Naming the directory tells the owner where she looked. Naming the command
+    // tells them what to do about it, which is the part that was missing — the
+    // Keychain half of the same failure has said it since M4.
+    expect(result.error.message).toContain(missing)
+    expect(result.error.message).toContain('friday init')
   })
 
-  it('fails when the directory holds no rules at all', () => {
+  it('fails when the directory holds no rules at all, and names the command that fixes it', () => {
     const result = loadPolicySet(directory)
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error.code).toBe('POLICY_SET_EMPTY')
+    expect(result.error.message).toContain(directory)
+    expect(result.error.message).toContain('friday init')
+
+    // ★ The assertion that pins the actual defect. This message used to send
+    // the owner to `packages/guardian/policies/` — a path inside the source
+    // repository, which does not exist on a machine FRIDAY was installed onto.
+    expect(result.error.message).not.toContain('packages/guardian/policies')
+  })
+
+  it('re-words the empty set even when rule files exist but hold nothing', () => {
+    // The case an early `files.length === 0` check would miss: the directory
+    // has rule files, they parse, and they contain no rules.
+    writeFileSync(join(directory, '00-empty.json'), '[]')
+
+    const result = loadPolicySet(directory)
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error.code).toBe('POLICY_SET_EMPTY')
+    expect(result.error.message).toContain('friday init')
   })
 })

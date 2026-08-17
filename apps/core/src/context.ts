@@ -9,6 +9,7 @@ import type { FridayConfig } from '@friday/config'
 import {
   err,
   type FridayError,
+  type FridayEvent,
   fridayError,
   ok,
   type PrincipalId,
@@ -20,8 +21,9 @@ import {
   createGuardian,
   loadPolicySet,
 } from '@friday/guardian'
-import { createEventBus } from '@friday/kernel'
+import { announceStart, createEventBus } from '@friday/kernel'
 import { type EventStore, type KeyProvider, openStorage } from '@friday/storage'
+import { coreVersion } from './version.js'
 
 /**
  * What every procedure is given.
@@ -113,6 +115,23 @@ export interface OpenedContext {
    */
   readonly authorizing: AuthorizingClerk
 
+  /**
+   * Recording that FRIDAY started.
+   *
+   * ★ Deliberately **not** on `CoreContext`, and deliberately not the bus. A
+   * procedure that could publish would be a way to record an event FRIDAY did
+   * not cause — the concern ADR-0021 names and the reason the bus stays private
+   * to this module. This is one closure over one call, reachable only by
+   * startup, which is not a request from anybody.
+   *
+   * It is the first write of every run and the gate on everything after it:
+   * Chapter 10 says she will not act if she cannot record, so a failure here
+   * means she has not started rather than that a detail is missing.
+   *
+   * See docs/adr/0044-apps-core-records-that-friday-started-before-she-checks-herself.md
+   */
+  announceStarted(): Promise<Result<FridayEvent, FridayError>>
+
   close(): void
 }
 
@@ -196,6 +215,9 @@ export function openContext(input: {
       approvals,
       principalId: config.principalId,
     },
+
+    announceStarted: () =>
+      announceStart({ bus, principalId: config.principalId, version: coreVersion() }),
 
     authorizing: createAuthorizingClerk({
       guardian: createGuardian({

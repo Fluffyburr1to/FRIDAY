@@ -400,7 +400,7 @@ without demonstrating.
 | `apps/cli` packaged | A runnable `friday`, with `friday init` delivered intact |
 | Startup failure names its own fix | `openContext` fails today with a message naming the missing directory but not the command that creates it |
 | `infra/launchd` | `com.friday.core.plist` and its install path — a LaunchAgent, never a LaunchDaemon ([Chapter 33](33-deployment-strategy.md)) |
-| `system.started` gets a production call site | The contract and the publisher both exist — `announceStart()` in `packages/kernel/src/event-bus.ts`, exported and tested. **Nothing calls it outside tests.** ([ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) review trigger) |
+| `system.started` gets a production call site | **✅ Settled by [ADR-0044](../adr/0044-apps-core-records-that-friday-started-before-she-checks-herself.md)** — `apps/core` announces it before the startup self-check, so a fresh log now opens with it. ADR-0035's initialization-record question rides on separately and **stays open** |
 | Release machinery | Changesets, `0.1.0`, `tools/scripts/release.ts`. `CHANGELOG.md` says versioning starts here. |
 | `friday events emit` settled | The deferred ADR-0021 question above |
 

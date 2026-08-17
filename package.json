@@ -20,6 +20,9 @@
     "check:workflows": "node tools/scripts/check-workflows.mjs",
     "check:secrets": "gitleaks detect --no-banner --redact || echo 'gitleaks not installed \u2014 CI enforces this'",
     "fix": "biome check --write .",
+    "changeset": "changeset",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version",
     "test": "turbo run build && turbo run test && vitest run",
     "test:unit": "turbo run test -- --project '*:unit'",
     "test:integration": "turbo run test -- --project '*:integration'",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "@changesets/cli": "^2.29.7",
     "@friday/contracts": "workspace:*",
     "@friday/guardian": "workspace:*",
     "@friday/storage": "workspace:*",

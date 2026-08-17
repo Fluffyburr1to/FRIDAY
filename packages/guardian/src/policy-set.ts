@@ -48,9 +48,12 @@ export function createPolicySet(inputs: readonly unknown[]): Result<PolicySet, F
     return err(
       fridayError({
         code: 'POLICY_SET_EMPTY',
-        message:
-          'No authorization rules were found, so FRIDAY would refuse everything. ' +
-          'Check that packages/guardian/policies/ contains at least one rule file.',
+        // ★ Deliberately says nothing about where the rules should have come
+        // from. This function is given parsed objects and does not know whether
+        // they came from a directory, a test, or somewhere not invented yet, so
+        // naming a location here would be a guess. `loadPolicySet` knows, and
+        // replaces this message with one that names the directory and the fix.
+        message: 'No authorization rules were found, so FRIDAY would refuse everything.',
       }),
     )
   }
@@ -101,7 +104,10 @@ export function createPolicySet(inputs: readonly unknown[]): Result<PolicySet, F
  * would remove whatever restrictions it contained, which is the one failure
  * mode this component cannot have.
  *
- * @param directory - Usually `packages/guardian/policies`.
+ * @param directory - `paths.policiesDir`, the owner's rules on this machine
+ *   ([ADR-0033](../../../docs/adr/0033-authorization-rules-are-loaded-from-a-configured-directory.md)).
+ *   In a checkout that is `packages/guardian/policies`; on an installed machine
+ *   it is `<dataDir>/policies`, which `friday init` fills.
  * @returns The validated set, or what went wrong reading it.
  */
 export function loadPolicySet(directory: string): Result<PolicySet, FridayError> {
@@ -115,7 +121,17 @@ export function loadPolicySet(directory: string): Result<PolicySet, FridayError>
     return err(
       fridayError({
         code: 'POLICY_INVALID',
-        message: `FRIDAY could not read her authorization rules from ${directory}.`,
+        // ★ Names the fix, not just the path. This and a missing Keychain key
+        // are the two halves of "she has not been set up here", and the key
+        // half already says what to run (`describeReadFailure`, @friday/storage).
+        // It stops short of asserting *why* the directory is unreadable, because
+        // a permission fault and a fresh machine are not the same problem.
+        message:
+          `FRIDAY could not read her authorization rules from ${directory}.\n\n` +
+          '  She copies her rules there when she is set up. If this Mac has not been\n' +
+          '  set up yet, run `friday init`. If it has, that directory has become\n' +
+          '  unreadable and she will not start without it.',
+        detail: { directory },
         cause,
       }),
     )
@@ -153,5 +169,25 @@ export function loadPolicySet(directory: string): Result<PolicySet, FridayError>
     inputs.push(...contents)
   }
 
-  return createPolicySet(inputs)
+  const set = createPolicySet(inputs)
+
+  // ★ Re-worded here rather than raised here, because this is the only place
+  // that knows both the directory and that a command fills it. Wrapping the
+  // result rather than checking `files.length` first also covers the case the
+  // early check would miss: rule files that exist and contain empty lists.
+  if (!set.ok && set.error.code === 'POLICY_SET_EMPTY') {
+    return err(
+      fridayError({
+        code: 'POLICY_SET_EMPTY',
+        message:
+          `No authorization rules were found in ${directory}, so FRIDAY would refuse\n` +
+          '  everything — and a system that refuses everything is broken rather than\n' +
+          '  strict, so she stops instead.\n\n' +
+          '  She copies her rules there when she is set up. Run `friday init`.',
+        detail: { directory },
+      }),
+    )
+  }
+
+  return set
 }

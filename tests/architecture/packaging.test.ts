@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -101,5 +101,76 @@ describe('@friday/guardian ships the rules FRIDAY is set up with', () => {
     // init locates the directory via `@friday/guardian/policies/README.md`.
     // If that stops shipping, resolution still succeeds and the read fails.
     expect(files).toContain('policies/README.md')
+  })
+})
+
+describe('the bundle is the only versioned unit', () => {
+  /** Every workspace manifest, found the way `pnpm-workspace.yaml` globs them. */
+  function manifests(): Array<{ dir: string; name: string; version: string; private: boolean }> {
+    const found: Array<{ dir: string; name: string; version: string; private: boolean }> = []
+
+    for (const group of ['apps', 'packages', 'tools', 'packaging', 'departments', 'connectors']) {
+      const base = resolve(ROOT, group)
+      let entries: string[]
+
+      try {
+        entries = readdirSync(base)
+      } catch {
+        continue
+      }
+
+      for (const entry of entries) {
+        const path = resolve(base, entry, 'package.json')
+        let raw: string
+
+        try {
+          raw = readFileSync(path, 'utf8')
+        } catch {
+          continue
+        }
+
+        const parsed = JSON.parse(raw) as { name?: string; version?: string; private?: boolean }
+        found.push({
+          dir: `${group}/${entry}`,
+          name: parsed.name ?? '(unnamed)',
+          version: parsed.version ?? '(none)',
+          private: parsed.private === true,
+        })
+      }
+    }
+
+    return found
+  }
+
+  it('gives @friday/bundle a real version', () => {
+    const bundle = manifests().find((manifest) => manifest.name === '@friday/bundle')
+
+    expect(bundle).toBeDefined()
+    expect(bundle?.version).not.toBe('0.0.0')
+  })
+
+  it('★ keeps every other package at 0.0.0', () => {
+    // ADR-0036 §6: "The bundle is the versioned unit. Workspace packages stay
+    // `private: true` at `0.0.0`. Nothing is published to any registry, so
+    // per-package versions would be fiction maintained by hand."
+    //
+    // This is why `.changeset/config.json` leaves `ignore` empty. A list of
+    // every package NOT to version has to be edited whenever a package is
+    // added, and a list nobody updates is a rule that has quietly stopped
+    // applying. This fails on the version actually moving instead.
+    const stray = manifests().filter(
+      (manifest) => manifest.name !== '@friday/bundle' && manifest.version !== '0.0.0',
+    )
+
+    expect(stray.map((manifest) => `${manifest.name}@${manifest.version}`)).toEqual([])
+  })
+
+  it('publishes nothing — every package stays private', () => {
+    // The other half of the same decision. A package that is not private could
+    // reach a registry, and then its `0.0.0` would stop being a placeholder and
+    // start being a claim.
+    const publishable = manifests().filter((manifest) => !manifest.private)
+
+    expect(publishable.map((manifest) => manifest.name)).toEqual([])
   })
 })
