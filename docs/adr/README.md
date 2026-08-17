@@ -67,6 +67,12 @@ Decisions taken since, as implementation met the design:
 | [0038](0038-the-artifact-is-deployed-flat-and-carries-nothing-of-its-builder.md) | The artifact is deployed flat, and carries nothing of its builder | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0043](0043-friday-events-emit-records-the-owner-not-the-kernel.md) | `friday events emit` records the owner, not the kernel | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0044](0044-apps-core-records-that-friday-started-before-she-checks-herself.md) | `apps/core` records that FRIDAY started, before she checks herself | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0045](0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md) | The plan record is completed to Chapter 12 before the engine is built | **proposed** | low→**high** | [12](../01-bible/12-chief-of-staff.md) |
+
+**Numbers 0039–0042 are not listed and are not missing.** Four ADRs were drafted under those numbers
+on 2026-08-12 — Obsidian projection, the capability boundary, the HUD, and HUD vitals — and none has
+been merged; they exist only as uncommitted work. They are reserved rather than reassigned, because
+reassigning a number that has been written against is how two documents come to share one address.
 
 † **0036 is amended in part, not superseded.** ADR-0037 replaces its §1 deploy target and nothing
 else. The body of 0036 is left exactly as accepted, per the immutability rule above — the amendment
