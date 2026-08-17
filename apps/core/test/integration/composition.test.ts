@@ -117,6 +117,11 @@ describe('composing a context', () => {
       if (result.ok) throw new Error('a missing rule directory must not start')
       expect(result.error.code).toBe('POLICY_INVALID')
 
+      // `openContext` returns the loader's error unwrapped, so the remediation
+      // has to survive this boundary to reach the owner. This is the message
+      // launchd writes to the error log when she will not start.
+      expect(result.error.message).toContain('friday init')
+
       // ★ The rules are checked ahead of storage precisely so a run that cannot
       // start leaves no trace of having tried — and so the server never reaches
       // `listen`.
@@ -136,6 +141,11 @@ describe('composing a context', () => {
       // Not "deny everything". A Guardian with no rules refuses every action,
       // and a broken system that looks like a strict one is the worse failure.
       expect(result.error.code).toBe('POLICY_SET_EMPTY')
+
+      // And it must not send the owner into the source repository, which is
+      // where this message used to point on an installed machine.
+      expect(result.error.message).toContain('friday init')
+      expect(result.error.message).not.toContain('packages/guardian/policies')
     })
 
     it('refuses when a rule file is malformed', () => {
