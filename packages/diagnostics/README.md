@@ -11,6 +11,18 @@ Principle 8: *"She should recommend improvements. **She should never silently im
 Three functions: **health** (is she working now?), **self-checks** (is she internally consistent?),
 and **improvement proposals** (could she be better?).
 
+## What is built
+
+**Runtime vitals only** — CPU, memory, disk, and uptime for the HUD's vitals panel, scoped to the
+FRIDAY process per [Chapter 29](../../docs/01-bible/29-monitoring-observability.md) and
+[ADR-0042](../../docs/adr/0042-hud-vitals-are-friday-scoped-per-chapter-29.md). Host equivalents —
+`os.freemem()`, `os.loadavg()`, `os.uptime()` — are banned, and a test asserts it. A vital that
+cannot be measured returns an `absent` reading with its reason, so one unreadable metric degrades one
+row rather than blanking the panel.
+
+Self-checks and improvement proposals arrive with the milestone that gives FRIDAY something to check
+and something to propose about.
+
 ## What lives here
 
 - Health aggregation across all components

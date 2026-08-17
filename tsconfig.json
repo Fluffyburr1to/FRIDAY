@@ -29,6 +29,7 @@
     { "path": "packages/guardian" },
     { "path": "packages/audit" },
     { "path": "packages/clerk" },
+    { "path": "packages/diagnostics" },
     { "path": "apps/cli" },
     { "path": "apps/core" },
     { "path": "apps/web" }

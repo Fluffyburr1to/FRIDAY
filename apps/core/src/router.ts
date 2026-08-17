@@ -1,4 +1,9 @@
-import { ApprovalRequestSchema, EventSchema, type FridayError } from '@friday/contracts'
+import {
+  ApprovalRequestSchema,
+  EventSchema,
+  type FridayError,
+  RuntimeVitalsSchema,
+} from '@friday/contracts'
 import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import type { CoreContext } from './context.js'
@@ -155,6 +160,20 @@ export const appRouter = t.router({
 
         return { events: result.value }
       }),
+  }),
+
+  vitals: t.router({
+    /**
+     * What the FRIDAY runtime is doing, right now.
+     *
+     * ★ No error branch, and that is the contract rather than an omission. A
+     * vital that cannot be read comes back as an `absent` reading carrying its
+     * own reason, so one unavailable metric degrades one row instead of
+     * blanking a panel the owner is using to watch four others.
+     *
+     * See docs/adr/0042-hud-vitals-are-friday-scoped-per-chapter-29.md
+     */
+    current: t.procedure.output(RuntimeVitalsSchema).query(({ ctx }) => ctx.vitals.read()),
   }),
 })
 
