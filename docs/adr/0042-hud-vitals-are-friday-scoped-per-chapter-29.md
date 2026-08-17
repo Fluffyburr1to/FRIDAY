@@ -1,6 +1,6 @@
 # ADR-0042 — HUD vitals are FRIDAY-scoped, per Chapter 29
 
-- **Status:** proposed
+- **Status:** accepted — 2026-08-17, after the implementation landed. See §0.
 - **Date:** 2026-08-12
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none — **implements one row** of
@@ -68,6 +68,34 @@ FRIDAY metric produced a number that was plausible, prominent, wrong, and pinned
 ---
 
 ## Decision
+
+### 0. Accepted after the fact, and reconciled against what shipped — 2026-08-17
+
+**This ADR was drafted on 2026-08-12, held out of the repository, and accepted only once the code it
+describes was on `main`.** The holding was deliberate: an accepted ADR describing delivered work, in
+a repository where the work does not exist, is the failure
+[Chapter 39](../01-bible/39-roadmap.md) rule 8 was added for. It landed with the vitals reader
+([#44](https://github.com/Fluffyburr1to/FRIDAY/pull/44)) and is accepted now that the panel
+([#45](https://github.com/Fluffyburr1to/FRIDAY/pull/45)) is there too.
+
+**What was checked before accepting**, rather than assumed:
+
+| Claim | As delivered |
+|---|---|
+| Measurement lives in `packages/diagnostics` (§1) | `createVitalsReader` there; `apps/core` serves `vitals.current` and computes nothing |
+| Four vitals, FRIDAY-scoped (§2) | CPU, memory, disk, uptime — each from the process, not the host |
+| The host calls are absent (§2) | Asserted by a test rather than left to review |
+| Absence is a value (§3) | An unreadable vital returns `absent` with a reason; the procedure has no error branch |
+
+**One claim in §5's neighbourhood is now stale and is corrected here rather than silently.**
+[ADR-0041](0041-one-hud-is-the-dashboard-grown-up.md) §5's table lists *System vitals* as
+unbuildable against an empty `packages/diagnostics`. That was true when it was written and is no
+longer: the package exists and the panel is built. **ADR-0041 is not edited** — it is accepted, and
+accepted ADRs are immutable; the correction lives here, which is the pattern ADR-0037 §7 used for
+ADR-0036.
+
+**Still not delivered, and still correctly placed:** FRIDAY state, capabilities, memory, schedule,
+and voice. ADR-0041 §2 forbids a panel before its source, and those sources remain at M5–M7.
 
 ### 1. Measurement lives in `packages/diagnostics`, never in the HUD or in `apps/core`
 

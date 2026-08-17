@@ -1,6 +1,6 @@
 # ADR-0046 — Durable execution stays hand-built at M5
 
-- **Status:** proposed
+- **Status:** accepted — 2026-08-17
 - **Date:** 2026-08-17
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none — **answers a review trigger** on
@@ -215,6 +215,12 @@ Narrower than ADR-0011's, because "complex compensation" was not testable enough
 
 - **★ The first capability that needs compensating** — a step whose committed effect must be undone
   when a later step fails. This is the trigger. Alternative A becomes strong the day it exists.
+  **Expected at M6, and named as such when this was accepted on 2026-08-17.** The first connector is
+  a calendar; *"create the event, then fail to notify"* is a compensation case wearing ordinary
+  clothes, and it arrives with the milestone rather than at some unpredictable later date. The owner
+  accepted this ADR knowing that — the decision is *"not yet, and probably one milestone"*, not
+  *"not for years"*. **Re-read this ADR when the first connector lands, before the first plan that
+  writes to it.**
 - **A plan needs to wait on a timer FRIDAY does not own** — an external callback, a webhook, a
   scheduled resume days out. Hand-rolled timers are where this gets expensive.
 - **Resume-after-crash produces a duplicated external effect**, once, in production. The idempotency

@@ -68,11 +68,11 @@ Decisions taken since, as implementation met the design:
 | [0039](0039-obsidian-is-a-projection-of-memory-never-a-source-of-it.md) | Obsidian is a projection of memory, never a source of it | accepted ‡ | low | [16](../01-bible/16-memory-system.md) |
 | [0040](0040-a-capability-is-a-department-inside-the-guardian-boundary.md) | A capability is a department inside the Guardian boundary | accepted ‡ | low→high | [13](../01-bible/13-department-architecture.md) |
 | [0041](0041-one-hud-is-the-dashboard-grown-up.md) | ONE HUD is the dashboard grown up, not a second application | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
-| [0042](0042-hud-vitals-are-friday-scoped-per-chapter-29.md) | HUD vitals are FRIDAY-scoped, per Chapter 29 | **proposed** | low | [29](../01-bible/29-monitoring-observability.md) |
+| [0042](0042-hud-vitals-are-friday-scoped-per-chapter-29.md) | HUD vitals are FRIDAY-scoped, per Chapter 29 | accepted ‡ | low | [29](../01-bible/29-monitoring-observability.md) |
 | [0043](0043-friday-events-emit-records-the-owner-not-the-kernel.md) | `friday events emit` records the owner, not the kernel | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0044](0044-apps-core-records-that-friday-started-before-she-checks-herself.md) | `apps/core` records that FRIDAY started, before she checks herself | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0045](0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md) | The plan record is completed to Chapter 12 before the engine is built | accepted ‡ | low→**high** | [12](../01-bible/12-chief-of-staff.md) |
-| [0046](0046-durable-execution-stays-hand-built-at-m5.md) | Durable execution stays hand-built at M5 | **proposed** | medium | [12](../01-bible/12-chief-of-staff.md) |
+| [0046](0046-durable-execution-stays-hand-built-at-m5.md) | Durable execution stays hand-built at M5 | accepted | medium | [12](../01-bible/12-chief-of-staff.md) |
 
 ‡ **Amended before acceptance, not after.** Three of these were drafted on 2026-08-12 or later,
 reviewed on 2026-08-17, and **edited in the same change that accepted them** — 0039 gained a §0
@@ -81,13 +81,11 @@ ahead, and 0045 records two conditions the owner attached. The immutability rule
 file governs **accepted** ADRs; a `proposed` one is still a draft and revising it is how review is
 supposed to work. Each says in its own §Status that it was changed and where.
 
-**0042 is present and deliberately still `proposed`.** It was held out of the repository until the
-implementation it describes was on `main`, because accepting an ADR that describes delivered work
-into a repository where the work does not exist is the failure
-[Chapter 39](../01-bible/39-roadmap.md) rule 8 was added for. **That condition is now met** — it
-lands with the vitals reader and the `vitals.current` procedure it describes; the panel that renders
-them follows separately. It stays `proposed` until the owner accepts it, which is a decision about
-the design and not about whether the code merges.
+**0042 was held, then accepted once its implementation existed.** Accepting an ADR that describes
+delivered work, into a repository where the work does not exist, is the failure
+[Chapter 39](../01-bible/39-roadmap.md) rule 8 was added for — so it waited for the reader (#44) and
+the panel (#45), and its §0 records what was checked against the delivered code before it was
+accepted rather than assuming the two matched.
 
 † **0036 is amended in part, not superseded.** ADR-0037 replaces its §1 deploy target and nothing
 else. The body of 0036 is left exactly as accepted, per the immutability rule above — the amendment
