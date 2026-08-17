@@ -31,6 +31,7 @@
     { "path": "packages/clerk" },
     { "path": "packages/diagnostics" },
     { "path": "packages/model-router" },
+    { "path": "packages/agent-runtime" },
     { "path": "apps/cli" },
     { "path": "apps/core" },
     { "path": "apps/web" }

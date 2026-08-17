@@ -22,6 +22,35 @@ export {
   SubjectSchema,
   SYSTEM_ACTOR,
 } from './actor.js'
+// ── Agents ──────────────────────────────────────────────────────────────────
+export {
+  AGENT_CAPABILITIES,
+  type AgentBudget,
+  AgentBudgetSchema,
+  type AgentCapability,
+  AgentCapabilitySchema,
+  type AgentManifest,
+  AgentManifestSchema,
+  type AgentModel,
+  AgentModelSchema,
+  manifestAllows,
+  manifestAllowsConnector,
+} from './agent.js'
+export {
+  AGENT_OUTCOMES,
+  type AgentInvocationResult,
+  AgentInvocationResultSchema,
+  type AgentOutcomeKind,
+  AgentOutcomeKindSchema,
+  type AgentSpend,
+  AgentSpendSchema,
+  type AgentSuspension,
+  AgentSuspensionSchema,
+  TERMINATION_REASONS,
+  type TerminationReason,
+  TerminationReasonSchema,
+  wasTerminated,
+} from './agent-outcome.js'
 // ── Asking the owner ────────────────────────────────────────────────────────
 export {
   APPROVAL_STATUSES,
