@@ -171,8 +171,17 @@ export {
   UuidSchema,
   uuidv7,
 } from './ids.js'
+// ── What she understood ─────────────────────────────────────────────────────
+export {
+  type Ambiguity,
+  AmbiguitySchema,
+  hasAmbiguities,
+  type Intent,
+  IntentSchema,
+} from './intent.js'
 // ── Work ────────────────────────────────────────────────────────────────────
 export {
+  isAwaitingOwner,
   isTerminalPlanStatus,
   PLAN_STATUSES,
   PLAN_STEP_STATUSES,
@@ -187,6 +196,9 @@ export {
   RISK_CLASSES,
   type RiskClass,
   RiskClassSchema,
+  STEP_FAILURE_ACTIONS,
+  type StepFailureAction,
+  StepFailureActionSchema,
   TERMINAL_PLAN_STATUSES,
 } from './plan.js'
 export { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrapOr } from './result.js'

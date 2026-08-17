@@ -55,6 +55,7 @@ describe('the event log', () => {
       'events:0003',
 
       'main:0001',
+      'main:0002',
     ])
   })
 

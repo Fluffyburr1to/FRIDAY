@@ -2,6 +2,7 @@ import {
   err,
   type FridayError,
   fridayError,
+  IntentSchema,
   ok,
   type Plan,
   type PlanStep,
@@ -50,7 +51,10 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
   return {
     createPlan(plan) {
       try {
-        db.insert(plans).values(plan).run()
+        db.insert(plans)
+          .values({ ...plan, intent: JSON.stringify(plan.intent) })
+          .run()
+
         return ok(plan)
       } catch (cause) {
         return err(writeFailed('plan', plan.id, cause))
@@ -64,7 +68,9 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
         .where(and(eq(plans.id, id), eq(plans.principalId, principalId)))
         .get()
 
-      return ok(row === undefined ? undefined : toPlan(row))
+      if (row === undefined) return ok(undefined)
+
+      return toPlan(row)
     },
 
     listPlans({ principalId, status }) {
@@ -75,7 +81,20 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
 
       const rows = db.select().from(plans).where(condition).orderBy(asc(plans.createdAt)).all()
 
-      return ok(rows.map(toPlan))
+      const read: Plan[] = []
+
+      // One unreadable plan fails the listing rather than being skipped. A
+      // silently shortened list of what FRIDAY is doing is worse than an
+      // error: the owner cannot tell the difference between "nothing else is
+      // running" and "something else is running and could not be read".
+      for (const row of rows) {
+        const plan = toPlan(row)
+        if (!plan.ok) return plan
+
+        read.push(plan.value)
+      }
+
+      return ok(read)
     },
 
     addStep(step) {
@@ -83,6 +102,7 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
         db.insert(planSteps)
           .values({
             ...step,
+            dependsOn: JSON.stringify(step.dependsOn),
             actionPayload: JSON.stringify(step.actionPayload),
             result: step.result === null ? null : JSON.stringify(step.result),
             error: step.error === null ? null : JSON.stringify(step.error),
@@ -108,6 +128,15 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
   }
 }
 
+/** Parses stored JSON, yielding `undefined` rather than throwing on rubbish. */
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
 function writeFailed(what: string, id: string, cause: unknown): FridayError {
   return fridayError({
     code: 'STORAGE_WRITE_FAILED',
@@ -117,8 +146,33 @@ function writeFailed(what: string, id: string, cause: unknown): FridayError {
   })
 }
 
-function toPlan(row: PlanRow): Plan {
-  return { ...row, status: row.status as Plan['status'] }
+/**
+ * Rebuilds a plan from its row.
+ *
+ * ★ `intent` is validated rather than cast, and it is the only field here that
+ * is. The rest of this row was written by code in this repository against a
+ * `STRICT` table; `intent` is a JSON document produced by a **model** and
+ * round-tripped through text, which is the one thing Chapter 30 says never to
+ * trust — *"Zod at every boundary. Never trust external input, including AI
+ * output."* A malformed one is a typed read failure, not a shape nobody
+ * checked.
+ */
+function toPlan(row: PlanRow): Result<Plan, FridayError> {
+  const intent = IntentSchema.safeParse(parseJson(row.intent))
+
+  if (!intent.success) {
+    return err(
+      fridayError({
+        code: 'VALIDATION_FAILED',
+        message:
+          'FRIDAY could not read the stored interpretation of a request, so she will not act ' +
+          'on a guess about what it said.',
+        detail: { id: row.id, issues: intent.error.issues.map((issue) => issue.path.join('.')) },
+      }),
+    )
+  }
+
+  return ok({ ...row, status: row.status as Plan['status'], intent: intent.data })
 }
 
 function toPlanStep(row: PlanStepRow): PlanStep {
@@ -126,6 +180,8 @@ function toPlanStep(row: PlanStepRow): PlanStep {
     ...row,
     status: row.status as PlanStep['status'],
     riskClass: row.riskClass as PlanStep['riskClass'],
+    onFailure: row.onFailure as PlanStep['onFailure'],
+    dependsOn: JSON.parse(row.dependsOn) as string[],
     actionPayload: JSON.parse(row.actionPayload) as Record<string, unknown>,
     result: row.result === null ? null : (JSON.parse(row.result) as Record<string, unknown>),
     error: row.error === null ? null : (JSON.parse(row.error) as Record<string, unknown>),
