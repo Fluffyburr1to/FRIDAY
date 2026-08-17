@@ -2,7 +2,20 @@
 
 **The only package permitted to import an AI vendor SDK.**
 
-Milestone: **M3** · Load-bearing: **yes**
+Milestone: **M5** · Load-bearing: **yes**
+
+## What is built, and what is not
+
+**Built at M5:** the capability-based request interface, the provider port, sensitivity routing,
+the nested fail-closed budget ledger, and a scripted local provider.
+
+**Not built, and deliberately:** Anthropic, OpenAI, and Ollama adapters. M5 is built and
+demonstrated against the scripted provider so that none of it waits on a credential or a bill.
+**There is no vendor SDK in this package today**, which means rule 1 below is currently enforced by
+a deny-list guarding an empty room — and that is the cheapest time to have got it right.
+
+★ **With no local provider installed, a `private` request is refused.** Not queued, not downgraded,
+not served by a cloud provider that happens to be configured. See rule 2.
 
 ## Charter
 

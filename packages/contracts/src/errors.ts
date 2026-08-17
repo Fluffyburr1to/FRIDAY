@@ -44,6 +44,18 @@ export const ERROR_CODES = [
   'TIMEOUT',
   'SHUTTING_DOWN',
 
+  // ── Thinking ────────────────────────────────────────────────────────────
+  //
+  // Two failures, kept apart for the same reason `NOT_AUTHORIZED` and
+  // `APPROVAL_REQUIRED` are. `MODEL_UNAVAILABLE` covers both "nothing can do
+  // this" and the far more important "this is private and there is no local
+  // model" — a refusal FRIDAY makes on purpose, not a fault.
+  // `BUDGET_EXHAUSTED` is FRIDAY stopping rather than spending, which is a
+  // correct outcome and must never read as a malfunction: a caller that
+  // retried it would be defeating the one control on an overnight loop.
+  'MODEL_UNAVAILABLE',
+  'BUDGET_EXHAUSTED',
+
   // ── Authorization ───────────────────────────────────────────────────────
   //
   // `NOT_AUTHORIZED` and `APPROVAL_REQUIRED` are distinct on purpose. The

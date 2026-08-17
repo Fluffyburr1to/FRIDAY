@@ -30,6 +30,7 @@
     { "path": "packages/audit" },
     { "path": "packages/clerk" },
     { "path": "packages/diagnostics" },
+    { "path": "packages/model-router" },
     { "path": "apps/cli" },
     { "path": "apps/core" },
     { "path": "apps/web" }
