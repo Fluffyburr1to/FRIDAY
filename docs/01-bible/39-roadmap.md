@@ -642,12 +642,13 @@ not need it.
 | Package | Deliverable |
 |---|---|
 | `model-router` | Provider abstraction, sensitivity routing, **fail-closed budgets** |
-| `model-router` | Anthropic + OpenAI + local Ollama providers |
+| `model-router` | A fake provider and local Ollama first; **Anthropic and OpenAI are held** — see scope below |
 | `agent-runtime` | Worker-thread isolation, manifests, mediated tools, budgets |
 | `chief-of-staff` | Intent parsing, plan generation, DAG execution, suspension/resume |
-| `departments/operations` | **The first department** — health, backups, maintenance |
-| `diagnostics` | Health checks, self-checks, improvement proposals |
+| `departments/operations` | **The first department** — `run-self-check` and `compact-event-log` |
+| `diagnostics` | Health checks and self-checks. **Improvement proposals move to M8** — see below |
 | `tools/evals` | Agent evaluation harness with the first scenario suites |
+| **The plan record** | Completed to [Chapter 12](12-chief-of-staff.md) before the engine is built ([ADR-0045](../adr/0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md)) |
 
 **Done when:** you type a request into the CLI, FRIDAY produces a visible plan, executes it through
 agents, requests approval where required, and explains what she did with every claim traceable to an
@@ -656,9 +657,50 @@ event.
 **This is the milestone where FRIDAY becomes recognizably herself.** It is also the largest and most
 likely to slip.
 
+### The scope, settled 2026-08-17
+
+M5 is the largest milestone on this roadmap and the one Chapter 39 has twice warned is most likely to
+slip, so its edges were decided before implementation rather than during it.
+
+**Two capabilities, in one department, and no more.** `departments/operations` gets `run-self-check`
+(risk `low`, runs without asking) and `compact-event-log` (risk `medium`+, **must ask**). That pair is
+the smallest thing that proves every clause of the done-when: one capability that runs, and one that
+stops and waits for you. Compaction was chosen for the second because rewriting the event log is
+genuinely consequential — **an approval you would actually think about, rather than a contrived one
+that teaches you to click yes.**
+
+**`vault` is not an M5 deliverable**, and the correction is recorded because the mistake was nearly
+made. [ADR-0040](../adr/0040-a-capability-is-a-department-inside-the-guardian-boundary.md)'s draft
+listed it as the natural first capability. It depends on the memory interface and
+[ADR-0039](../adr/0039-obsidian-is-a-projection-of-memory-never-a-source-of-it.md)'s projector, and
+**the memory system is M7** — so building it here would have pulled two milestones forward to serve
+one capability. ADR-0040 §5 was revised before acceptance; ADR-0039 was bounded to M7 in its own §0.
+
+**No provider spending.** The model router is built against a fake provider and, where available,
+local Ollama. **Anthropic and OpenAI adapters are deliberately last and are blocked on a separate
+decision**, so M5 can be built to completion at zero cost. Ollama is optional: with no local provider
+present, a `private` request **fails closed and is refused**, never downgraded to a cloud provider.
+That is [ADR-0008](../adr/0008-model-router.md)'s rule, and the absence of a local model is the case
+that tests it.
+
+**Diagnostics delivers health and self-check only.** *Improvement proposals* — Chapter 23's third
+function — **move to M8**, where the Engineering department and the proposal-to-pull-request pipeline
+already live. A diagnostics finding with nothing to do about it is a notification, and
+[Chapter 23](23-diagnostics-system.md) is explicit that the hard problem is reporting almost nothing.
+
+**Deliberately not in M5:** the memory interface and the vault projector (M7), `inbox`, `metrics`,
+and `trends` (M6+, all need `connector-sdk`), the improvement-proposal pipeline (M8), and the
+remaining HUD panels.
+
 **Owed from M2:** [ADR-0029](../adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md)'s
 review trigger — reassess whether the router shape built for the dashboard survived contact with the
-Chief of Staff, and record the answer.
+Chief of Staff, and record the answer. **Answered when there is enough Chief of Staff to answer it
+honestly**, not before; the owner set that condition on 2026-08-17, and a reassessment written
+against an unbuilt component would be a guess wearing a review trigger's clothes.
+
+**Owed here too:** [ADR-0011](../adr/0011-plan-engine-state-machine.md)'s *"reconsider Temporal"*
+trigger. Chapter 12 calls a workflow engine **"the strongest alternative in the Bible"**, and M5 is
+where FRIDAY starts hand-building the durable execution it would have provided.
 
 ---
 
@@ -892,3 +934,4 @@ manage that. They are worth protecting when they seem like overhead.
 | 1.0 | 2026-08-06 | Initial ratification |
 | 2.0 | 2026-08-10 | Re-baselined after M3. M1 and M2 completion recorded; M3 recorded as **Authority**, a milestone that was built without being planned; **M4 becomes Installable**; *Mind* and *Face* move to M5 and M6 and everything after shifts by two. ADR-0021's deferrals and the `approval.auto_granted` residual recorded rather than carried silently. |
 | 2.1 | 2026-08-17 | **M4 closed at `v0.1.0`** and its whole record brought onto `main` in one change. The done-when demonstrated on the owner's Mac, with its four-event result and why installing the agent produces a start of its own; every deliverable row resolved, including the two that were still open on the day of the demonstration and were closed afterwards. `friday events emit` (ADR-0043) and `system.started` (ADR-0044) marked settled, and ADR-0021's second obligation corrected — it is that ADR's **Notes**, not a review trigger. M4's actual-versus-estimated recorded under rule 5: seven days against 2–3 weeks, the first milestone whose elapsed time is the same order of magnitude as its estimate, and why. **Rule 8 added** after this chapter was found describing M4 as *next* for three days while the milestone was being released, its record uncommitted. The HUD vitals slice and ADRs 0039–0042 recorded as built-but-unmerged rather than as delivered. Dates inside each section are when the work was done and observed, not when this entry was written. |
+| 2.2 | 2026-08-17 | **M5 scope settled before implementation**, and ADRs 0039, 0040, 0041, and 0045 accepted. Operations gets two capabilities — one that runs and one that must ask — and `vault` is corrected out of M5 into M7, because it depends on a memory system two milestones ahead. No provider spending in M5; `private` fails closed when no local model exists. Diagnostics ships health and self-check only, with improvement proposals moved to M8. ADR-0029's review trigger is deferred until there is enough Chief of Staff to answer it honestly, and ADR-0011's Temporal trigger is recorded as owed. |

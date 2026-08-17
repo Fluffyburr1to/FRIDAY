@@ -1,6 +1,6 @@
 # ADR-0045 — The plan record is completed to Chapter 12 before the engine is built
 
-- **Status:** proposed
+- **Status:** accepted — 2026-08-17, **with two binding conditions**; see §7 and §1
 - **Date:** 2026-08-17
 - **Deciders:** Tyler Hutson (owner)
 - **Supersedes:** none — **completes** the plan shapes laid down at M1
@@ -82,7 +82,8 @@ utterance   TEXT NOT NULL     ★ what the owner said, verbatim, never a paraphr
 intent      TEXT NOT NULL     the structured interpretation, JSON, Zod-validated
 ```
 
-**Both, not one.** Chapter 12 asks for a structured Intent; the M1 comment insists the raw words
+**★ Owner condition, binding, 2026-08-17: both are preserved, and neither may be dropped later as a
+simplification.** Chapter 12 asks for a structured Intent; the M1 comment insists the raw words
 survive because *"the explanation of what FRIDAY did has to be traceable to what was actually said,
 not to how a model restated it."* Those are not in conflict and collapsing them would lose one of
 them. The structured form is what routing reads; the utterance is what an explanation quotes.
@@ -159,9 +160,19 @@ Because the tables are empty (see Context), the migration **drops and recreates*
 default, and inventing defaults for `rationale`, `description`, and `onFailure` would put exactly the
 meaningless placeholder values into the schema that §2 and §5 exist to forbid.
 
-**The migration asserts both tables are empty and fails loudly if they are not.** If some future
-machine has rows, this ADR's central premise is false there and the change must stop rather than
-discard the owner's plans. That assertion is the whole safety argument and it is not optional.
+**★ Owner condition, binding, 2026-08-17. The migration asserts both tables are empty, in code that
+runs, and fails rather than destroys.** If some future machine has rows, this ADR's central premise
+is false there: the migration **aborts the transaction and refuses to run**, leaving the M1 tables and
+their data exactly as they were. It never drops a table it has not first proved to be empty, and
+there is no flag, environment variable, or configuration that relaxes this.
+
+Two things follow that the implementation does not get to decide:
+
+- **The assertion is executable, not documentary.** A comment saying the tables are empty is the
+  thing this condition exists to forbid. It is a `SELECT` inside the migration transaction, and its
+  failure path is tested with rows present.
+- **The refusal is the success case for a machine with data.** A migration that stops and says why
+  has behaved correctly. Nothing downstream may treat that refusal as a condition to work around.
 
 `budget_deadline_ms` is added in the same migration, nullable.
 

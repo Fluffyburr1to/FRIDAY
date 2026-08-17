@@ -66,13 +66,26 @@ Decisions taken since, as implementation met the design:
 | [0037](0037-the-bundle-is-a-package-that-names-what-ships.md) | The bundle is a package that names what ships | accepted | low | [03](../01-bible/03-repository-structure.md) |
 | [0038](0038-the-artifact-is-deployed-flat-and-carries-nothing-of-its-builder.md) | The artifact is deployed flat, and carries nothing of its builder | accepted | low | [33](../01-bible/33-deployment-strategy.md) |
 | [0043](0043-friday-events-emit-records-the-owner-not-the-kernel.md) | `friday events emit` records the owner, not the kernel | accepted | low | [10](../01-bible/10-event-bus.md) |
+| [0039](0039-obsidian-is-a-projection-of-memory-never-a-source-of-it.md) | Obsidian is a projection of memory, never a source of it | accepted ‡ | low | [16](../01-bible/16-memory-system.md) |
+| [0040](0040-a-capability-is-a-department-inside-the-guardian-boundary.md) | A capability is a department inside the Guardian boundary | accepted ‡ | low→high | [13](../01-bible/13-department-architecture.md) |
+| [0041](0041-one-hud-is-the-dashboard-grown-up.md) | ONE HUD is the dashboard grown up, not a second application | accepted | low | [26](../01-bible/26-dashboard-architecture.md) |
+| [0043](0043-friday-events-emit-records-the-owner-not-the-kernel.md) | `friday events emit` records the owner, not the kernel | accepted | low | [10](../01-bible/10-event-bus.md) |
 | [0044](0044-apps-core-records-that-friday-started-before-she-checks-herself.md) | `apps/core` records that FRIDAY started, before she checks herself | accepted | low | [10](../01-bible/10-event-bus.md) |
-| [0045](0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md) | The plan record is completed to Chapter 12 before the engine is built | **proposed** | low→**high** | [12](../01-bible/12-chief-of-staff.md) |
+| [0045](0045-the-plan-record-is-completed-to-chapter-12-before-the-engine-is-built.md) | The plan record is completed to Chapter 12 before the engine is built | accepted ‡ | low→**high** | [12](../01-bible/12-chief-of-staff.md) |
 
-**Numbers 0039–0042 are not listed and are not missing.** Four ADRs were drafted under those numbers
-on 2026-08-12 — Obsidian projection, the capability boundary, the HUD, and HUD vitals — and none has
-been merged; they exist only as uncommitted work. They are reserved rather than reassigned, because
-reassigning a number that has been written against is how two documents come to share one address.
+‡ **Amended before acceptance, not after.** Three of these were drafted on 2026-08-12 or later,
+reviewed on 2026-08-17, and **edited in the same change that accepted them** — 0039 gained a §0
+bounding it to M7, 0040's §5 was rewritten after `vault` was found to depend on a milestone two
+ahead, and 0045 records two conditions the owner attached. The immutability rule at the top of this
+file governs **accepted** ADRs; a `proposed` one is still a draft and revising it is how review is
+supposed to work. Each says in its own §Status that it was changed and where.
+
+**Number 0042 is reserved, not missing.** *HUD vitals are FRIDAY-scoped, per Chapter 29* was drafted
+on 2026-08-12 and is **held** by owner decision until the implementation it describes is on `main`.
+Accepting an ADR that describes delivered work into a repository where the work does not exist is
+the failure [Chapter 39](../01-bible/39-roadmap.md) rule 8 was added for. The number is not
+reassigned, because reassigning a number that has been written against is how two documents come to
+share one address.
 
 † **0036 is amended in part, not superseded.** ADR-0037 replaces its §1 deploy target and nothing
 else. The body of 0036 is left exactly as accepted, per the immutability rule above — the amendment
