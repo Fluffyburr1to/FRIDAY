@@ -1,9 +1,9 @@
 {
-  "name": "@friday/core",
+  "name": "@friday/diagnostics",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "friday-core — the kernel service and the API the dashboard reads.",
+  "description": "FRIDAY watching herself — health, self-checks, and proposals she never implements.",
   "license": "UNLICENSED",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -18,24 +18,14 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "rm -rf dist coverage .turbo",
-    "start": "node dist/index.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@friday/clerk": "workspace:*",
-    "@friday/config": "workspace:*",
-    "@friday/contracts": "workspace:*",
-    "@friday/diagnostics": "workspace:*",
-    "@friday/guardian": "workspace:*",
-    "@friday/kernel": "workspace:*",
-    "@friday/storage": "workspace:*",
-    "@trpc/server": "catalog:",
-    "zod": "catalog:"
+    "@friday/contracts": "workspace:*"
   },
   "devDependencies": {
-    "@friday/audit": "workspace:*",
     "@friday/tsconfig": "workspace:*",
     "@friday/vitest-config": "workspace:*",
     "@types/node": "catalog:",

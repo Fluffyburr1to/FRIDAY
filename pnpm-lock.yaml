@@ -172,6 +172,9 @@ importers:
       '@friday/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@friday/diagnostics':
+        specifier: workspace:*
+        version: link:../../packages/diagnostics
       '@friday/guardian':
         specifier: workspace:*
         version: link:../../packages/guardian
@@ -357,6 +360,28 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.4.3
+    devDependencies:
+      '@friday/tsconfig':
+        specifier: workspace:*
+        version: link:../../tools/tsconfig
+      '@friday/vitest-config':
+        specifier: workspace:*
+        version: link:../../tools/vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@7.3.6(@types/node@24.13.3))
+
+  packages/diagnostics:
+    dependencies:
+      '@friday/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       '@friday/tsconfig':
         specifier: workspace:*

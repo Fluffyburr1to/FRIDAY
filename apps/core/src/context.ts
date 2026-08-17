@@ -15,6 +15,7 @@ import {
   type PrincipalId,
   type Result,
 } from '@friday/contracts'
+import { createVitalsReader, type VitalsReader } from '@friday/diagnostics'
 import {
   createCapabilityIssuer,
   createGrantRegistry,
@@ -93,6 +94,22 @@ export interface CoreContext {
    * in `openContext` and never leaves it. See ADR-0021 and ADR-0031.
    */
   readonly approvals: ApprovalClerk
+
+  /**
+   * What the FRIDAY runtime is doing.
+   *
+   * ★ Stateful, and shared across requests on purpose. CPU utilisation is a
+   * rate, so the reader diffs each poll against the previous one — building a
+   * fresh reader per request would throw that history away and force a cold
+   * sample every second.
+   *
+   * It observes this process and the volume her databases sit on; there is no
+   * action to authorize, which is why it sits here rather than behind the
+   * Guardian.
+   *
+   * See docs/adr/0042-hud-vitals-are-friday-scoped-per-chapter-29.md
+   */
+  readonly vitals: VitalsReader
 
   /** Whose data this instance serves. The multi-user seam, read from config. */
   readonly principalId: PrincipalId
@@ -213,6 +230,12 @@ export function openContext(input: {
     context: {
       events: readerOver(storage.value.events),
       approvals,
+
+      // The data directory rather than `/`: Chapter 29's metric is
+      // `friday_disk_free_bytes`, the headroom on the volume holding her own
+      // databases.
+      vitals: createVitalsReader({ dataDir: config.paths.dataDir }),
+
       principalId: config.principalId,
     },
 

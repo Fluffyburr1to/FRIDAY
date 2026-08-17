@@ -199,3 +199,12 @@ export {
   type Sensitivity,
   SensitivitySchema,
 } from './sensitivity.js'
+// ── What the runtime is doing ───────────────────────────────────────────────
+export {
+  type RuntimeVitals,
+  RuntimeVitalsSchema,
+  VITAL_IDS,
+  type Vital,
+  type VitalId,
+  type VitalState,
+} from './vitals.js'
