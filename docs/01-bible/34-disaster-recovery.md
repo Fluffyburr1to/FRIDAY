@@ -89,7 +89,10 @@ This is the piece people skip and then regret.
 A single printed card, stored physically somewhere safe (a home safe, a safe deposit box),
 containing:
 
-- The backup encryption key
+- The backup encryption key — `backup-encryption-key`
+- **The field-encryption key** — `field-encryption-key`
+- Both keys are accounts in the `com.friday.credentials` Keychain service, stored base64-encoded and
+  decoding to exactly 32 bytes ([Chapter 18](18-security-model.md))
 - The B2 bucket name and read credentials
 - The passkey recovery codes ([Chapter 17](17-authentication-authorization.md))
 - A short, plain-language restore procedure
@@ -99,6 +102,14 @@ containing:
 random noise.** The card is generated during setup, and setup is not considered complete until you
 confirm you have printed and stored it. FRIDAY reminds you annually to verify it still exists and is
 current.
+
+**★ Two keys, and they fail differently.** The backup encryption key turns the blob in Backblaze
+back into a database file. The field-encryption key turns that database's private payloads back into
+text. A recovery carrying only the first yields a database that opens, passes `PRAGMA
+integrity_check`, and verifies its hash chain end to end — and whose sensitive fields are `enc:v1:…`
+strings that nothing on the machine can read. **That is the worst shape a restore can take, because
+every check reports success.** Losing the backup key costs you the archive; losing the field key
+costs you the contents of an archive you still have.
 
 ---
 
@@ -144,12 +155,40 @@ most likely disaster and it has the simplest recovery, by design
 
 ```
 1  New Mac; install FRIDAY
-2  friday restore --from-backup      (needs the recovery card)
-3  Re-authenticate connectors        (tokens are not restored — see below)
-4  Verify: audit chain, memory count, recent events
-5  Resume
+2  ★ Restore both keys from the card — before init, before restore
+       security add-generic-password -s com.friday.credentials -a backup-encryption-key -w
+       security add-generic-password -s com.friday.credentials -a field-encryption-key  -w
+       -w goes last with no value: the key is typed at the prompt, twice, and never
+       reaches the command line or your shell history
+3  friday restore --from-backup      (needs the recovery card)
+4  Re-authenticate connectors        (tokens are not restored — see below)
+5  Verify: audit chain, memory count, and that a private payload reads back as text
+6  Resume
 ```
 **RTO: ~1 hour**, most of it download time.
+
+**★ Step 2 is ordered before step 3 deliberately, and the order is the whole of it.** Key
+provisioning is creation-only ([ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md)):
+FRIDAY creates a key that is missing and **never replaces one that is present**. Run setup first on
+a bare machine and it mints a *fresh* field-encryption key, entirely correctly — and the backup you
+then restore is encrypted under the old one. You are left with a database FRIDAY cannot read and a
+Keychain holding the wrong key.
+
+**Nothing will overwrite it for you, and that is deliberate.** `add-generic-password` is invoked
+without `-U`, so writing over an existing item fails with exit 45 and *"The specified item already
+exists in the keychain"*, leaving the stored value untouched. Recovering from a wrongly-minted key
+therefore means removing it with `security delete-generic-password -s com.friday.credentials -a
+field-encryption-key` before adding the one from the card. Put the card's key in place first and
+none of that arises: provisioning finds it already there and leaves it alone.
+
+There is a guard, and it does not cover this case. ADR-0035's refusal fires when a database is
+present and the field key is *missing* — it exits non-zero, explains why, and mints nothing. A fresh
+machine has no database at that moment, so nothing refuses. **The ordering above is the control, not
+the guard.**
+
+**Verify the field key specifically at step 5.** `friday events tail` against the restored log is
+the cheap check: a stored payload comes back as text rather than as `enc:v1:…`. Verifying the audit
+chain proves the log is intact; it does not prove you can read it, and those are different claims.
 
 **Credentials are deliberately not restored from backup.** Refresh tokens live in the Keychain and
 are re-authorized on the new machine. This is a small inconvenience that eliminates a large risk: a
@@ -238,7 +277,7 @@ Once a year, deliberately, on a calendar reminder FRIDAY creates:
 1. Restore the latest backup to a scratch location
 2. Verify the audit chain and spot-check memories
 3. Time the full procedure and record it
-4. Verify the recovery card is present, legible, and current
+4. Verify the recovery card is present, legible, and current — **including both keys**
 5. Confirm B2 credentials still work
 6. Update the runbook with anything that surprised you
 
@@ -319,3 +358,4 @@ one-time configuration.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial ratification |
+| 1.1 | 2026-08-14 | The field-encryption key added to the recovery card and to the lost-machine procedure, with the ordering that makes a by-the-book recovery yield readable payloads. Closes the gap [ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) surfaced and assigned here. |
