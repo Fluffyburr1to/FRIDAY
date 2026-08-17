@@ -1,0 +1,23 @@
+[
+  {
+    "id": "agents-may-think",
+    "description": "An agent may ask a model to think for it. Thinking on its own changes nothing outside FRIDAY, and what it decides to do afterwards is asked about separately.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": { "action": "model.invoke", "actorType": "agent" }
+  },
+  {
+    "id": "agents-may-run-diagnostics",
+    "description": "An agent may check FRIDAY's own health and verify her records, the same as a scheduled job may. Nothing outside FRIDAY is touched.",
+    "effect": "allow",
+    "riskClass": "low",
+    "when": { "action": "diagnostics.*.run", "actorType": "agent" }
+  },
+  {
+    "id": "rewriting-the-record-needs-approval",
+    "description": "Compacting the event log rewrites the record of everything FRIDAY has done. She asks first, every time, and a standing permission can never cover it.",
+    "effect": "require_approval",
+    "riskClass": "high",
+    "when": { "action": "operations.log.compact", "actorType": "agent" }
+  }
+]
