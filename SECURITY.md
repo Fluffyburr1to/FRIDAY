@@ -117,7 +117,16 @@ Recovery: [Chapter 34](docs/01-bible/34-disaster-recovery.md).
 
 ## Supported versions
 
-Pre-release. Only the current version receives fixes. This changes at Milestone 4.
+**Only the current version receives fixes**, and from `0.1.0` that sentence has something to point
+at. Versions are on the installable artifact (`packaging/bundle`), computed by Changesets and
+released as a signed tag on `main` ([ADR-0036 §6](docs/adr/0036-packaging-delivers-friday-init-provisions.md),
+[Chapter 32](docs/01-bible/32-branch-strategy.md)).
+
+There is no download channel and no update feed yet, so there is no channel through which a fix could
+be pushed to you: upgrading means building the artifact again from a released tag. **A security fix
+therefore reaches you only when you go and get it**, which is stated plainly here rather than left to
+be discovered — a distribution channel arrives with the Mac app at Milestone 6, and signing arrives
+with it.
 
 ---
 
