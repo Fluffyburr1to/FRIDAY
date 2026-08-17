@@ -100,6 +100,33 @@ describe('the friday CLI', () => {
     expect(tailed.out()).toContain('test.event.emitted')
   })
 
+  it('records the emitted event as the owner, never as the kernel', async () => {
+    // ★ ADR-0043. A person typed this command, so the log has to say a person
+    // acted. Recording it as `system:kernel` would put a human action in the
+    // trail under a machine's name, which is the one thing the actor/principal
+    // split in `packages/contracts/src/actor.ts` exists to keep apart.
+    await friday('events', 'emit', '--note', 'who did this')
+
+    const tailed = await friday('events', 'tail', '--once', '--json')
+    const event = JSON.parse(
+      tailed
+        .out()
+        .split('\n')
+        .find((line) => line.startsWith('{')) ?? '{}',
+    ) as {
+      type: string
+      actor: { type: string; id: string }
+      principalId: string
+      payload: { note: string }
+    }
+
+    expect(event.type).toBe('test.event.emitted')
+    expect(event.actor.type).toBe('user')
+    expect(event.actor.id).toBe(event.principalId)
+    expect(event.actor.id).not.toBe('system:kernel')
+    expect(event.payload).toEqual({ note: 'who did this' })
+  })
+
   it('reports the log in status once it exists', async () => {
     await friday('events', 'emit')
 
