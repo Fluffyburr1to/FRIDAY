@@ -53,6 +53,21 @@ export interface ToolRequest {
   /** Which connector, when the capability reaches one. M6 and later. */
   readonly connector?: string | undefined
 
+  /**
+   * ★ The signed capability token authorising this exact step.
+   *
+   * Named `permit` rather than `capability` only because `capability` above
+   * already means *the manifest power being exercised*, and the two are
+   * genuinely different things: one is what this agent is the kind of thing to
+   * do, the other is a one-off slip for this action on this resource.
+   *
+   * **An agent always carries one.** The Guardian denies an agent with no
+   * token — `capability_required`, at `critical` — before it evaluates a
+   * single rule, which is deliberate: policy should never be the thing that
+   * lets an unauthenticated actor through.
+   */
+  readonly permit?: string | undefined
+
   /** Plain language, carried onto the approval screen if one is needed. */
   readonly because: string
 }
@@ -63,6 +78,7 @@ export type AuthorizeFn = (input: {
   principalId: PrincipalId
   action: string
   resource: string
+  capability?: string | undefined
 }) => Result<GuardianDecision, FridayError>
 
 export type MediationOutcome =
@@ -134,6 +150,7 @@ export function createMediator(options: MediatorOptions): Mediator {
         principalId,
         action: request.action,
         resource: request.resource,
+        capability: request.permit,
       })
 
       if (!decided.ok) {
