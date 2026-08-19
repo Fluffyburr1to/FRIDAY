@@ -14,6 +14,21 @@ that uses AI for one step.**
 The model *makes* the plan. Ordinary deterministic code *executes* it — which is what makes plans
 inspectable before they run, pausable for days, and explainable afterward.
 
+## ★ Plan approval is not blanket authorization
+
+**Approving a plan approves the *shape* of the work** — that these steps, in this order, may begin.
+It does **not** pre-authorise the actions inside it. Every step still goes to the Guardian on its
+own, at the moment it runs.
+
+The distinction has teeth: a plan approved on Monday and resumed on Thursday runs against
+**Thursday's** rules, grants, and expiries. If approval pre-authorised, one click would become a
+standing grant nobody wrote down and nobody could expire — and Chapter 19 caps how long even a real
+standing grant may live.
+
+This is the rule the state machine is arranged around, and the one most likely to be eroded by
+someone trying to reduce prompts. Two tests exist purely to fail if it is: *a step inside an
+approved plan still suspends*, and *answering one step's question does not answer the next one's*.
+
 ## ★ It is not an authority
 
 **Nothing here decides whether an action is permitted.** Risk is assigned by the Guardian and
@@ -27,11 +42,10 @@ second authority path, and there is exactly one.
 
 ## What is built, and what is not
 
-**Built:** plan validation — the bounds, the DAG, and what may run now. Deterministic routing —
-which department performs a step.
+**Built:** plan validation, deterministic routing, and the execution state machine including
+plan-level approval and resume.
 
-**Not yet:** intent parsing, plan generation, the state machine, plan-level approval and resume, and
-explanation composition.
+**Not yet:** intent parsing, plan generation, and explanation composition.
 
 ## What lives here
 

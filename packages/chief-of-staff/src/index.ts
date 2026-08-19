@@ -17,6 +17,15 @@
  */
 
 export {
+  nextStatus,
+  nextStepStatus,
+  PLAN_APPROVAL_REASONS,
+  type PlanApprovalCheck,
+  type PlanApprovalReason,
+  type PlanEvent,
+  planApprovalReason,
+} from './machine.js'
+export {
   type CapabilityRegistry,
   createCapabilityRegistry,
   type RoutableStep,
