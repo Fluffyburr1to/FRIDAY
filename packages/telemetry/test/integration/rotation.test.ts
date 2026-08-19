@@ -54,17 +54,72 @@ interface Destination {
   /** Every rotation event so far, in order. */
   readonly events: readonly RotationEvent[]
 
-  /** Resolves when rotation next reports an event of this kind, or has already. */
-  next(kind: RotationEvent['kind']): Promise<RotationEvent>
-
   /**
    * Resolves once every line written before it has reached the file.
    *
    * A stream processes writes in order, so a zero-length write whose callback
    * has fired is a barrier: everything queued ahead of it is done. That is a
    * fact about the stream rather than a bet on the clock.
+   *
+   * Rotation happens inside that same write, before the callback runs, so a
+   * resolved barrier also means every rotation those lines caused has already
+   * been reported. Checking `events` after one is therefore not a race.
    */
   flushed(): Promise<void>
+}
+
+/** Written between barriers. Roughly five of these fill a 1 KB file. */
+const LINES_PER_BATCH = 25
+
+/**
+ * Far more than any policy in this file needs. Reaching it means rotation
+ * stopped reporting, which is a real failure and should say so.
+ */
+const MOST_LINES = 2_000
+
+/**
+ * Writes until rotation reports the event the test is about, and then stops.
+ *
+ * ── Why the line count is not a constant ────────────────────────────────────
+ *
+ * These tests used to queue a flat 2,000 lines and then wait for the first
+ * report. The wait was honest, but the writing was not: the deletion under
+ * test happens after about twenty-four rotations — some hundred and twenty
+ * lines — and the other nineteen hundred stayed sitting in the stream's buffer
+ * when the assertions passed. `end` flushes, so teardown then had to grind
+ * through two hundred and sixty further rotations, each one a gzip and a sweep
+ * of the directory, before it could close.
+ *
+ * That is the 250 ms guess again wearing a different hat. The work is
+ * unbounded, its cost depends on how busy the machine is, and it is spent
+ * after the test has already proved its point. Measured on one idle laptop it
+ * took 0.3 s; with eight rotating streams competing for the disk, 3.7 s; once,
+ * 9.8 s — against Vitest's ten-second hook budget, which the shared preset
+ * leaves at its default while raising only `testTimeout`. When it crossed, the
+ * report read as this test failing, seconds after this test had passed.
+ *
+ * Writing only as far as the event removes the backlog rather than budgeting
+ * for it. Every assertion is unchanged, and so is the rule being proved.
+ *
+ * @returns The event that stopped the writing, drained and already reported.
+ */
+async function fill(
+  destination: Destination,
+  until: RotationEvent['kind'],
+  line: (index: number) => void,
+): Promise<RotationEvent> {
+  for (let written = 0; written < MOST_LINES; written += LINES_PER_BATCH) {
+    const reported = destination.events.find((event) => event.kind === until)
+    if (reported !== undefined) return reported
+
+    for (let index = written; index < written + LINES_PER_BATCH; index += 1) line(index)
+    await destination.flushed()
+  }
+
+  throw new Error(
+    `Rotation never reported '${until}' in ${MOST_LINES} lines. ` +
+      'Every policy in this file reaches it in well under two hundred.',
+  )
 }
 
 /**
@@ -108,22 +163,11 @@ describe('log rotation', () => {
    */
   function open(options: { path?: string; policy?: RotationPolicy } = {}): Destination {
     const events: RotationEvent[] = []
-    const waiting: { kind: RotationEvent['kind']; resolve: (event: RotationEvent) => void }[] = []
 
     const stream = createRotatingDestination({
       path: options.path ?? join(directory, 'friday.log'),
       ...(options.policy === undefined ? {} : { policy: options.policy }),
-      onRotation: (event) => {
-        events.push(event)
-
-        for (let index = waiting.length - 1; index >= 0; index -= 1) {
-          const waiter = waiting[index]
-          if (waiter !== undefined && waiter.kind === event.kind) {
-            waiting.splice(index, 1)
-            waiter.resolve(event)
-          }
-        }
-      },
+      onRotation: (event) => void events.push(event),
     })
 
     opened.push(stream)
@@ -131,14 +175,6 @@ describe('log rotation', () => {
     return {
       stream,
       events,
-      next: (kind) => {
-        const already = events.find((event) => event.kind === kind)
-        if (already !== undefined) return Promise.resolve(already)
-
-        return new Promise((resolve) => {
-          waiting.push({ kind, resolve })
-        })
-      },
       flushed: () =>
         new Promise((done) => {
           stream.write('', () => done())
@@ -165,11 +201,9 @@ describe('log rotation', () => {
     })
     const log = createLogger({ module: 'test', stream: destination.stream })
 
-    for (let i = 0; i < 200; i += 1) {
-      log.info({ index: i }, 'a line long enough to fill a very small file quickly')
-    }
-
-    await destination.next('rotated')
+    await fill(destination, 'rotated', (index) =>
+      log.info({ index }, 'a line long enough to fill a very small file quickly'),
+    )
 
     // The live file plus at least one rotated, compressed predecessor.
     expect(logFiles().length).toBeGreaterThan(1)
@@ -186,10 +220,8 @@ describe('log rotation', () => {
     })
     const log = createLogger({ module: 'test', stream: destination.stream })
 
-    for (let i = 0; i < 200; i += 1) log.info({ index: i }, 'filling the first file')
-
     // The rotation itself, not a guess at how long one takes.
-    await destination.next('rotated')
+    await fill(destination, 'rotated', (index) => log.info({ index }, 'filling the first file'))
 
     log.info({}, 'after the rotation')
     await destination.flushed()
@@ -205,12 +237,11 @@ describe('log rotation', () => {
     })
     const log = createLogger({ module: 'test', stream: destination.stream })
 
-    for (let i = 0; i < 2000; i += 1) {
-      log.info({ index: i }, 'a line long enough to fill a very small file quickly')
-    }
-
-    // Wait for a deletion to actually happen, which is the thing being tested.
-    await destination.next('removed')
+    // Write until a deletion actually happens, which is the thing being tested,
+    // and not one line further — see `fill`.
+    await fill(destination, 'removed', (index) =>
+      log.info({ index }, 'a line long enough to fill a very small file quickly'),
+    )
 
     const removed = destination.events.filter((event) => event.kind === 'removed')
 
@@ -232,11 +263,11 @@ describe('log rotation', () => {
     })
     const log = createLogger({ module: 'test', stream: destination.stream })
 
-    for (let i = 0; i < 2000; i += 1) log.info({ index: i }, 'filling the log directory')
+    const removal = await fill(destination, 'removed', (index) =>
+      log.info({ index }, 'filling the log directory'),
+    )
 
-    const removal = await destination.next('removed')
-
-    expect(removal?.message).toContain('outgrown')
+    expect(removal.message).toContain('outgrown')
   })
 
   it('still redacts once rotation is in the path', async () => {
