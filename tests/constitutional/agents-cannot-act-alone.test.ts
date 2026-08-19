@@ -1,7 +1,14 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMediator, openSpendLedger, type ToolRequest } from '@friday/agent-runtime'
+import {
+  createMediator,
+  openSpendLedger,
+  runAgent,
+  type SpendLedger,
+  type StepIntent,
+  type ToolRequest,
+} from '@friday/agent-runtime'
 import type { Actor, AgentManifest, FridayError, GuardianDecision, Result } from '@friday/contracts'
 import { err, fridayError } from '@friday/contracts'
 import {
@@ -373,5 +380,173 @@ describe('Article VII — an exhausted budget stops agent work', () => {
 
     ledger.record({ tokens: 0 })
     expect(ledger.exceeded()).toBe('tokens')
+  })
+})
+
+describe('Article VII — the execution boundary obeys the ledger, not just the ledger', () => {
+  /**
+   * ★ The layer above the assertions in the block before this one.
+   *
+   * Those prove the ledger itself is terminal. They would all stay green if
+   * `runAgent` never consulted it — an execution boundary that runs work while
+   * a correct ledger sits beside it, unread. The guarantee the owner needs is
+   * about what *executes*, not about what a counter believes.
+   *
+   * So these drive `runAgent` and assert on **whether the agent's own code ran
+   * at all**. A bypass is then a test failure rather than an invisible one.
+   *
+   * ★ The turn cap is deliberately kept out of the way. `runAgent` has a
+   * belt-and-braces bound of `maxToolCalls + 1` turns, so a naive "it stopped
+   * eventually" assertion would pass on an implementation that ignored the
+   * ledger entirely. Every assertion here uses a ledger that is exhausted
+   * *before* that cap could be reached.
+   */
+
+  /** A ledger that reports exhausted from the first question, and counts. */
+  function exhausted(): SpendLedger & { readonly asked: { n: number } } {
+    const asked = { n: 0 }
+
+    return {
+      asked,
+      spend: { tokens: 0, cents: 999, durationMs: 0, toolCalls: 0 },
+      record: () => undefined,
+      exceeded: () => {
+        asked.n++
+        return 'cents'
+      },
+    }
+  }
+
+  const ALWAYS_ASKS = (): StepIntent => ({
+    kind: 'request',
+    request: aRequest(),
+  })
+
+  it('★ does not run the agent at all when the budget is already spent', async () => {
+    // ★ THE bypass assertion. If `runAgent` executed first and consulted the
+    // ledger afterwards — or never — `ran` would be greater than zero, and the
+    // package-level ledger tests would still all pass.
+    let ran = 0
+    let mediated = 0
+    const ledger = exhausted()
+
+    const result = await runAgent({
+      manifest: aManifest(),
+      mediator: {
+        mediate: () => {
+          mediated++
+          return { kind: 'allowed' } as never
+        },
+      },
+      step: () => {
+        ran++
+        return ALWAYS_ASKS()
+      },
+      validate: () => ({ ok: true }),
+      ledger,
+    })
+
+    expect(ran).toBe(0)
+    expect(mediated).toBe(0)
+    expect(ledger.asked.n).toBeGreaterThan(0)
+    expect(result.kind).toBe('terminated')
+    if (result.kind === 'terminated') expect(result.reason).toBe('budget_exhausted')
+  })
+
+  it('★ stops at the ceiling rather than at its own turn cap', async () => {
+    // ★ The ceiling is 2 and the turn cap is 3. An implementation that ignored
+    // the ledger would still stop — at 3 — and would still report
+    // `budget_exhausted` when it fell out of the loop. Counting the mediations
+    // is what tells the two apart.
+    let mediated = 0
+
+    const result = await runAgent({
+      manifest: aManifest({
+        budget: { maxTokens: 8000, maxCents: 15, maxDurationMs: 30_000, maxToolCalls: 2 },
+      }),
+      mediator: {
+        mediate: () => {
+          mediated++
+          return { kind: 'allowed' } as never
+        },
+      },
+      step: ALWAYS_ASKS,
+      validate: () => ({ ok: true }),
+    })
+
+    expect(mediated).toBe(2)
+    expect(result.kind).toBe('terminated')
+  })
+
+  it('★ never reports an invocation that crossed its ceiling as completed', async () => {
+    // ★ The owner's words: an invocation that crosses its ceiling must never be
+    // reported as completed. The wall-clock ceiling is where this bites — one
+    // slow step passes it without making a single request, so a check that
+    // only runs before the next iteration never sees it.
+    let at = 0
+
+    const result = await runAgent({
+      manifest: aManifest({
+        budget: { maxTokens: 8000, maxCents: 15, maxDurationMs: 50, maxToolCalls: 10 },
+      }),
+      mediator: { mediate: () => ({ kind: 'allowed' }) as never },
+      step: () => {
+        at += 5000
+        return { kind: 'finish', output: { checked: true } }
+      },
+      validate: () => ({ ok: true }),
+      now: () => at,
+    })
+
+    expect(result.kind).not.toBe('completed')
+    expect(result.kind).toBe('terminated')
+  })
+
+  it('★ records every mediated request against the ledger it was given', async () => {
+    // ★ The other half of the bypass. Consulting the ledger and never
+    // recording to it leaves a ceiling that can never be reached.
+    const recorded: number[] = []
+    const ledger = openSpendLedger({ budget: aManifest().budget })
+
+    const counting: SpendLedger = {
+      spend: ledger.spend,
+      record: (input) => {
+        recorded.push(1)
+        ledger.record(input)
+      },
+      exceeded: () => ledger.exceeded(),
+    }
+
+    let turns = 0
+
+    await runAgent({
+      manifest: aManifest(),
+      mediator: { mediate: () => ({ kind: 'allowed' }) as never },
+      step: () => {
+        turns++
+        return turns <= 3 ? ALWAYS_ASKS() : { kind: 'finish', output: {} }
+      },
+      validate: () => ({ ok: true }),
+      ledger: counting,
+    })
+
+    expect(recorded).toHaveLength(3)
+  })
+
+  it('★ continues a resumed invocation on the ledger it was handed', async () => {
+    // ★ Otherwise an agent suspended near its ceiling returns with a full
+    // allowance, and a plan is walked past its limit one approval at a time.
+    const ledger = openSpendLedger({ budget: aManifest().budget })
+    ledger.record({ cents: 14 })
+
+    const result = await runAgent({
+      manifest: aManifest(),
+      mediator: { mediate: () => ({ kind: 'allowed' }) as never },
+      step: () => ({ kind: 'finish', output: {} }),
+      validate: () => ({ ok: true }),
+      ledger,
+    })
+
+    expect(result.spend.cents).toBe(14)
   })
 })
