@@ -56,3 +56,51 @@ credentials of any kind
    well-formed questions.
 
 Reference: [Chapter 11](../../docs/01-bible/11-agent-framework.md)
+
+---
+
+## ★ Boundaries — what this package does **not** guarantee
+
+Recorded as limits rather than left to be discovered. Each is a real gap, and none is a warning to
+be dismissed.
+
+### 1. A runaway thread is not killed. It is only stopped being listened to.
+
+The loop notices an over-budget invocation and returns, and `dispose()` terminates the worker. **A
+worker that spins forever keeps spinning until something calls `dispose()`** — the wall-clock
+ceiling ends the *invocation*, not the *thread*.
+
+That is survivable today because nothing schedules agents: every invocation has a caller standing
+over it. **It stops being survivable the moment something long-running can start an agent
+unattended**, which is the Chief of Staff.
+
+> **Before anything can schedule agents, the worker needs a termination mechanism that actually
+> kills the thread.** Not a warning, not a longer timeout, and not a note in a log the owner does
+> not read. The budget must be able to end the work, not merely stop waiting for it.
+
+### 2. Worker isolation is not a security sandbox, and the deny-list is not a completeness claim
+
+The module deny-list and the stripped globals close the doors an agent would reach for by accident
+or under prompt injection. **They are not a proof that no door exists.**
+
+Explicitly outside the current threat model:
+
+- **V8 escapes.** A worker shares a process. Determined native-level exploitation defeats this.
+- **`process.binding` and native addons.** Not enumerated, not blocked.
+- **Prototype-chain and realm tricks.** Not analysed.
+
+**The list is a list.** Adding to it makes the boundary better; it never makes it complete, and a
+future reader must not mistake its length for a guarantee. The threat this defends against is *bugs
+and prompt injection in first-party and AI-written agents*, which is what
+[Chapter 11](../../docs/01-bible/11-agent-framework.md) scoped it to. Third-party plugin code is a
+different threat and gets process isolation instead
+([Chapter 15](../../docs/01-bible/15-plugin-system.md)).
+
+### 3. `resourceLimits` is set and unproven
+
+A memory ceiling is passed to every worker. **No fixture has ever allocated until it fired**, so
+what actually happens when a thread hits it — and whether the runtime reports it usefully — is
+unobserved.
+
+It is recorded as unproven rather than described as working. Confidence here would have to be
+earned by a fixture, and there is not one.
