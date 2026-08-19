@@ -103,7 +103,7 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentInvocatio
     const ended =
       intent.kind === 'finish'
         ? finish(intent.output, manifest, validate, ledger, state)
-        : request(intent.request, mediator, ledger, state)
+        : request(intent.request, manifest, mediator, ledger, state)
 
     if (ended !== undefined) return ended
   }
@@ -161,10 +161,19 @@ function finish(
  */
 function request(
   asked: ToolRequest,
+  manifest: AgentManifest,
   mediator: Mediator,
   ledger: SpendLedger,
   state: LoopState,
 ): AgentInvocationResult | undefined {
+  // ★ Refused BEFORE the call, not detected after it. Tool calls are the one
+  // ceiling knowable in advance — unlike tokens and money, which cannot be
+  // known until the work is done — so `maxToolCalls: 6` must mean six calls
+  // happen, not that a seventh is noticed once it already has.
+  if (ledger.spend.toolCalls >= manifest.budget.maxToolCalls) {
+    return overBudget('toolCalls', manifest, ledger.spend)
+  }
+
   const outcome = mediator.mediate(asked)
 
   // Counted whatever the answer was, including a refusal — see spend.ts.
