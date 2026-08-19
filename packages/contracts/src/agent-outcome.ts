@@ -50,6 +50,17 @@ export const TERMINATION_REASONS = [
 
   /** Returned output that did not match its schema, twice. */
   'output_invalid',
+
+  /**
+   * ★ Sent something the runtime could not read as a request at all.
+   *
+   * Distinct from `output_invalid`, which is a well-formed agent producing a
+   * badly-shaped answer. This is the channel itself being misused — a
+   * malformed message, or a request with no action in it. There is no retry:
+   * an agent that cannot speak the protocol cannot be asked to try again in
+   * it.
+   */
+  'protocol_violation',
 ] as const
 
 export const TerminationReasonSchema = z.enum(TERMINATION_REASONS)

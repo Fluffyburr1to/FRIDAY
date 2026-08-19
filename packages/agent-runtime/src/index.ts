@@ -9,12 +9,17 @@
  * it can only ask"* true rather than intended.
  *
  * What is here at M5: the manifest boundary, the Guardian mediator, the
- * per-invocation spend ledger, the termination rules, and the execution loop.
- * Worker isolation follows in its own change.
+ * per-invocation spend ledger, the termination rules, the execution loop, and
+ * worker-thread isolation.
  *
  * See: README.md · docs/01-bible/11-agent-framework.md
  */
 
+export {
+  type IsolatedAgent,
+  type IsolatedAgentOptions,
+  startIsolatedAgent,
+} from './isolation.js'
 export {
   type AgentStep,
   type OutputValidator,

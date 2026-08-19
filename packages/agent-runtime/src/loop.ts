@@ -40,6 +40,14 @@ export type StepIntent =
   | { readonly kind: 'request'; readonly request: ToolRequest }
   /** Done. The output is validated before it escapes. */
   | { readonly kind: 'finish'; readonly output: unknown }
+  /**
+   * ★ The agent body broke the protocol and cannot be asked to continue.
+   *
+   * Raised by the runner rather than by the agent — an isolated agent that
+   * posts an unreadable message has no way to say so itself, which is the
+   * point.
+   */
+  | { readonly kind: 'abandon'; readonly because: string }
 
 /**
  * One turn of the agent's own reasoning.
@@ -99,6 +107,10 @@ export async function runAgent(options: RunAgentOptions): Promise<AgentInvocatio
     // without any request being made at all.
     const after = ledger.exceeded()
     if (after !== undefined) return overBudget(after, manifest, ledger.spend)
+
+    if (intent.kind === 'abandon') {
+      return terminated('protocol_violation', intent.because, ledger.spend)
+    }
 
     const ended =
       intent.kind === 'finish'

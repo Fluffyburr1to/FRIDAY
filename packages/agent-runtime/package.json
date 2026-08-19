@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@friday/contracts": "workspace:*",
-    "@friday/guardian": "workspace:*"
+    "@friday/guardian": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
