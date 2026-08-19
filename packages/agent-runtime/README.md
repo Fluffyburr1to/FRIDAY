@@ -11,11 +11,14 @@ content. This package makes it so that an agent **cannot do anything; it can onl
 
 ## What is built, and what is not
 
-**Built:** the manifest boundary, the Guardian mediator, the per-invocation spend ledger, and the
-termination rules.
+**Built:** the manifest boundary, the Guardian mediator, the per-invocation spend ledger, the
+termination rules, the execution loop, output validation with one retry, resume, and worker-thread
+isolation.
 
-**Not yet:** worker-thread isolation, the execution loop, output validation, and resume. Each lands
-in its own change.
+★ **The two halves are not interchangeable.** Mediation decides what FRIDAY will do on an agent's
+behalf; isolation decides what the agent's own code can touch. Without the second, the mediator
+would faithfully refuse to fetch a URL for an agent while nothing stopped the agent calling `fetch`
+itself.
 
 ## What lives here
 
@@ -40,7 +43,16 @@ credentials of any kind
 3. **Agents are stateless.** Continuity comes from plans and memory, both inspectable data.
 4. **A denied request still costs a tool call.** Counting only permitted ones would let a refused
    agent loop for free.
-5. **Worker threads are isolation, not a security sandbox.** Sufficient for first-party and
-   AI-written agents. Third-party plugin code gets process isolation instead.
+5. **Worker threads are isolation, not a security sandbox.** Determined malicious code with a V8
+   escape could break out. Sufficient for first-party and AI-written agents, where the threat is
+   bugs and prompt injection rather than a hostile author. **Not** sufficient for third-party plugin
+   code, which gets process isolation instead ([Chapter 15](../../docs/01-bible/15-plugin-system.md)).
+6. **An isolated agent runs through the same loop as any other.** Isolation is exposed as a step
+   function rather than as a second way to run an agent, so the budget and the mediator are enforced
+   by one piece of code — and the constitutional guarantee that the execution boundary obeys the
+   ledger covers this path too, rather than a second path existing beside it that nothing checks.
+7. **What the worker sends is untrusted input.** Its messages are parsed, never cast. An agent that
+   posts something unreadable is terminated for a protocol violation; the mediator only ever sees
+   well-formed questions.
 
 Reference: [Chapter 11](../../docs/01-bible/11-agent-framework.md)
