@@ -41,7 +41,7 @@ export interface SpendLedgerOptions {
   readonly budget: AgentBudget
 
   /** Injected so a test can drive the clock rather than sleep through it. */
-  readonly now?: () => number
+  readonly now?: (() => number) | undefined
 }
 
 /**
