@@ -17,6 +17,13 @@
  */
 
 export {
+  type CapabilityRegistry,
+  createCapabilityRegistry,
+  type RoutableStep,
+  type Route,
+  routePlan,
+} from './routing.js'
+export {
   MAX_DEPTH,
   MAX_STEPS,
   type ProposedStep,

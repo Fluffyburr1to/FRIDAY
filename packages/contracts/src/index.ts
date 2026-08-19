@@ -121,6 +121,13 @@ export {
   GuardianDecisionSchema,
   permits,
 } from './decision.js'
+// ── Departments ─────────────────────────────────────────────────────────────
+export {
+  type DepartmentCapability,
+  DepartmentCapabilitySchema,
+  type DepartmentManifest,
+  DepartmentManifestSchema,
+} from './department.js'
 // ── Outcomes and failures ───────────────────────────────────────────────────
 export {
   ERROR_CODES,

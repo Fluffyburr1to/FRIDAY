@@ -27,10 +27,11 @@ second authority path, and there is exactly one.
 
 ## What is built, and what is not
 
-**Built:** plan validation — the bounds, the DAG, and what may run now.
+**Built:** plan validation — the bounds, the DAG, and what may run now. Deterministic routing —
+which department performs a step.
 
-**Not yet:** intent parsing, plan generation, deterministic routing, the state machine, plan-level
-approval and resume, and explanation composition.
+**Not yet:** intent parsing, plan generation, the state machine, plan-level approval and resume, and
+explanation composition.
 
 ## What lives here
 
@@ -54,5 +55,12 @@ approval and resume, and explanation composition.
 4. **Validation is about reviewability and termination, never about permission.** A twenty-step
    bound keeps a plan the owner can actually read; a cycle check keeps the executor terminating.
    Neither is a security decision.
+5. **Routing answers *who does this*, never *may this be done*.** It resolves an action to exactly
+   one department, refuses an unknown one rather than matching something close, and refuses two
+   departments claiming the same action rather than picking. It will happily route an action the
+   Guardian denies outright — because the Guardian is what denies it, at the moment the step runs.
+6. **A capability's declared `riskClass` is never read to decide anything.** The Guardian classifies
+   from the owner's policy table. If the two disagree, the Guardian is right and the department's
+   manifest has a documentation bug.
 
 Reference: [Chapter 12](../../docs/01-bible/12-chief-of-staff.md)
