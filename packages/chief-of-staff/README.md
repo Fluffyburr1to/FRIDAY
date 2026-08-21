@@ -42,10 +42,12 @@ second authority path, and there is exactly one.
 
 ## What is built, and what is not
 
-**Built:** plan validation, deterministic routing, the execution state machine including
-plan-level approval and resume, and explanation composition.
+**Built:** intent parsing, plan generation, plan validation, deterministic routing, the execution
+state machine including plan-level approval and resume, and explanation composition.
 
-**Not yet:** intent parsing and plan generation.
+**Not yet:** the executor that drives the machine — the wiring that turns these pieces into a plan
+that actually runs, and the thing that must not bypass the Guardian semantics the rest of this
+package establishes.
 
 ## What lives here
 
