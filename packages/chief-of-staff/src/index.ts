@@ -17,6 +17,12 @@
  */
 
 export {
+  type ComposeOptions,
+  composeExplanation,
+  type PlanExplanation,
+  storedExplanationIsCurrent,
+} from './explanation.js'
+export {
   nextStatus,
   nextStepStatus,
   PLAN_APPROVAL_REASONS,

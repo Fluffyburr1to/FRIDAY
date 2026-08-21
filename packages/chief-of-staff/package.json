@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@friday/contracts": "workspace:*",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@friday/audit": "workspace:*"
   },
   "devDependencies": {
     "@friday/tsconfig": "workspace:*",
