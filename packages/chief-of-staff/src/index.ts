@@ -32,6 +32,18 @@ export {
   planApprovalReason,
 } from './machine.js'
 export {
+  type GeneratePlanOptions,
+  generatePlan,
+  type Invoke,
+  type ParseIntentOptions,
+  type ProposedPlan,
+  parseIntent,
+} from './planning.js'
+export {
+  INTENT_PROMPT_VERSION,
+  PLAN_PROMPT_VERSION,
+} from './prompts/index.js'
+export {
   type CapabilityRegistry,
   createCapabilityRegistry,
   type RoutableStep,
