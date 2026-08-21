@@ -9,7 +9,7 @@
   },
   // One entry per workspace dependency, so `tsc --build` builds them in the
   // right order and resolves their declarations from dist/ rather than src/.
-  "references": [{ "path": "../contracts" }],
+  "references": [{ "path": "../contracts" }, { "path": "../audit" }],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "coverage", "test"]
 }

@@ -268,6 +268,13 @@ module.exports = {
           // onwards adds a warning, and a warning list nobody can act on is a
           // warning list everybody learns to scroll past.
           '\\.test\\.ts$',
+          // ★ A test fixture is loaded BY PATH at runtime — the agent runtime
+          // hands one to a worker thread, which requires it inside a scope
+          // that has already been stripped. Nothing imports it statically, and
+          // nothing should: importing it here would pull agent code into
+          // FRIDAY's own module graph, which is the thing isolation exists to
+          // prevent. Same reasoning as the test-file exemption above.
+          '(^|/)test/fixtures/',
           '(^|/)vitest\\.config\\.ts$',
         ],
       },
