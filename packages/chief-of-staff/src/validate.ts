@@ -200,14 +200,17 @@ function refuse(because: string, detail: Record<string, unknown>): Result<never,
  * lookups, and running them one after another would be three times slower for
  * no reason.
  *
+ * Generic over the step shape: the executor's steps carry a resource that a
+ * proposed step does not, and both need the same ordering rule. Narrowing this
+ * to one concrete type would mean a second copy of it.
+ *
  * @param steps - Every step in the plan.
  * @param completed - The ids that have finished.
  * @returns The steps that are ready, in presentation order.
  */
-export function readySteps(
-  steps: readonly ProposedStep[],
-  completed: ReadonlySet<string>,
-): ProposedStep[] {
+export function readySteps<
+  T extends { id: string; sequence: number; dependsOn: readonly string[] },
+>(steps: readonly T[], completed: ReadonlySet<string>): T[] {
   return steps
     .filter((step) => !completed.has(step.id))
     .filter((step) => step.dependsOn.every((id) => completed.has(id)))
