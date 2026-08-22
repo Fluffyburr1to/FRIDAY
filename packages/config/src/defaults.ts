@@ -36,6 +36,7 @@ export interface DeepPartialConfig {
     perPlanCents?: number
     perDayCents?: number
     perMonthCents?: number
+    planApprovalThresholdCents?: number
   }
   backup?: { enabled?: boolean; bucket?: string }
   telemetry?: { otelEnabled?: boolean; otelEndpoint?: string }
@@ -87,6 +88,9 @@ export function defaultConfig(): DeepPartialConfig {
     budgets: {
       perAgentCents: 15,
       perPlanCents: 50,
+
+      // Half the per-plan ceiling. See the schema for why the two are related.
+      planApprovalThresholdCents: 25,
       perDayCents: 800,
       perMonthCents: 15_000,
     },

@@ -41,6 +41,7 @@ export const ENV_VARIABLES = [
   'FRIDAY_BUDGET_PER_PLAN_CENTS',
   'FRIDAY_BUDGET_PER_DAY_CENTS',
   'FRIDAY_BUDGET_PER_MONTH_CENTS',
+  'FRIDAY_PLAN_APPROVAL_THRESHOLD_CENTS',
   'FRIDAY_BACKUP_ENABLED',
   'FRIDAY_BACKUP_BUCKET',
   'FRIDAY_OTEL_ENABLED',
@@ -141,6 +142,7 @@ export function readEnvironment(env: EnvSource = process.env): DeepPartialConfig
       perPlanCents: int(env, 'FRIDAY_BUDGET_PER_PLAN_CENTS'),
       perDayCents: int(env, 'FRIDAY_BUDGET_PER_DAY_CENTS'),
       perMonthCents: int(env, 'FRIDAY_BUDGET_PER_MONTH_CENTS'),
+      planApprovalThresholdCents: int(env, 'FRIDAY_PLAN_APPROVAL_THRESHOLD_CENTS'),
     }),
     backup: prune({
       enabled: bool(env, 'FRIDAY_BACKUP_ENABLED'),

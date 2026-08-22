@@ -150,6 +150,45 @@ describe('loadConfig', () => {
     if (!result.ok) expect(result.error.message).toContain('perPlanCents')
   })
 
+  it('★ refuses a plan-approval threshold at or above the per-plan ceiling', () => {
+    // ★ Chapter 12's TRIGGER and Chapter 35's CEILING are different things,
+    // and the relationship between them is load-bearing. A threshold at or
+    // above the ceiling can never fire — the plan is suspended by its budget
+    // first — which would silently disable the cost condition and leave plan
+    // approval driven by risk alone. That is a coherent policy and it must be
+    // chosen deliberately, never arrived at by two numbers in two chapters
+    // quietly disagreeing.
+    for (const threshold of ['50', '51', '500']) {
+      const result = loadConfig({
+        env: {
+          FRIDAY_BUDGET_PER_PLAN_CENTS: '50',
+          FRIDAY_PLAN_APPROVAL_THRESHOLD_CENTS: threshold,
+        },
+      })
+
+      expect(result.ok, `a threshold of ${threshold} should be refused`).toBe(false)
+      if (!result.ok) expect(result.error.message).toContain('planApprovalThresholdCents')
+    }
+  })
+
+  it('accepts a plan-approval threshold below the ceiling', () => {
+    const result = loadConfig({
+      env: {
+        FRIDAY_BUDGET_PER_PLAN_CENTS: '50',
+        FRIDAY_PLAN_APPROVAL_THRESHOLD_CENTS: '25',
+      },
+    })
+
+    expect(result.ok && result.value.budgets.planApprovalThresholdCents).toBe(25)
+  })
+
+  it('defaults the threshold to half the per-plan ceiling', () => {
+    const result = loadConfig({ env: {} })
+
+    expect(result.ok && result.value.budgets.planApprovalThresholdCents).toBe(25)
+    expect(result.ok && result.value.budgets.perPlanCents).toBe(50)
+  })
+
   it('refuses a daily budget below a single plan’s budget', () => {
     const result = loadConfig({
       env: { FRIDAY_BUDGET_PER_PLAN_CENTS: '900', FRIDAY_BUDGET_PER_DAY_CENTS: '800' },
