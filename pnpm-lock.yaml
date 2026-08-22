@@ -49,11 +49,11 @@ catalogs:
       specifier: ^0.45.2
       version: 0.45.2
     hyparquet:
-      specifier: 1.27.1
-      version: 1.27.1
+      specifier: 1.28.2
+      version: 1.28.2
     hyparquet-writer:
-      specifier: ^0.16.5
-      version: 0.16.5
+      specifier: ^0.16.6
+      version: 0.16.6
     jsdom:
       specifier: ^30.0.1
       version: 30.0.1
@@ -67,11 +67,11 @@ catalogs:
       specifier: ^19.2.8
       version: 19.2.8
     rotating-file-stream:
-      specifier: ^3.2.9
-      version: 3.2.9
+      specifier: ^3.2.10
+      version: 3.2.10
     smol-toml:
-      specifier: ^1.7.1
-      version: 1.7.1
+      specifier: ^1.8.0
+      version: 1.8.0
     vitest:
       specifier: ^4.1.10
       version: 4.1.10
@@ -118,8 +118,8 @@ importers:
         specifier: ^18.1.1
         version: 18.1.1
       js-yaml:
-        specifier: ^5.2.3
-        version: 5.2.3
+        specifier: ^5.3.0
+        version: 5.3.0
       turbo:
         specifier: ^2.5.0
         version: 2.10.8
@@ -421,7 +421,7 @@ importers:
         version: link:../contracts
       smol-toml:
         specifier: 'catalog:'
-        version: 1.7.1
+        version: 1.8.0
       zod:
         specifier: 'catalog:'
         version: 4.4.3
@@ -577,10 +577,10 @@ importers:
         version: 0.45.2(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
       hyparquet:
         specifier: 'catalog:'
-        version: 1.27.1
+        version: 1.28.2
       hyparquet-writer:
         specifier: 'catalog:'
-        version: 0.16.5
+        version: 0.16.6
     devDependencies:
       '@friday/tsconfig':
         specifier: workspace:*
@@ -611,7 +611,7 @@ importers:
         version: 10.3.1
       rotating-file-stream:
         specifier: 'catalog:'
-        version: 3.2.9
+        version: 3.2.10
     devDependencies:
       '@friday/tsconfig':
         specifier: workspace:*
@@ -1828,11 +1828,14 @@ packages:
     resolution: {integrity: sha512-K3GbkIWqyvvlpfhBPlbEvD97TtqBpAYA4kt+cn2lD2x2HuohzZCibcA2nOlnJT6exqvJLggoB5nv2dNf192nEA==}
     hasBin: true
 
-  hyparquet-writer@0.16.5:
-    resolution: {integrity: sha512-+f9/aOOiZrQU9MCinU79npYvyo62C4UOkbtk2+c8ViyPGBt4ihLpT+ZhEw8oBLroTbkJVO22y4ftcY/R9AYaQg==}
+  hyparquet-writer@0.16.6:
+    resolution: {integrity: sha512-KK3FhIf/yPhDi63rAEV6Di9tLZXDGYqXcOMVS2Ssm5zerEkrfc71REfGCFcEKtiiATGzd9kq5uWcy8JeCapQVQ==}
 
-  hyparquet@1.27.1:
-    resolution: {integrity: sha512-kvMGVKlB/xa9UHxWLJkySJYGC436nPeBWC9Fzo/BZtMEzFUjmzD1KuLz67EOpA3Ci6V7yF/yTG7QRSDSx5EDSg==}
+  hyparquet@1.28.1:
+    resolution: {integrity: sha512-04PlyhYZpNDVaOjJNX4SP00beWf9Y9vXEOEQXSMFqVQNzxGxTmsJOQgBjar8VzLpT6E2kxNiWKL539e1dHcOVA==}
+
+  hyparquet@1.28.2:
+    resolution: {integrity: sha512-+24r0j3oA8dzFYQlPfSeua5JacoPmJPSqbyEGbhleuahOJ2cablgXTk862Pq8sMjkw7/uPucLgPpIOJzWxR8Jg==}
 
   iconv-lite@0.7.3:
     resolution: {integrity: sha512-IKXpvIzjnC9XTAUbVBcMfGS0EPaIXtW6v+zr+RRp+hqULEpo0owZax6wyRwPOJbWbzjYspQwusTsfVr0ifh4uQ==}
@@ -1918,8 +1921,8 @@ packages:
     resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
     hasBin: true
 
-  js-yaml@5.2.3:
-    resolution: {integrity: sha512-n+mUVyUX5bVv7G/G2zyIHOhdxfuU1dY2NOFzTQUWiMUbFss8b57NFlgCCaggU78wSw5KVS9cllzeLyzyR+n5nw==}
+  js-yaml@5.3.0:
+    resolution: {integrity: sha512-muutsYr+e2+d3rTgUGslq5rxbBlUy3cJ61IsHag2QNDQV+7zXWjkUpmALIajhrlLlrgRUiymj6U3zUr/TMK84Q==}
     hasBin: true
 
   jsdom@30.0.1:
@@ -2180,8 +2183,8 @@ packages:
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
     hasBin: true
 
-  rotating-file-stream@3.2.9:
-    resolution: {integrity: sha512-i9i0KkHh12ryl4xtELg+0gyoFre2PJ9RcQQLzquWsiqygyYsrZLckrqqYrthhnJZGZb4g+KUHtcoWYVq34gaug==}
+  rotating-file-stream@3.2.10:
+    resolution: {integrity: sha512-9kviflu1v0iTD3MNoRLjPuuqLTsTOrovKdadoSYcUsgY5mKFNuhcM7WifJcwvxfIP6YJdVVxgWQr9YS3lJS+bg==}
     engines: {node: '>=14.0'}
 
   run-parallel@1.2.0:
@@ -2235,8 +2238,8 @@ packages:
     resolution: {integrity: sha512-g9Q1haeby36OSStwb4ntCGGGaKsaVSjQ68fBxoQcutl5fS1vuY18H3wSt3jFyFtrkx+Kz0V1G85A4MyAdDMi2Q==}
     engines: {node: '>=8'}
 
-  smol-toml@1.7.1:
-    resolution: {integrity: sha512-PPlsspAZ4jbMBu5DMFhfUGDQLu/vrL4SyBROVS37x8ynnVmFIs1VPBz1Co8Xks3TvpIaZXmU85y4DrQ+UyVFoQ==}
+  smol-toml@1.8.0:
+    resolution: {integrity: sha512-kCZr2V3ch9i00x8zXRhjUNVcjG9ijES5dDudkXvUVCT5QlJNQWElSJdZqyPemffHoLNUYwOcou0Fy+ojN0uHSQ==}
     engines: {node: '>= 18'}
 
   sonic-boom@4.2.1:
@@ -3524,11 +3527,13 @@ snapshots:
 
   human-id@4.2.0: {}
 
-  hyparquet-writer@0.16.5:
+  hyparquet-writer@0.16.6:
     dependencies:
-      hyparquet: 1.27.1
+      hyparquet: 1.28.1
 
-  hyparquet@1.27.1: {}
+  hyparquet@1.28.1: {}
+
+  hyparquet@1.28.2: {}
 
   iconv-lite@0.7.3:
     dependencies:
@@ -3597,7 +3602,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  js-yaml@5.2.3:
+  js-yaml@5.3.0:
     dependencies:
       argparse: 2.0.1
 
@@ -3856,7 +3861,7 @@ snapshots:
       '@rollup/rollup-win32-x64-msvc': 4.62.4
       fsevents: 2.3.3
 
-  rotating-file-stream@3.2.9: {}
+  rotating-file-stream@3.2.10: {}
 
   run-parallel@1.2.0:
     dependencies:
@@ -3894,7 +3899,7 @@ snapshots:
 
   slash@3.0.0: {}
 
-  smol-toml@1.7.1: {}
+  smol-toml@1.8.0: {}
 
   sonic-boom@4.2.1:
     dependencies:
