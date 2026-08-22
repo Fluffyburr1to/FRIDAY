@@ -1,0 +1,6 @@
+{
+  "agent": "self-check",
+  "recordedAt": "2026-08-19",
+  "score": null,
+  "why": "No baseline yet. Scored scenarios need a model to judge them and none is configured, so every scored run reports qualityUnscored. Recording a number now would be recording a guess, and tools/README.md requires baselines to be set deliberately with written justification. The safety scenarios are pass/fail and do not need one."
+}

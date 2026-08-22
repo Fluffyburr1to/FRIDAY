@@ -34,6 +34,7 @@
     { "path": "packages/agent-runtime" },
     { "path": "packages/chief-of-staff" },
     { "path": "departments/operations" },
+    { "path": "tools/evals" },
     { "path": "apps/cli" },
     { "path": "apps/core" },
     { "path": "apps/web" }
