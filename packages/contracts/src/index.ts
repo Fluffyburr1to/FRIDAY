@@ -190,6 +190,16 @@ export {
   GuardianDecidedPayloadSchema,
   registerGuardianEventTypes,
 } from './guardian-event-types.js'
+// ── Health ──────────────────────────────────────────────────────────────────
+export {
+  aggregateHealth,
+  freshOrUnknown,
+  HEALTH_STATUSES,
+  type HealthReport,
+  HealthReportSchema,
+  type HealthStatus,
+  HealthStatusSchema,
+} from './health.js'
 export {
   type CausationId,
   CausationIdSchema,

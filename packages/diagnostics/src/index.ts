@@ -12,4 +12,11 @@
  * See: README.md · docs/01-bible/23-diagnostics-system.md
  */
 
+export {
+  auditChainCheck,
+  type RunSelfChecksOptions,
+  runSelfChecks,
+  type SelfCheck,
+  type SelfCheckOutcome,
+} from './self-check.js'
 export { createVitalsReader, type VitalsReader } from './vitals.js'
