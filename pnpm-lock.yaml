@@ -638,6 +638,28 @@ importers:
         specifier: workspace:*
         version: link:../../apps/core
 
+  tools/evals:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
+    devDependencies:
+      '@friday/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@friday/vitest-config':
+        specifier: workspace:*
+        version: link:../vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@7.3.6(@types/node@24.13.3))
+
   tools/tsconfig: {}
 
   tools/vitest-config:
