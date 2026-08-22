@@ -17,6 +17,17 @@
  */
 
 export {
+  type AuthorisationOutcome,
+  type Authorised,
+  type Authorize,
+  advance,
+  createExecutor,
+  type ExecutableStep,
+  type Executor,
+  type ExecutorOptions,
+  type PerformCapability,
+} from './executor.js'
+export {
   type ComposeOptions,
   composeExplanation,
   type PlanExplanation,

@@ -45,9 +45,25 @@ second authority path, and there is exactly one.
 **Built:** intent parsing, plan generation, plan validation, deterministic routing, the execution
 state machine including plan-level approval and resume, and explanation composition.
 
-**Not yet:** the executor that drives the machine — the wiring that turns these pieces into a plan
-that actually runs, and the thing that must not bypass the Guardian semantics the rest of this
-package establishes.
+**Built:** the executor.
+
+★ **Its Guardian gate is structural, not procedural.** `runCapability` accepts an `Authorised`,
+never a step. The only way to obtain one is `authorise()`, which calls the Guardian — and it carries
+a private symbol, so it cannot be forged, spread, or built from an object literal.
+
+So *step is ready* cannot reach *capability executes* without a current Guardian decision, **not
+because every path remembers to ask, but because no other path can produce the value execution
+requires.** A contributor adding a retry path, an error path, or an internal shortcut cannot bypass
+it without deliberately calling `authorise` themselves — which is the thing they were trying to skip.
+
+None of these is a shortcut around it:
+
+| | |
+|---|---|
+| **Plan approval** | Moves the plan to `running`. Authorises no step. |
+| **Resume** | Re-authorises from scratch, so it runs under current rules, grants, and expiries. |
+| **Routing** | A `Route` says who would act. It is a different type and cannot become an `Authorised`. |
+| **A previous answer** | Each `Authorised` is minted for one step, and reuse is refused. |
 
 ## What lives here
 
