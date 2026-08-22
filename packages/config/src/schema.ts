@@ -99,6 +99,36 @@ const BudgetsSchema = z.object({
   perPlanCents: z.int().positive(),
   perDayCents: z.int().positive(),
   perMonthCents: z.int().positive(),
+
+  /**
+   * ★ What a plan may be ESTIMATED to cost before the owner approves its
+   * shape up front — Chapter 12's *"exceeds a cost threshold"*.
+   *
+   * ★ **This is not a fifth budget, and the relationship to `perPlanCents` is
+   * the whole reason it is documented here rather than left as a number.**
+   *
+   *   - `perPlanCents` (Chapter 35, $0.50) is the **ceiling**. A plan that
+   *     reaches it is suspended mid-flight. It is a safety limit.
+   *   - This is the **trigger**. A plan estimated above it is approved
+   *     *before it starts*, because Chapter 12 asks the owner to review the
+   *     shape of consequential work rather than its last action.
+   *
+   * It must therefore sit **below** `perPlanCents`, and a cross-field check
+   * below enforces that. Set above the ceiling it could never fire, because
+   * the budget would suspend the plan first — which would silently disable
+   * the cost condition and leave plan approval driven by risk alone. That is
+   * a coherent policy and it must be chosen deliberately, never arrived at by
+   * two numbers in different chapters disagreeing.
+   *
+   * Owner decision, 2026-08-19: **25 cents**, half the ceiling — *"a plan
+   * expected to use more than half its allowance gets looked at first."*
+   * Provisional policy, not an architectural constant.
+   *
+   * ★ It is FRIDAY's estimated cost of **the actions in a plan**. It is not an
+   * API spending limit and not a per-model cap; those are the four budgets
+   * above.
+   */
+  planApprovalThresholdCents: z.int().positive(),
 })
 
 const BackupSchema = z.object({
@@ -153,6 +183,19 @@ export const FridayConfigSchema = z
         code: 'custom',
         path: ['backup', 'bucket'],
         message: 'Backups are enabled but no bucket is configured, so nothing would be backed up.',
+      })
+    }
+
+    // ★ A threshold at or above the ceiling can never fire: the plan is
+    // suspended by its budget before the estimate could ever exceed it.
+    if (config.budgets.planApprovalThresholdCents >= config.budgets.perPlanCents) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['budgets', 'planApprovalThresholdCents'],
+        message:
+          'A plan-approval threshold at or above the per-plan budget can never fire — the plan ' +
+          'is suspended by its budget first. Set it below perPlanCents, or accept that only ' +
+          'risk triggers plan approval and say so deliberately.',
       })
     }
 

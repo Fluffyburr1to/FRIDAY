@@ -48,7 +48,25 @@ export interface PlanApprovalCheck {
   /** What the plan is estimated to cost, in cents. */
   readonly estimateCents: number
 
-  /** Above this, the shape is approved before anything starts. */
+  /**
+   * Above this, the shape is approved before anything starts.
+   *
+   * ★ A **trigger**, not a ceiling, and the two live in different chapters:
+   *
+   *   - Chapter 35's `perPlanCents` ($0.50) is the ceiling. A plan that
+   *     reaches it is suspended mid-flight. It is a safety limit, and it
+   *     applies **whether or not the owner approved the plan** — approval is
+   *     not a budget exemption.
+   *   - This is Chapter 12's *"exceeds a cost threshold"*. A plan estimated
+   *     above it is approved **before it starts**.
+   *
+   * It therefore has to sit below the ceiling to ever fire; `packages/config`
+   * refuses a configuration where it does not. Owner decision of 2026-08-19:
+   * 25 cents, half the ceiling.
+   *
+   * ★ FRIDAY's estimated cost of the actions in a plan — not an API spending
+   * limit and not a per-model cap.
+   */
   readonly thresholdCents: number
 }
 
