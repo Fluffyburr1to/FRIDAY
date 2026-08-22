@@ -96,6 +96,9 @@ importers:
       '@friday/agent-runtime':
         specifier: workspace:*
         version: link:packages/agent-runtime
+      '@friday/chief-of-staff':
+        specifier: workspace:*
+        version: link:packages/chief-of-staff
       '@friday/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -267,6 +270,31 @@ importers:
       vite:
         specifier: ^7.3.6
         version: 7.3.6(@types/node@24.13.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@7.3.6(@types/node@24.13.3))
+
+  departments/operations:
+    dependencies:
+      '@friday/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@friday/diagnostics':
+        specifier: workspace:*
+        version: link:../../packages/diagnostics
+    devDependencies:
+      '@friday/tsconfig':
+        specifier: workspace:*
+        version: link:../../tools/tsconfig
+      '@friday/vitest-config':
+        specifier: workspace:*
+        version: link:../../tools/vitest-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 4.1.10(vitest@4.1.10)
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(jsdom@30.0.1)(vite@7.3.6(@types/node@24.13.3))

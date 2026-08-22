@@ -1,0 +1,39 @@
+{
+  "id": "operations",
+  "name": "Operations",
+  "version": "1.0.0",
+  "description": "Keeps FRIDAY healthy. Touches no personal data and calls no external service.",
+
+  "capabilities": [
+    {
+      "id": "run-self-check",
+      "action": "diagnostics.self-check.run",
+      "description": "Check that FRIDAY is internally consistent and her record is intact.",
+      "input": "SelfCheckRequest",
+      "output": "SelfCheckResult",
+      "riskClass": "low",
+      "irreversible": false,
+      "sensitivity": "internal",
+      "requires": ["diagnostics.run"]
+    },
+    {
+      "id": "compact-event-log",
+      "action": "operations.log.compact",
+      "description": "Compact the event log, which rewrites the record of everything FRIDAY has done.",
+      "input": "CompactRequest",
+      "output": "CompactResult",
+      "riskClass": "high",
+      "irreversible": true,
+      "sensitivity": "internal",
+      "requires": ["diagnostics.run"]
+    }
+  ],
+
+  "subscribes": [],
+  "publishes": ["diagnostics.self-check.completed", "operations.log.compacted"],
+
+  "degradedMode": {
+    "whenConnectorUnavailable": "unaffected",
+    "description": "Operations calls no external service, so a connector outage changes nothing it can do."
+  }
+}
