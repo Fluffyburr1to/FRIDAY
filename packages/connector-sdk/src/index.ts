@@ -14,6 +14,13 @@
 // ── The contract a connector implements ─────────────────────────────────────
 
 export {
+  type BrokerOptions,
+  type CredentialObserver,
+  type CredentialSource,
+  createCredentialBroker,
+  DEFAULT_LEASE_MS,
+} from './broker.js'
+export {
   BREAKER_STATES,
   type BreakerPolicy,
   type BreakerState,

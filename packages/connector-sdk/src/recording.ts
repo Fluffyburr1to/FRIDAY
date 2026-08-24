@@ -5,6 +5,7 @@ import {
   type PrincipalId,
   SYSTEM_ACTOR,
 } from '@friday/contracts'
+import type { CredentialObserver } from './broker.js'
 import type { ConnectorObserver } from './runtime.js'
 
 /**
@@ -63,7 +64,7 @@ export interface RecordingOptions {
 export function recordingObserver(
   sink: ConnectorEventSink,
   options: RecordingOptions,
-): ConnectorObserver {
+): ConnectorObserver & CredentialObserver {
   const actor = options.actor ?? SYSTEM_ACTOR
 
   /** Every connector event shares these, so none can be forgotten on one. */
@@ -141,6 +142,34 @@ export function recordingObserver(
         event('connector.recovered', {
           connectorId: recovered.connectorId,
           degradedForMs: recovered.degradedForMs,
+        }),
+      )
+    },
+
+    onIssued: (issued) => {
+      // ★ The scopes and the operation, never the value. "The calendar
+      // connector used your key at 14:02" is far less useful than
+      // "…to run create-event, for the plan you approved".
+      sink.record(
+        event(
+          'credential.issued',
+          {
+            connectorId: issued.connectorId,
+            operationId: issued.operationId,
+            scopes: [...issued.scopes],
+            expiresAt: issued.expiresAt,
+          },
+          issued.correlationId,
+        ),
+      )
+    },
+
+    onRevoked: (revoked) => {
+      sink.record(
+        event('credential.revoked', {
+          connectorId: revoked.connectorId,
+          requestedBy: revoked.requestedBy,
+          reason: revoked.reason,
         }),
       )
     },
