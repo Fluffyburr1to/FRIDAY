@@ -52,6 +52,11 @@ export {
   planApprovalReason,
 } from './machine.js'
 export {
+  fromStored,
+  type StoredProgress,
+  toStored,
+} from './persistence.js'
+export {
   type GeneratePlanOptions,
   generatePlan,
   type Invoke,
