@@ -44,3 +44,11 @@ export {
   type RateLimits,
   rateLimiterFor,
 } from './rate-limit.js'
+export {
+  backoffDelayMs,
+  DEFAULT_RETRY_POLICY,
+  isTransient,
+  mayRepeat,
+  type RetryPolicy,
+  shouldRetry,
+} from './retry.js'
