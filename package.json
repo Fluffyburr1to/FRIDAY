@@ -42,6 +42,7 @@
     "@friday/chief-of-staff": "workspace:*",
     "@friday/cli": "workspace:*",
     "@friday/config": "workspace:*",
+    "@friday/connector-sdk": "workspace:*",
     "@friday/contracts": "workspace:*",
     "@friday/core": "workspace:*",
     "@friday/guardian": "workspace:*",

@@ -57,6 +57,18 @@ export interface ConnectorFetchOptions {
 }
 
 /**
+ * What a connector may set on a request.
+ *
+ * `redirect` is absent because the guard owns it — see below. `signal` is
+ * widened to accept `undefined` so that `OperationContext.signal` can be
+ * passed straight through; under `exactOptionalPropertyTypes` the DOM's own
+ * `AbortSignal | null` would make every connector write a conditional spread.
+ */
+export type ConnectorRequestInit = Omit<RequestInit, 'redirect' | 'signal'> & {
+  readonly signal?: AbortSignal | null | undefined
+}
+
+/**
  * A guarded request. Returns a typed failure rather than throwing, because a
  * failing external service is an ordinary outcome and Article VII asks for it
  * to be handled rather than caught.
@@ -64,7 +76,7 @@ export interface ConnectorFetchOptions {
 export type ConnectorFetch = (
   operation: ConnectorOperation,
   url: string,
-  init?: RequestInit,
+  init?: ConnectorRequestInit,
 ) => Promise<Result<Response, FridayError>>
 
 function refuse(
@@ -90,6 +102,70 @@ function refuse(
       detail: { connector: options.manifest.id, operation: operation.id, host, reason },
     }),
   )
+}
+
+/**
+ * The signal a request should actually watch.
+ *
+ * ★ Both, not either. An earlier version set only the deadline, which silently
+ * discarded the caller's signal — so a plan that had moved on still held the
+ * call open for the full timeout.
+ *
+ * @param deadline - The guard's own timeout signal.
+ * @param caller - The signal the caller supplied, if any.
+ * @returns A signal that fires when either does.
+ */
+function combineSignals(
+  deadline: AbortSignal,
+  caller: AbortSignal | null | undefined,
+): AbortSignal {
+  if (caller === undefined || caller === null) return deadline
+  return AbortSignal.any([deadline, caller])
+}
+
+/**
+ * Turns a rejected request into the failure that names the right party.
+ *
+ * @param options - The connector's manifest and reporting hooks.
+ * @param operation - The operation being run.
+ * @param aborted - Which signals fired, if any.
+ * @param cause - What the underlying fetch threw.
+ * @returns A typed failure.
+ */
+function describeFailure(
+  options: ConnectorFetchOptions,
+  operation: ConnectorOperation,
+  aborted: { readonly deadline: boolean; readonly caller: boolean },
+  cause: unknown,
+): FridayError {
+  const detail = { connector: options.manifest.id, operation: operation.id }
+
+  // The deadline specifically — a caller that cancelled did not time out, and
+  // reporting it as a timeout would blame the provider for our own choice.
+  if (aborted.deadline) {
+    return fridayError({
+      code: 'TIMEOUT',
+      message: `${options.manifest.service} did not answer within ${operation.timeoutMs}ms.`,
+      detail: { ...detail, timeoutMs: operation.timeoutMs },
+      cause,
+    })
+  }
+
+  if (aborted.caller) {
+    return fridayError({
+      code: 'CANCELLED',
+      message: `The call to ${options.manifest.service} was abandoned before it finished.`,
+      detail,
+      cause,
+    })
+  }
+
+  return fridayError({
+    code: 'CONNECTOR_UNAVAILABLE',
+    message: `${options.manifest.service} could not be reached.`,
+    detail,
+    cause,
+  })
 }
 
 /**
@@ -142,8 +218,9 @@ export function createConnectorFetch(options: ConnectorFetchOptions): ConnectorF
       )
     }
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), operation.timeoutMs)
+    const deadline = new AbortController()
+    const timer = setTimeout(() => deadline.abort(), operation.timeoutMs)
+    const caller = init?.signal
 
     try {
       const response = await options.fetch(url, {
@@ -154,33 +231,18 @@ export function createConnectorFetch(options: ConnectorFetchOptions): ConnectorF
         // one, and the allowlist would be advisory. The connector re-enters
         // this function with the new location, or does not follow it.
         redirect: 'manual',
-        signal: controller.signal,
+        signal: combineSignals(deadline.signal, caller),
       })
 
       return ok(response)
     } catch (cause) {
-      if (controller.signal.aborted) {
-        return err(
-          fridayError({
-            code: 'TIMEOUT',
-            message: `${options.manifest.service} did not answer within ${operation.timeoutMs}ms.`,
-            detail: {
-              connector: options.manifest.id,
-              operation: operation.id,
-              timeoutMs: operation.timeoutMs,
-            },
-            cause,
-          }),
-        )
-      }
-
       return err(
-        fridayError({
-          code: 'CONNECTOR_UNAVAILABLE',
-          message: `${options.manifest.service} could not be reached.`,
-          detail: { connector: options.manifest.id, operation: operation.id },
+        describeFailure(
+          options,
+          operation,
+          { deadline: deadline.signal.aborted, caller: caller?.aborted === true },
           cause,
-        }),
+        ),
       )
     } finally {
       // A timer left pending would abort a later, unrelated call.

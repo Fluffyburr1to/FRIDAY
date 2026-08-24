@@ -108,6 +108,9 @@ importers:
       '@friday/config':
         specifier: workspace:*
         version: link:packages/config
+      '@friday/connector-sdk':
+        specifier: workspace:*
+        version: link:packages/connector-sdk
       '@friday/contracts':
         specifier: workspace:*
         version: link:packages/contracts

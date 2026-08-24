@@ -37,6 +37,7 @@ export {
   type BlockedEgressReason,
   type ConnectorFetch,
   type ConnectorFetchOptions,
+  type ConnectorRequestInit,
   createConnectorFetch,
 } from './egress.js'
 // ── The rules it cannot break by being careless ─────────────────────────────

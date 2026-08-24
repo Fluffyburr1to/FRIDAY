@@ -189,6 +189,56 @@ describe('the time limit', () => {
   })
 })
 
+describe('a call the caller no longer wants', () => {
+  it('stops when the caller says so, rather than waiting out the timeout', async () => {
+    // ★ An earlier version of the guard set only its own deadline, silently
+    // discarding the caller's signal — so a plan that had already moved on
+    // still held the call open for the full timeout.
+    const underlying = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        }),
+    )
+    const call = guarded(underlying as unknown as typeof fetch)
+    const caller = new AbortController()
+
+    const pending = call(OPERATION, 'https://api.example.com/slow', { signal: caller.signal })
+    caller.abort()
+    const result = await pending
+
+    expect(isErr(result)).toBe(true)
+    if (isErr(result)) expect(result.error.code).toBe('CANCELLED')
+  })
+
+  it('does not blame the provider for a call FRIDAY abandoned', async () => {
+    // CANCELLED rather than TIMEOUT or CONNECTOR_UNAVAILABLE: the service was
+    // never given the chance to be slow.
+    //
+    // The stub rejects an already-aborted signal immediately, because that is
+    // what a real fetch does — waiting for an 'abort' event that has already
+    // fired would hang forever.
+    const underlying = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          if (init?.signal?.aborted === true) {
+            reject(new Error('aborted'))
+            return
+          }
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')))
+        }),
+    )
+    const call = guarded(underlying as unknown as typeof fetch)
+
+    const result = await call(OPERATION, 'https://api.example.com/slow', {
+      signal: AbortSignal.abort(),
+    })
+
+    expect(isErr(result)).toBe(true)
+    if (isErr(result)) expect(result.error.code).toBe('CANCELLED')
+  })
+})
+
 describe('when the service itself fails', () => {
   it('reports it as unavailable rather than throwing', async () => {
     // A failing fetch rejects; it does not throw synchronously.

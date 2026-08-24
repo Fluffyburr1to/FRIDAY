@@ -85,6 +85,12 @@ export const ERROR_CODES = [
   // `CONNECTOR_FAULTED`   — the connector threw. Chapter 14 expects connectors
   //   to be the component most likely written quickly, by an AI, or by a third
   //   party, so one misbehaving must not take the kernel down with it.
+  // Nobody's fault: the caller stopped wanting the answer. Distinct from
+  // `TIMEOUT` because reporting an abandoned call as a timeout blames the
+  // provider for a decision FRIDAY made, and distinct from a failure because
+  // it is not one — retrying it would be reviving work already dropped.
+  'CANCELLED',
+
   'CONNECTOR_NOT_READY',
   'OPERATION_NOT_DECLARED',
   'CONNECTOR_FAULTED',
