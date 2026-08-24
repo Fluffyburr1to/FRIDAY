@@ -34,6 +34,15 @@ export {
   storedExplanationIsCurrent,
 } from './explanation.js'
 export {
+  approvePlan,
+  approveStep,
+  beginning,
+  type PlanProgress,
+  type RunOutcome,
+  type RunPlanOptions,
+  runPlan,
+} from './kernel.js'
+export {
   nextStatus,
   nextStepStatus,
   PLAN_APPROVAL_REASONS,
