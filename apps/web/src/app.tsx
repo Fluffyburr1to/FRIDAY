@@ -6,6 +6,7 @@ import { DEFAULT_LAYOUT, type HudLayout, type PanelId } from './hud/layout'
 import { Panel } from './hud/panel'
 import { VitalsPanel } from './hud/vitals'
 import { t } from './i18n'
+import { PlansPanel } from './plans'
 import { queryClient } from './trpc'
 
 /**
@@ -48,6 +49,13 @@ function PanelFor(input: { id: PanelId; layout: HudLayout }): React.JSX.Element 
   switch (id) {
     case 'vitals':
       return <VitalsPanel pollIntervalMs={layout.pollIntervalMs} hidden={layout.hiddenVitals} />
+
+    case 'plans':
+      return (
+        <Panel title={t('plans.heading')}>
+          <PlansPanel pollIntervalMs={layout.pollIntervalMs} />
+        </Panel>
+      )
 
     case 'events':
       return (

@@ -1,7 +1,13 @@
+import { composeExplanation } from '@friday/chief-of-staff'
 import {
   ApprovalRequestSchema,
   EventSchema,
   type FridayError,
+  isAwaitingOwner,
+  isTerminalPlanStatus,
+  PLAN_STATUSES,
+  PlanSchema,
+  PlanStepSchema,
   RuntimeVitalsSchema,
 } from '@friday/contracts'
 import { initTRPC, TRPCError } from '@trpc/server'
@@ -55,6 +61,83 @@ export const RespondInput = z.object({
 
 export const PendingApprovalsOutput = z.object({
   approvals: z.array(ApprovalRequestSchema),
+})
+
+/**
+ * How many plans one page of the overview holds.
+ *
+ * Chapter 26's home screen shows what is happening and what needs you, not a
+ * history — and a screen that scrolls forever is one nobody reads to the end.
+ */
+const MAX_PLANS = 100
+const DEFAULT_PLANS = 25
+
+export const ListPlansInput = z.object({
+  limit: z.int().positive().max(MAX_PLANS).default(DEFAULT_PLANS),
+
+  /**
+   * Which plans to return.
+   *
+   * ★ `live` and `needs_you` are named here rather than left to the client to
+   * assemble from statuses. Chapter 26's overview asks two questions —
+   * *what is happening* and *what needs you* — and if each caller derived its
+   * own answer from a status list, a status added later would silently be
+   * missing from one screen and present on another.
+   *
+   * The derivation itself is `isAwaitingOwner` and `isTerminalPlanStatus`, in
+   * `@friday/contracts`, next to the statuses. This file selects; it does not
+   * decide what the words mean.
+   */
+  showing: z.enum(['live', 'needs_you', 'recent', ...PLAN_STATUSES]).default('recent'),
+})
+
+/**
+ * A plan, and how far it got.
+ *
+ * The steps travel with it because Chapter 26's plan view is the plan *and*
+ * its steps, and a second round trip to render one screen is a screen that
+ * renders in two stages.
+ */
+export const PlanWithStepsSchema = z.object({
+  plan: PlanSchema,
+  steps: z.array(PlanStepSchema),
+})
+
+export const ListPlansOutput = z.object({
+  plans: z.array(PlanWithStepsSchema),
+})
+
+export const PlanIdInput = z.object({ planId: z.uuid() })
+
+export const WhyInput = z.object({
+  planId: z.uuid(),
+  depth: z.enum(['summary', 'standard', 'full']).default('standard'),
+})
+
+/**
+ * The account of one plan, every line carrying the event behind it.
+ *
+ * ★ `eventId` on every line is not decoration — it is what makes Chapter 26's
+ * Layer 4 reachable from Layer 3, and what stops an explanation being a story.
+ * `omitted` and `orphaned` travel too, so *"is this the whole story?"* has an
+ * answer on the screen rather than only in the package.
+ */
+export const WhyOutput = z.object({
+  headline: z.string(),
+  asked: z.string(),
+  rationale: z.string(),
+  lines: z.array(
+    z.object({
+      text: z.string(),
+      eventId: z.string(),
+      eventType: z.string(),
+      seq: z.int(),
+      occurredAt: z.int(),
+      depth: z.int(),
+    }),
+  ),
+  omitted: z.object({ belowDepth: z.int(), unphrased: z.array(z.string()) }),
+  orphaned: z.array(z.string()),
 })
 
 /**
@@ -142,6 +225,95 @@ export const appRouter = t.router({
       }),
   }),
 
+  plans: t.router({
+    /**
+     * What FRIDAY has undertaken.
+     *
+     * ★ Reads and returns. There is no procedure on this router that advances
+     * a plan, approves one, or writes a step — moving a plan goes through the
+     * Chief of Staff, where the state machine decides and the transition is
+     * recorded, or it does not happen at all.
+     */
+    list: t.procedure
+      .input(ListPlansInput)
+      .output(ListPlansOutput)
+      .query(({ input, ctx }) => {
+        const found = ctx.plans.listPlans({ principalId: ctx.principalId })
+        if (!found.ok) throw refuse(found.error)
+
+        const wanted = found.value.filter((plan) => matches(plan.status, input.showing))
+
+        return {
+          plans: wanted.slice(0, input.limit).map((plan) => ({
+            plan,
+            steps: stepsOf(ctx, plan.id),
+          })),
+        }
+      }),
+
+    /** One plan, with its steps. */
+    get: t.procedure
+      .input(PlanIdInput)
+      .output(PlanWithStepsSchema)
+      .query(({ input, ctx }) => {
+        const found = ctx.plans.getPlan({ id: input.planId, principalId: ctx.principalId })
+        if (!found.ok) throw refuse(found.error)
+
+        if (found.value === undefined) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'FRIDAY has no plan with that id.' })
+        }
+
+        return { plan: found.value, steps: stepsOf(ctx, found.value.id) }
+      }),
+
+    /**
+     * Why FRIDAY did what she did.
+     *
+     * ★ Composed from the recorded events every time, never read from the
+     * plan's stored `explanation` column. Chapter 12 §2 is explicit that if
+     * the stored text and the events ever disagree, **the events are right** —
+     * so the screen that answers "why?" reads the thing that is right.
+     */
+    why: t.procedure
+      .input(WhyInput)
+      .output(WhyOutput)
+      .query(({ input, ctx }) => {
+        const found = ctx.plans.getPlan({ id: input.planId, principalId: ctx.principalId })
+        if (!found.ok) throw refuse(found.error)
+
+        if (found.value === undefined) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'FRIDAY has no plan with that id.' })
+        }
+
+        const events = ctx.auditor.reconstruct({
+          correlationId: found.value.correlationId,
+          principalId: ctx.principalId,
+        })
+
+        if (!events.ok) throw refuse(events.error)
+
+        const composed = composeExplanation({
+          plan: found.value,
+          events: events.value.events,
+          depth: input.depth,
+        })
+
+        if (!composed.ok) throw refuse(composed.error)
+
+        return {
+          headline: composed.value.headline,
+          asked: composed.value.asked,
+          rationale: composed.value.rationale,
+          lines: [...composed.value.detail.lines],
+          omitted: {
+            belowDepth: composed.value.detail.omitted.belowDepth,
+            unphrased: [...composed.value.detail.omitted.unphrased],
+          },
+          orphaned: [...composed.value.detail.orphaned],
+        }
+      }),
+  }),
+
   events: t.router({
     /** The most recent events, newest first. */
     list: t.procedure
@@ -176,6 +348,37 @@ export const appRouter = t.router({
     current: t.procedure.output(RuntimeVitalsSchema).query(({ ctx }) => ctx.vitals.read()),
   }),
 })
+
+/**
+ * Whether a plan belongs on the screen that was asked for.
+ *
+ * ★ Selection, not definition. What *awaiting the owner* and *finished* mean
+ * lives in `@friday/contracts` beside the statuses themselves, so a status
+ * added later is answered in one place rather than in every caller that
+ * happened to enumerate the old ones.
+ */
+function matches(status: (typeof PLAN_STATUSES)[number], showing: string): boolean {
+  if (showing === 'live') return !isTerminalPlanStatus(status)
+  if (showing === 'needs_you') return isAwaitingOwner(status)
+  if (showing === 'recent') return true
+
+  return status === showing
+}
+
+/**
+ * A plan's steps, or none.
+ *
+ * ★ A plan whose steps cannot be read is reported as a plan with no steps
+ * rather than failing the whole page, and that is a deliberate trade the other
+ * way from `refuse`: the overview is the screen the owner opens when something
+ * is wrong, and one unreadable plan must not blank the list of the others. The
+ * plan itself still appears, so the gap is visible rather than silent.
+ */
+function stepsOf(ctx: CoreContext, planId: string) {
+  const steps = ctx.plans.listSteps({ planId, principalId: ctx.principalId })
+
+  return steps.ok ? steps.value : []
+}
 
 /**
  * The router's type, and the only thing `apps/web` imports from this app.

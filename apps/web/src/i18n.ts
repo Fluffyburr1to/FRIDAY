@@ -31,6 +31,51 @@ const en = {
     'request came from your computer, not that you are sitting at it — so it waits for the ' +
     'Mac app, which can ask for Touch ID.',
 
+  // ── Plans ─────────────────────────────────────────────────────────────────
+
+  'plans.heading': 'What she is doing',
+  'plans.connecting': 'Connecting to FRIDAY…',
+
+  /**
+   * Deliberately not "no plans". A plan list that cannot be read must never
+   * look like an idle assistant — the same rule the event log follows.
+   */
+  'plans.unreachable': 'Cannot reach FRIDAY.',
+  'plans.empty': 'She has not been asked to do anything yet.',
+
+  'plans.stepsDone': '{done} of {total} done',
+
+  /**
+   * ★ Sentences, not the enum. The two waiting states are worded differently
+   * on purpose: "she wants you to see the plan" and "she is partway through
+   * and stuck" are different situations, and collapsing them would hide which
+   * one the owner is being asked about.
+   */
+  'plans.status.draft': 'Not started',
+  'plans.status.awaitingPlan': 'Waiting for you to see the plan',
+  'plans.status.running': 'Working',
+  'plans.status.awaitingStep': 'Stopped, waiting on you',
+  'plans.status.completed': 'Done',
+  'plans.status.failed': 'Stopped without finishing',
+  'plans.status.cancelled': 'Called off',
+
+  'plans.step.pending': 'To do',
+  'plans.step.running': 'Doing',
+  'plans.step.awaiting': 'Waiting on you',
+  'plans.step.completed': 'Done',
+  'plans.step.failed': 'Did not work',
+  'plans.step.skipped': 'Passed over',
+
+  'plans.why.heading': 'Why she did it',
+  'plans.why.loading': 'Reading her record…',
+
+  /**
+   * ★ "Is this the whole story?" must have an answer on the screen. An
+   * explanation that quietly omitted part of what happened would be the exact
+   * failure the audit package exists to prevent, and it would be invisible.
+   */
+  'plans.why.omitted': '{count} more recorded, not shown at this level of detail.',
+
   'events.heading': 'Event log',
   'events.connecting': 'Connecting to FRIDAY…',
   'events.empty': 'Nothing has been recorded yet.',

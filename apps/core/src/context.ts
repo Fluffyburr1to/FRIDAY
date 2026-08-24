@@ -1,3 +1,4 @@
+import { type Auditor, createAuditor } from '@friday/audit'
 import {
   type ApprovalClerk,
   type AuthorizingClerk,
@@ -23,7 +24,7 @@ import {
   loadPolicySet,
 } from '@friday/guardian'
 import { announceStart, createEventBus } from '@friday/kernel'
-import { type EventStore, type KeyProvider, openStorage } from '@friday/storage'
+import { type EventStore, type KeyProvider, openStorage, type PlanStore } from '@friday/storage'
 import { type AskSession, createAskSession } from './ask.js'
 import { coreVersion } from './version.js'
 
@@ -51,8 +52,23 @@ import { coreVersion } from './version.js'
  */
 export type EventReader = Pick<
   EventStore,
-  'readAfter' | 'readLatest' | 'latestSeq' | 'count' | 'verifyChain'
+  'readAfter' | 'readLatest' | 'latestSeq' | 'count' | 'verifyChain' | 'readByCorrelation'
 >
+
+/**
+ * Plans, minus every way of changing one.
+ *
+ * ★ The same narrowing as `EventReader`, and it carries more weight here. A
+ * procedure holding the whole `PlanStore` could call `saveProgress` — which is
+ * to say, it could move a plan the owner is watching without the state machine
+ * having decided anything and without an event being written. That is exactly
+ * the shape of "the log and the plan describe different runs", arrived at
+ * through the dashboard.
+ *
+ * The dashboard reads plans. Advancing one goes through the Chief of Staff or
+ * it does not happen.
+ */
+export type PlanReader = Pick<PlanStore, 'getPlan' | 'listPlans' | 'listSteps'>
 
 /**
  * Narrows a store to the five reading methods, at runtime as well as in types.
@@ -74,6 +90,21 @@ function readerOver(store: EventStore): EventReader {
     latestSeq: store.latestSeq,
     count: store.count,
     verifyChain: store.verifyChain,
+    readByCorrelation: store.readByCorrelation,
+  }
+}
+
+/**
+ * Copies out the three reading methods, for the reason `readerOver` does.
+ *
+ * A `Pick<>` is a promise the compiler keeps and the running program does not:
+ * `saveProgress` would still be sitting on the object, one `as` away.
+ */
+function plansOver(store: PlanStore): PlanReader {
+  return {
+    getPlan: store.getPlan,
+    listPlans: store.listPlans,
+    listSteps: store.listSteps,
   }
 }
 
@@ -95,6 +126,25 @@ export interface CoreContext {
    * in `openContext` and never leaves it. See ADR-0021 and ADR-0031.
    */
   readonly approvals: ApprovalClerk
+
+  /**
+   * What FRIDAY has undertaken, and how far each one got.
+   *
+   * ★ Read-only, and paired with `auditor` rather than with anything that can
+   * advance a plan. Chapter 26's overview screen answers *what is happening*
+   * and *what needs you*; neither question is answered by changing anything.
+   */
+  readonly plans: PlanReader
+
+  /**
+   * Why FRIDAY did what she did, from the recorded events and nothing else.
+   *
+   * ★ On the context because Chapter 26's Layer 3 is *"full explanation in
+   * plain language"* and Layer 4 is the raw causal graph, and both are reads.
+   * The auditor cannot write an event — that is a property of the package,
+   * not a restriction applied here.
+   */
+  readonly auditor: Auditor
 
   /**
    * What the FRIDAY runtime is doing.
@@ -259,6 +309,16 @@ export function openContext(input: {
     context: {
       events: readerOver(storage.value.events),
       approvals,
+      plans: plansOver(storage.value.plans),
+
+      auditor: createAuditor({
+        events: storage.value.events,
+
+        // The registry describes event types nobody has phrased specifically,
+        // so an unfamiliar type reads as its own description rather than as a
+        // raw dotted name in front of the owner.
+        registry: bus.registry,
+      }),
 
       // The data directory rather than `/`: Chapter 29's metric is
       // `friday_disk_free_bytes`, the headroom on the volume holding her own

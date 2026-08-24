@@ -190,6 +190,9 @@ importers:
 
   apps/core:
     dependencies:
+      '@friday/audit':
+        specifier: workspace:*
+        version: link:../../packages/audit
       '@friday/chief-of-staff':
         specifier: workspace:*
         version: link:../../packages/chief-of-staff
@@ -227,9 +230,6 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
-      '@friday/audit':
-        specifier: workspace:*
-        version: link:../../packages/audit
       '@friday/tsconfig':
         specifier: workspace:*
         version: link:../../tools/tsconfig

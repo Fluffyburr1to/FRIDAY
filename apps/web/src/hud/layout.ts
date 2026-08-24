@@ -28,7 +28,7 @@ import type { VitalId } from '@friday/contracts'
  */
 
 /** A panel with a source behind it. There are no others — ADR-0041 §2. */
-export type PanelId = 'vitals' | 'approvals' | 'events'
+export type PanelId = 'vitals' | 'approvals' | 'plans' | 'events'
 
 /** The three areas of the screen, named for position rather than content. */
 export type Slot = 'left' | 'right' | 'main'
@@ -50,6 +50,13 @@ export const DEFAULT_LAYOUT: HudLayout = {
   panels: [
     { id: 'vitals', slot: 'left' },
     { id: 'approvals', slot: 'right' },
+
+    // ★ Plans above the raw log, and that ordering is Chapter 26's layering
+    // rather than taste: Layer 2 is what is happening in the owner's terms,
+    // Layer 4 is the events underneath it. A screen that led with the event
+    // log would be asking the owner to do the reconstruction FRIDAY already
+    // did for them.
+    { id: 'plans', slot: 'main' },
     { id: 'events', slot: 'main' },
   ],
 }

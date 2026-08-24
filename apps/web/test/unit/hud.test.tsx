@@ -70,6 +70,7 @@ const RESPONSES: Record<string, unknown> = {
   },
   'events.list': { events: [] },
   'approvals.pending': { approvals: [] },
+  'plans.list': { plans: [] },
 }
 
 /**

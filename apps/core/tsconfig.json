@@ -17,6 +17,7 @@
     { "path": "../../packages/clerk" },
     { "path": "../../packages/diagnostics" },
     { "path": "../../packages/storage" },
+    { "path": "../../packages/audit" },
     { "path": "../../packages/chief-of-staff" },
     { "path": "../../packages/model-router" },
     { "path": "../../departments/operations" }

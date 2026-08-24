@@ -24,6 +24,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@friday/audit": "workspace:*",
     "@friday/chief-of-staff": "workspace:*",
     "@friday/clerk": "workspace:*",
     "@friday/config": "workspace:*",
