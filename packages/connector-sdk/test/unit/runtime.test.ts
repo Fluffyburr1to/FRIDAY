@@ -100,6 +100,83 @@ function runtime(fetchImpl: typeof globalThis.fetch, overrides = {}) {
 const respond = (status: number, headers: Record<string, string> = {}) =>
   vi.fn(() => Promise.resolve(new Response('{}', { status, headers })))
 
+describe('ADR-0049 invariant 3: every allowed call resolves its probe', () => {
+  /**
+   * Every distinct way a call can end, driven to a half-open circuit.
+   *
+   * ★ Enumerated as data rather than written out one by one, so that a new
+   * exit path added to the runtime without a matching entry here is a visible
+   * omission rather than a silent one. A held probe and a returned one leave
+   * the circuit in the same state, so nothing else in these tests would catch
+   * it — the wedge bug survived exactly that blind spot.
+   */
+  const ENDINGS: ReadonlyArray<{
+    readonly name: string
+    readonly respond: () => typeof globalThis.fetch
+    readonly url?: string
+  }> = [
+    { name: 'the provider answers', respond: () => respond(200) as never },
+    { name: 'the provider fails', respond: () => respond(500) as never },
+    { name: 'the provider throttles', respond: () => respond(429) as never },
+    { name: 'the provider refuses outright', respond: () => respond(404) as never },
+    {
+      name: 'the boundary blocks the host',
+      respond: () => respond(200) as never,
+      url: 'https://evil.test/x',
+    },
+    {
+      name: 'the boundary refuses plain http',
+      respond: () => respond(200) as never,
+      url: 'http://api.example-notes.test/notes',
+    },
+    {
+      name: 'the url is not a url',
+      respond: () => respond(200) as never,
+      url: 'not a url',
+    },
+    {
+      name: 'the transport rejects',
+      respond: () => vi.fn(() => Promise.reject(new Error('ECONNREFUSED'))) as never,
+    },
+  ]
+
+  it.each(ENDINGS)('hands the probe back when $name', async ({ respond: build, url }) => {
+    const runner = runtime(build())
+
+    // Open the circuit, then step into half-open so a probe is reserved.
+    for (let i = 0; i < 5; i++) {
+      clock += 60_000
+      await runner.fetch(READ, URL_OK)
+    }
+    clock += 60_000
+
+    await runner.fetch(READ, url ?? URL_OK)
+
+    expect(runner.state().probeOutstanding, 'a probe was reserved and never resolved').toBe(false)
+  })
+
+  it('holds nothing outstanding on a circuit that was never opened', async () => {
+    const runner = runtime(respond(200) as unknown as typeof globalThis.fetch)
+
+    await runner.fetch(READ, URL_OK)
+
+    expect(runner.state().probeOutstanding).toBe(false)
+  })
+
+  it('holds nothing outstanding after the circuit refuses a call outright', async () => {
+    const runner = runtime(respond(500) as unknown as typeof globalThis.fetch)
+    for (let i = 0; i < 5; i++) {
+      clock += 60_000
+      await runner.fetch(READ, URL_OK)
+    }
+
+    // Circuit open, no time passed: refused before any probe is reserved.
+    await runner.fetch(READ, URL_OK)
+
+    expect(runner.state().probeOutstanding).toBe(false)
+  })
+})
+
 describe('the order the controls run in', () => {
   it('does not spend a token on a call the circuit refuses', async () => {
     // ★ A service that is down should cost nothing — not a token, not a DNS

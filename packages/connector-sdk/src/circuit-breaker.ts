@@ -82,6 +82,18 @@ export interface CircuitBreaker {
   recordFailure(now: number): void
 
   /**
+   * Whether a probe is reserved and has not yet been resolved.
+   *
+   * ★ [ADR-0049](../../../docs/adr/0049-a-call-that-never-happened-is-never-a-success.md)
+   * invariant 3: whatever reserves a probe must give it back, exactly once.
+   * Exposed so that invariant can be asserted directly after every kind of
+   * call, rather than inferred from whether the circuit happens to recover —
+   * a held probe and a returned one leave the circuit in the same state, so
+   * state alone cannot tell them apart.
+   */
+  readonly probeOutstanding: boolean
+
+  /**
    * Hands back a reserved probe without deciding anything.
    *
    * ★ For a call that was allowed through and then never sent — throttled,
@@ -129,6 +141,10 @@ export function createCircuitBreaker(
   }
 
   return {
+    get probeOutstanding() {
+      return probeInFlight
+    },
+
     stateAt(now: number): BreakerState {
       settle(now)
       return state

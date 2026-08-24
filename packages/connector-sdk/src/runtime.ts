@@ -106,8 +106,17 @@ export interface ConnectorRuntime {
   /** The only way out: guarded, limited, retried, and behind the breaker. */
   readonly fetch: ConnectorFetch
 
-  /** For the dashboard and the health check. Spends nothing. */
-  readonly state: () => { readonly breaker: string; readonly tokens: number }
+  /**
+   * For the dashboard, the health check, and for asserting ADR-0049's third
+   * invariant. Spends nothing.
+   */
+  readonly state: () => {
+    readonly breaker: string
+    readonly tokens: number
+
+    /** True only between reserving a probe and resolving it. Never after. */
+    readonly probeOutstanding: boolean
+  }
 }
 
 type Outcome = 'succeeded' | 'failed' | 'refused'
@@ -390,7 +399,11 @@ export function createConnectorRuntime(options: ConnectorRuntimeOptions): Connec
 
   return {
     fetch,
-    state: () => ({ breaker: breaker.stateAt(now()), tokens: limiter.tokensAt(now()) }),
+    state: () => ({
+      breaker: breaker.stateAt(now()),
+      tokens: limiter.tokensAt(now()),
+      probeOutstanding: breaker.probeOutstanding,
+    }),
   }
 }
 
