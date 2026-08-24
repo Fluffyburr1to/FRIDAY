@@ -41,6 +41,18 @@ function npmPackages(packages) {
   return `(^|/)node_modules/(${alternatives.join('|')})(/|$)`
 }
 
+/**
+ * Source that may reach for the network, for these two rules only.
+ *
+ * `connector-sdk` because it is where the allowlist is enforced, and test
+ * fixtures because a fixture that could not ATTEMPT a forbidden thing could
+ * not prove the sandbox refuses it — the isolation test in agent-runtime
+ * asserts observed refusals, which requires a fixture that genuinely tries.
+ * Deliberately narrow, and deliberately not a global exclude: these files are
+ * still bound by every other rule in this file.
+ */
+const MAY_REACH_THE_NETWORK = '^packages/connector-sdk/|(^|/)test/fixtures/'
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -206,6 +218,57 @@ module.exports = {
       to: {
         path: '^packages/storage/src/',
         pathNot: '^packages/storage/src/index\\.ts$',
+      },
+    },
+
+    // ───────────────────────────────────────────────────────────────────
+    // Rule 6 — Only connectors reach the outside world
+    // ───────────────────────────────────────────────────────────────────
+    //
+    // Chapter 14: "Connectors are the ONLY part of FRIDAY that talks to the
+    // outside world. Nothing else has network access." These two rules are
+    // that sentence made mechanical, and they pair with the ban on the global
+    // `fetch` in biome.jsonc — a global needs no import, so dependency-cruiser
+    // cannot see it, and an import needs no global, so the linter cannot see
+    // that. Neither half is sufficient alone.
+    {
+      name: 'no-http-client-outside-connector-sdk',
+      severity: 'error',
+      comment:
+        'The egress allowlist is the highest-value control in the security model, and it ' +
+        'is worth nothing if any package can install its own HTTP client and route around ' +
+        'it. @friday/connector-sdk is the single chokepoint where a request may be made.',
+      from: { pathNot: MAY_REACH_THE_NETWORK },
+      to: {
+        dependencyTypes: ['npm'],
+        path: npmPackages([
+          'axios',
+          'node-fetch',
+          'undici',
+          'got',
+          'superagent',
+          'ky',
+          'request',
+          'phin',
+          'needle',
+          'cross-fetch',
+        ]),
+      },
+    },
+    {
+      name: 'no-node-network-outside-connector-sdk',
+      severity: 'error',
+      comment:
+        'Node ships sockets in core, so a request can be made with no dependency at all — ' +
+        'which would route straight around the rule above, exactly as node:sqlite would ' +
+        'route around the database rule. Core modules resolve by name rather than to a ' +
+        'path, so they need their own clause. apps/core serves the dashboard over loopback ' +
+        "through tRPC's adapter rather than importing node:http itself; if that ever " +
+        'changes, this rule is where the decision should surface rather than be assumed.',
+      from: { pathNot: MAY_REACH_THE_NETWORK },
+      to: {
+        dependencyTypes: ['core'],
+        path: '^(node:)?(http|https|http2|net|tls|dgram)$',
       },
     },
 

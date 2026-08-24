@@ -64,7 +64,27 @@
         "useNamingConvention": "off",
         "noNonNullAssertion": "error",
         "useConst": "error",
-        "useNodejsImportProtocol": "error"
+        "useNodejsImportProtocol": "error",
+
+        // Chapter 14: connectors are the ONLY components that talk to the
+        // outside world. The egress allowlist enforces WHERE a connector may
+        // go; this enforces that nothing else goes anywhere at all.
+        //
+        // A global needs no import, so the dependency-cruiser rules alongside
+        // this one cannot see it — `fetch` is reachable from any file in the
+        // repository with no declaration anywhere. Banned here and allowed
+        // back only in connector-sdk, which is where the allowlist lives.
+        "noRestrictedGlobals": {
+          "level": "error",
+          "options": {
+            "deniedGlobals": {
+              "fetch": "Only @friday/connector-sdk may reach the network. Use the guarded fetch it hands the connector, so the manifest's egress allowlist applies.",
+              "XMLHttpRequest": "Only @friday/connector-sdk may reach the network. See Chapter 14.",
+              "WebSocket": "Only @friday/connector-sdk may reach the network. See Chapter 14.",
+              "EventSource": "Only @friday/connector-sdk may reach the network. See Chapter 14."
+            }
+          }
+        }
       },
 
       "nursery": {
@@ -89,7 +109,41 @@
       "linter": {
         "rules": {
           "suspicious": { "noExplicitAny": "off" },
-          "style": { "noNonNullAssertion": "off" }
+
+          // Tests are not shipped, and an integration test has to be able to
+          // call FRIDAY's own loopback server — which ADR-0030 is explicit is
+          // the owner's machine rather than the outside world.
+          //
+          // ★ This is why the lint rule is the second line rather than the
+          // first. What actually stops a connector reaching an undeclared
+          // host is the runtime allowlist in connector-sdk, which applies to
+          // every caller including a test. The rule below only keeps shipped
+          // source from acquiring network access by accident.
+          "style": { "noNonNullAssertion": "off", "noRestrictedGlobals": "off" }
+        }
+      }
+    },
+    {
+      // Fixtures that deliberately attempt what FRIDAY forbids, so a test can
+      // assert the refusal actually happens. A fixture that could not reach
+      // for the network could not prove the sandbox stops it — the ban would
+      // be asserted against nothing. Not FRIDAY's running code, same as the
+      // build-tooling exemption below.
+      "includes": ["**/test/fixtures/**"],
+      "linter": {
+        "rules": {
+          "style": { "noRestrictedGlobals": "off" }
+        }
+      }
+    },
+    {
+      // The one package allowed to reach the network — it is where the
+      // allowlist is enforced, so it necessarily holds the thing being
+      // guarded. Scoped to this package and nothing else.
+      "includes": ["packages/connector-sdk/**"],
+      "linter": {
+        "rules": {
+          "style": { "noRestrictedGlobals": "off" }
         }
       }
     },
