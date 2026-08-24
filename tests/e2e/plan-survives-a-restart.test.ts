@@ -9,6 +9,7 @@ import {
   type ExecutableStep,
   fromStored,
   type PlanProgress,
+  type PlanTransition,
   runPlan,
   toStored,
 } from '@friday/chief-of-staff'
@@ -245,15 +246,33 @@ function executorSaying(answer: Partial<GuardianDecision>) {
   return { executor, asked, performed }
 }
 
+/**
+ * Transitions this file does not assert on.
+ *
+ * ★ Written out rather than dropped. `runPlan` requires somewhere for its
+ * transitions to go, and this is that somewhere — visibly, in a test that is
+ * about persistence rather than about the log. The event stream itself is
+ * tested in `plan-transitions-are-events.test.ts`.
+ */
+const recorded: PlanTransition[] = []
+
+function record(transition: PlanTransition) {
+  recorded.push(transition)
+  return Promise.resolve(ok(undefined))
+}
+
 function run(
   steps: readonly ExecutableStep[],
   executor: ReturnType<typeof executorSaying>['executor'],
   progress: PlanProgress,
+  planId: string,
 ) {
   return runPlan({
     steps,
     executor,
     progress,
+    planId,
+    record,
     riskClasses: ['low'],
     estimateCents: 1,
     approvalThresholdCents: 25,
@@ -291,7 +310,7 @@ describe('a plan that waits across a restart', () => {
       'operations.log.compact': { decision: 'needs_approval', riskClass: 'high' },
     })
 
-    const suspended = await run(steps, before.executor, beginning(steps))
+    const suspended = await run(steps, before.executor, beginning(steps), planId)
 
     expect(suspended.kind).toBe('awaiting_approval')
     if (suspended.kind !== 'awaiting_approval') return
@@ -300,7 +319,12 @@ describe('a plan that waits across a restart', () => {
     expect(before.performed).toEqual(['diagnostics.self-check.run'])
     expect(suspended.stepId).toBe(compact.id)
 
-    const answered = approveStep(suspended.progress, compact.id)
+    const answered = await approveStep({
+      progress: suspended.progress,
+      step: compact,
+      planId,
+      record,
+    })
     if (answered === undefined) throw new Error('expected the answer to apply')
 
     const saved = storage.plans.saveProgress({
@@ -327,7 +351,7 @@ describe('a plan that waits across a restart', () => {
 
     // ── After the restart: the rules have changed ─────────────────────────
     const after = executorSaying({ decision: 'deny', reason: 'no_policy_matched' })
-    const resumed = await run([compact], after.executor, resumedProgress)
+    const resumed = await run([compact], after.executor, resumedProgress, planId)
 
     // ★ THE assertion. The owner approved this before the restart, and it is
     // refused now — because the Guardian was asked again, against today's
@@ -396,7 +420,7 @@ describe('a plan that waits across a restart', () => {
     if (!reloaded.ok || reloaded.value === undefined) throw new Error('no progress')
 
     const w = executorSaying({})
-    const outcome = await run(steps, w.executor, fromStored(reloaded.value))
+    const outcome = await run(steps, w.executor, fromStored(reloaded.value), planId)
 
     expect(outcome.kind).toBe('completed')
 
@@ -417,7 +441,7 @@ describe('a plan that waits across a restart', () => {
       'operations.log.compact': { decision: 'needs_approval', riskClass: 'high' },
     })
 
-    const suspended = await run([step], suspending.executor, beginning([step]))
+    const suspended = await run([step], suspending.executor, beginning([step]), planId)
     expect(suspended.kind).toBe('awaiting_approval')
     if (suspended.kind !== 'awaiting_approval') return
 
@@ -437,7 +461,7 @@ describe('a plan that waits across a restart', () => {
 
     // And the plan does not quietly complete around it.
     const after = executorAnswering({})
-    const resumed = await run([step], after.executor, recovered)
+    const resumed = await run([step], after.executor, recovered, planId)
 
     expect(resumed.kind).not.toBe('completed')
     expect(after.performed).toEqual([])

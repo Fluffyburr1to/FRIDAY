@@ -149,10 +149,60 @@ describe('when a step fails, its declared action decides', () => {
     const status = walk('draft', [
       { kind: 'validated', needsPlanApproval: false },
       { kind: 'step_started' },
-      { kind: 'step_failed', onFailure },
+      // One step left after this one, so `skip` does not finish the plan.
+      { kind: 'step_failed', onFailure, remaining: 1, willRetry: onFailure === 'retry' },
     ])
 
     expect(status).toBe(expected)
+  })
+
+  it('★ a retry that will not happen fails the plan rather than leaving it running', () => {
+    // ★ The step said `retry` and the attempts are spent. If the machine took
+    // the declared action at face value the plan would stay `running` with
+    // nothing left that could run — a plan that hangs rather than one that
+    // failed, and only one of those is visible to the owner.
+    const status = walk('draft', [
+      { kind: 'validated', needsPlanApproval: false },
+      { kind: 'step_started' },
+      { kind: 'step_failed', onFailure: 'retry', remaining: 0, willRetry: false },
+    ])
+
+    expect(status).toBe('failed')
+  })
+
+  it('★ a skipped last step finishes the plan', () => {
+    // ★ Every step reached an end, and one of those ends was "we did not do
+    // this". An earlier version left the plan running for ever.
+    const status = walk('draft', [
+      { kind: 'validated', needsPlanApproval: false },
+      { kind: 'step_started' },
+      { kind: 'step_failed', onFailure: 'skip', remaining: 0, willRetry: false },
+    ])
+
+    expect(status).toBe('completed')
+  })
+
+  it('★ a retried step is a transition, not a quiet reset', () => {
+    // ★ A retry is how one failure becomes three. A log that did not record it
+    // would show a step failing once and then working, with no account of the
+    // attempts in between.
+    expect(nextStepStatus('failed', { kind: 'step_retried' })).toEqual({
+      ok: true,
+      value: 'pending',
+    })
+    expect(nextStatus('running', { kind: 'step_retried' })).toEqual({ ok: true, value: 'running' })
+  })
+
+  it('★ a failed step has exactly one way out', () => {
+    // ★ `step_retried` and nothing else. There is no transition from `failed`
+    // to `completed`, which is what stops a failure being talked away.
+    for (const event of [
+      { kind: 'step_completed', remaining: 0 },
+      { kind: 'step_approved' },
+      { kind: 'step_started' },
+    ] as const) {
+      expect(nextStepStatus('failed', event).ok).toBe(false)
+    }
   })
 
   it('★ ask_user is a fresh question, not the plan approval being reused', () => {
@@ -162,7 +212,7 @@ describe('when a step fails, its declared action decides', () => {
       { kind: 'validated', needsPlanApproval: true },
       { kind: 'plan_approved' },
       { kind: 'step_started' },
-      { kind: 'step_failed', onFailure: 'ask_user' },
+      { kind: 'step_failed', onFailure: 'ask_user', remaining: 1, willRetry: false },
     ])
 
     expect(status).toBe('awaiting_approval')
@@ -199,22 +249,29 @@ describe('transitions that are not real', () => {
 })
 
 describe('a step of its own', () => {
-  it('★ returns a resumed step to running, so it asks the Guardian again', () => {
+  it('★ returns a resumed step to pending, so it asks the Guardian again', () => {
     // ★ The approval that unblocked it authorised THAT action. It did not
     // exempt the step from asking — a plan approved on Monday and resumed on
     // Thursday runs against Thursday's rules, grants, and expiries.
+    //
+    // `pending` rather than `running` is the whole mechanism: `pending` is the
+    // only status the run picks up, and picking it up is what calls the
+    // Guardian. A step restored straight to `running` would be work already in
+    // flight, and nothing would ask about it again.
     expect(nextStepStatus('awaiting_approval', { kind: 'step_approved' })).toEqual({
       ok: true,
-      value: 'running',
+      value: 'pending',
     })
   })
 
   it('marks a skipped failure skipped, and every other failure failed', () => {
-    expect(nextStepStatus('running', { kind: 'step_failed', onFailure: 'skip' })).toEqual({
+    const failure = { kind: 'step_failed', remaining: 0, willRetry: false } as const
+
+    expect(nextStepStatus('running', { ...failure, onFailure: 'skip' })).toEqual({
       ok: true,
       value: 'skipped',
     })
-    expect(nextStepStatus('running', { kind: 'step_failed', onFailure: 'abort' })).toEqual({
+    expect(nextStepStatus('running', { ...failure, onFailure: 'abort' })).toEqual({
       ok: true,
       value: 'failed',
     })

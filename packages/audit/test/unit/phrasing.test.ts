@@ -36,6 +36,17 @@ const FULL = {
   grantReason: 'Labelling my own inbox is fine.',
   action: 'connector.gmail.message.send',
   uses: 4,
+
+  // Plan transitions.
+  stepCount: 3,
+  stepsCompleted: 2,
+  stepsSkipped: 1,
+  approvalReason: 'high_risk_step',
+  from: 'awaiting_plan_approval',
+  to: 'running',
+  because: 'the connector never answered',
+  description: 'Send a follow-up email to Sarah Chen',
+  attempt: 2,
 }
 
 describe('every phrasing', () => {

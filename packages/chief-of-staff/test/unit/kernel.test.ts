@@ -6,6 +6,7 @@ import {
   createExecutor,
   type ExecutableStep,
   type PlanProgress,
+  type PlanTransition,
   runPlan,
 } from '@friday/chief-of-staff'
 import type { Actor, DepartmentManifest, GuardianDecision, RiskClass } from '@friday/contracts'
@@ -120,20 +121,29 @@ function world(options: { answers?: Partial<GuardianDecision>[]; performFails?: 
     },
   })
 
-  return { executor, asked, performed }
+  const recorded: PlanTransition[] = []
+
+  const record = (transition: PlanTransition) => {
+    recorded.push(transition)
+    return Promise.resolve(ok(undefined))
+  }
+
+  return { executor, asked, performed, recorded, record, planId: uuidv7() }
 }
 
 /** Cheap plan, so the cost trigger never fires unless a test wants it. */
 function run(
   steps: readonly ExecutableStep[],
-  executor: ReturnType<typeof world>['executor'],
+  w: ReturnType<typeof world>,
   progress: PlanProgress,
   overrides: { estimateCents?: number; riskClasses?: RiskClass[] } = {},
 ) {
   return runPlan({
     steps,
-    executor,
+    executor: w.executor,
     progress,
+    planId: w.planId,
+    record: w.record,
     riskClasses: overrides.riskClasses ?? ['low'],
     estimateCents: overrides.estimateCents ?? 1,
     approvalThresholdCents: 25,
@@ -145,7 +155,7 @@ describe('the ordinary path', () => {
     const step = aStep()
     const w = world()
 
-    const outcome = await run([step], w.executor, beginning([step]))
+    const outcome = await run([step], w, beginning([step]))
 
     expect(outcome.kind).toBe('completed')
     expect(w.asked).toEqual(['diagnostics.self-check.run'])
@@ -162,7 +172,7 @@ describe('the ordinary path', () => {
     })
     const w = world()
 
-    const outcome = await run([first, second], w.executor, beginning([first, second]))
+    const outcome = await run([first, second], w, beginning([first, second]))
 
     expect(outcome.kind).toBe('completed')
     expect(w.performed).toEqual(['diagnostics.self-check.run', 'operations.log.compact'])
@@ -176,7 +186,7 @@ describe('★ 1 — an approved plan still asks about every step', () => {
     const step = aStep()
     const w = world()
 
-    const outcome = await run([step], w.executor, beginning([step]), { estimateCents: 100 })
+    const outcome = await run([step], w, beginning([step]), { estimateCents: 100 })
 
     expect(outcome.kind).toBe('awaiting_plan_approval')
     expect(w.asked).toEqual([])
@@ -196,15 +206,19 @@ describe('★ 1 — an approved plan still asks about every step', () => {
     })
     const w = world()
 
-    const stopped = await run([first, second], w.executor, beginning([first, second]), {
+    const stopped = await run([first, second], w, beginning([first, second]), {
       estimateCents: 100,
     })
     if (stopped.kind !== 'awaiting_plan_approval') throw new Error('expected plan approval')
 
-    const approved = approvePlan(stopped.progress)
+    const approved = await approvePlan({
+      progress: stopped.progress,
+      planId: w.planId,
+      record: w.record,
+    })
     if (approved === undefined) throw new Error('expected approval to apply')
 
-    const outcome = await run([first, second], w.executor, approved, { estimateCents: 100 })
+    const outcome = await run([first, second], w, approved, { estimateCents: 100 })
 
     expect(outcome.kind).toBe('completed')
     expect(w.asked).toHaveLength(2)
@@ -219,15 +233,20 @@ describe('★ 2 & 7 — resume and retry get fresh decisions', () => {
     const step = aStep({ actionType: 'operations.log.compact', resource: 'events:log/segments' })
 
     const monday = world({ answers: [{ decision: 'needs_approval', riskClass: 'high' }] })
-    const stopped = await run([step], monday.executor, beginning([step]))
+    const stopped = await run([step], monday, beginning([step]))
     if (stopped.kind !== 'awaiting_approval') throw new Error('expected suspension')
 
-    const answered = approveStep(stopped.progress, step.id)
+    const answered = await approveStep({
+      progress: stopped.progress,
+      step,
+      planId: monday.planId,
+      record: monday.record,
+    })
     if (answered === undefined) throw new Error('expected the answer to apply')
 
     // Thursday: the rules now refuse it outright.
     const thursday = world({ answers: [{ decision: 'deny', reason: 'no_policy_matched' }] })
-    const resumed = await run([step], thursday.executor, answered)
+    const resumed = await run([step], thursday, answered)
 
     expect(thursday.asked).toHaveLength(1)
     expect(thursday.performed).toEqual([])
@@ -240,10 +259,15 @@ describe('★ 2 & 7 — resume and retry get fresh decisions', () => {
     const step = aStep({ actionType: 'operations.log.compact', resource: 'events:log/segments' })
     const w = world({ answers: [{ decision: 'needs_approval', riskClass: 'high' }] })
 
-    const stopped = await run([step], w.executor, beginning([step]))
+    const stopped = await run([step], w, beginning([step]))
     if (stopped.kind !== 'awaiting_approval') throw new Error('expected suspension')
 
-    const answered = approveStep(stopped.progress, step.id)
+    const answered = await approveStep({
+      progress: stopped.progress,
+      step,
+      planId: w.planId,
+      record: w.record,
+    })
 
     expect(answered?.stepStatuses[step.id]).toBe('pending')
     expect(answered?.stepStatuses[step.id]).not.toBe('running')
@@ -260,6 +284,8 @@ describe('★ 2 & 7 — resume and retry get fresh decisions', () => {
       steps: [step],
       executor: w.executor,
       progress: beginning([step]),
+      planId: w.planId,
+      record: w.record,
       riskClasses: ['low'],
       estimateCents: 1,
       approvalThresholdCents: 25,
@@ -277,7 +303,7 @@ describe('★ 5 & 6 — refusal and outage make the capability unreachable', () 
     const step = aStep()
     const w = world({ answers: [{ decision: 'deny', reason: 'no_policy_matched' }] })
 
-    const outcome = await run([step], w.executor, beginning([step]))
+    const outcome = await run([step], w, beginning([step]))
 
     expect(outcome.kind).toBe('failed')
     expect(w.performed).toEqual([])
@@ -298,7 +324,7 @@ describe('★ 5 & 6 — refusal and outage make the capability unreachable', () 
       },
     })
 
-    const outcome = await run([step], executor, beginning([step]))
+    const outcome = await run([step], { ...world(), executor }, beginning([step]))
 
     expect(outcome.kind).toBe('failed')
     expect(performed).toEqual([])
@@ -308,7 +334,7 @@ describe('★ 5 & 6 — refusal and outage make the capability unreachable', () 
     const step = aStep({ actionType: 'operations.log.compact', resource: 'events:log/segments' })
     const w = world({ answers: [{ decision: 'needs_approval', riskClass: 'high' }] })
 
-    const outcome = await run([step], w.executor, beginning([step]))
+    const outcome = await run([step], w, beginning([step]))
 
     expect(outcome.kind).toBe('awaiting_approval')
     expect(w.performed).toEqual([])
@@ -332,10 +358,15 @@ describe('★ 3 & 4 — one answer cannot satisfy another step', () => {
 
     const w = world({ answers: [{ decision: 'needs_approval', riskClass: 'high' }] })
 
-    const stopped = await run([first, second], w.executor, beginning([first, second]))
+    const stopped = await run([first, second], w, beginning([first, second]))
     if (stopped.kind !== 'awaiting_approval') throw new Error('expected suspension')
 
-    const answered = approveStep(stopped.progress, stopped.stepId)
+    const answered = await approveStep({
+      progress: stopped.progress,
+      step: stopped.stepId === first.id ? first : second,
+      planId: w.planId,
+      record: w.record,
+    })
     if (answered === undefined) throw new Error('expected the answer to apply')
 
     const other = stopped.stepId === first.id ? second.id : first.id
@@ -345,18 +376,28 @@ describe('★ 3 & 4 — one answer cannot satisfy another step', () => {
     expect(w.performed).toEqual([])
   })
 
-  it('★ refuses to answer a step that was not waiting', () => {
+  it('★ refuses to answer a step that was not waiting', async () => {
     // ★ An approval response cannot be aimed at unrelated work.
     const step = aStep()
     const fresh = beginning([step])
+    const w = world()
 
-    expect(approveStep(fresh, step.id)).toBeUndefined()
+    expect(
+      await approveStep({ progress: fresh, step, planId: w.planId, record: w.record }),
+    ).toBeUndefined()
   })
 
-  it('★ refuses to approve a plan that was not waiting', () => {
+  it('★ refuses to approve a plan that was not waiting', async () => {
     const step = aStep()
+    const w = world()
 
-    expect(approvePlan(beginning([step]))).toBeUndefined()
+    expect(
+      await approvePlan({
+        progress: beginning([step]),
+        planId: w.planId,
+        record: w.record,
+      }),
+    ).toBeUndefined()
   })
 })
 
@@ -366,13 +407,15 @@ describe('★ 8 — a plan-level event cannot mutate step state', () => {
     const second = aStep({ sequence: 2 })
     const w = world()
 
-    const stopped = await run([first, second], w.executor, beginning([first, second]), {
+    const stopped = await run([first, second], w, beginning([first, second]), {
       estimateCents: 100,
     })
     if (stopped.kind !== 'awaiting_plan_approval') throw new Error('expected plan approval')
 
     const before = stopped.progress.stepStatuses
-    const after = approvePlan(stopped.progress)?.stepStatuses
+    const after = (
+      await approvePlan({ progress: stopped.progress, planId: w.planId, record: w.record })
+    )?.stepStatuses
 
     expect(after).toEqual(before)
   })
@@ -383,7 +426,7 @@ describe('★ 10 — the failure path does not reach execution either', () => {
     const step = aStep({ onFailure: 'abort' })
     const w = world({ performFails: true })
 
-    const outcome = await run([step], w.executor, beginning([step]))
+    const outcome = await run([step], w, beginning([step]))
 
     expect(outcome.kind).toBe('failed')
     if (outcome.kind === 'failed') {
@@ -395,7 +438,7 @@ describe('★ 10 — the failure path does not reach execution either', () => {
     const step = aStep({ onFailure: 'skip' })
     const w = world({ performFails: true })
 
-    const outcome = await run([step], w.executor, beginning([step]))
+    const outcome = await run([step], w, beginning([step]))
 
     expect(w.performed).toHaveLength(1)
     expect(outcome.kind).toBe('completed')
@@ -430,7 +473,7 @@ describe('the budget boundary', () => {
     const step = aStep()
     const w = world()
 
-    const outcome = await run([step], w.executor, beginning([step]), {
+    const outcome = await run([step], w, beginning([step]), {
       estimateCents: 26,
       riskClasses: ['low'],
     })
@@ -445,7 +488,7 @@ describe('the budget boundary', () => {
     const step = aStep()
     const w = world()
 
-    const outcome = await run([step], w.executor, beginning([step]), { estimateCents: 25 })
+    const outcome = await run([step], w, beginning([step]), { estimateCents: 25 })
 
     expect(outcome.kind).toBe('completed')
   })

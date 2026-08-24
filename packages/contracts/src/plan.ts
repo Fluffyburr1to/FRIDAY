@@ -73,6 +73,18 @@ export type PlanStepStatus = z.infer<typeof PlanStepStatusSchema>
  * There is deliberately **no default**. A planner that did not decide has
  * produced an invalid plan, and the friction is the mechanism (ADR-0045 §5).
  */
+/**
+ * Why the owner must approve a plan's shape before any step runs.
+ *
+ * Lives here rather than in the plan engine because the event log records it,
+ * and an event payload cannot depend on the package that emits it. The engine
+ * re-exports these so its own callers read one vocabulary.
+ */
+export const PLAN_APPROVAL_REASONS = ['high_risk_step', 'over_cost_threshold'] as const
+
+export const PlanApprovalReasonSchema = z.enum(PLAN_APPROVAL_REASONS)
+export type PlanApprovalReason = z.infer<typeof PlanApprovalReasonSchema>
+
 export const STEP_FAILURE_ACTIONS = ['retry', 'skip', 'abort', 'ask_user', 'alternate'] as const
 
 export const StepFailureActionSchema = z.enum(STEP_FAILURE_ACTIONS)

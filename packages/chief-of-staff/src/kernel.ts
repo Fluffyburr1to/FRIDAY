@@ -1,6 +1,7 @@
 import type { FridayError, PlanStatus, PlanStepStatus, RiskClass } from '@friday/contracts'
 import { advance, type ExecutableStep, type Executor } from './executor.js'
-import { type PlanApprovalReason, planApprovalReason } from './machine.js'
+import { type PlanApprovalReason, type PlanEvent, planApprovalReason } from './machine.js'
+import type { PlanTransition, RecordTransition, TransitionDetail } from './transitions.js'
 
 /**
  * The orchestration layer.
@@ -21,6 +22,15 @@ import { type PlanApprovalReason, planApprovalReason } from './machine.js'
  * A retry is a new attempt at the same work, and the rules may have changed
  * between them — treating the first answer as still good is the bypass most
  * likely to be written while making retries "efficient".
+ *
+ * ★ **No status changes except through `apply`.** Chapter 12 says the plan's
+ * state is a projection of its events, and that is only true if there is no
+ * other way to move. `apply` asks the machine, and records the move it
+ * accepted; a status assigned anywhere else would be a state change the log
+ * never heard about, and the projection would silently drift from the truth.
+ * An earlier version of this file assigned statuses directly on the failure,
+ * completion, and abort paths — which is to say, on every path where anything
+ * interesting happened.
  *
  * Reference: docs/01-bible/12-chief-of-staff.md
  */
@@ -67,6 +77,17 @@ export interface RunPlanOptions {
   readonly executor: Executor
   readonly progress: PlanProgress
 
+  /** Which plan this is. Stamped on every transition it makes. */
+  readonly planId: string
+
+  /**
+   * Where transitions go.
+   *
+   * ★ Required. A plan cannot be run without saying where the record of it
+   * goes, and a failure to record stops the plan — see `RecordTransition`.
+   */
+  readonly record: RecordTransition
+
   /** The Guardian's classification per step, for the plan-approval trigger. */
   readonly riskClasses: readonly RiskClass[]
 
@@ -99,6 +120,110 @@ export function beginning(steps: readonly ExecutableStep[]): PlanProgress {
   }
 }
 
+/** Everything `apply` needs that is not the progress itself. */
+interface ApplyInput {
+  readonly planId: string
+  readonly record: RecordTransition
+  readonly event: PlanEvent
+  readonly step?: ExecutableStep | undefined
+  readonly detail?: TransitionDetail | undefined
+}
+
+/** A move that was accepted and recorded, or the reason it was neither. */
+type Applied =
+  | { readonly ok: true; readonly progress: PlanProgress }
+  | { readonly ok: false; readonly because: string; readonly error?: FridayError | undefined }
+
+/**
+ * The only way a plan changes.
+ *
+ * ★ Asks the machine, records what it accepted, and only then returns the new
+ * progress. Three properties fall out of that order and all three are the
+ * point:
+ *
+ *   - A refused transition changes nothing and records nothing. There is no
+ *     path where an event says a plan moved and the plan did not.
+ *   - A transition that could not be **written down** changes nothing either.
+ *     Chapter 10's rule is that writing the event is how the thing happens, so
+ *     an unrecordable move is a move that did not happen, and the caller gets
+ *     the progress it had before.
+ *   - The event is derived from the machine's own output rather than from what
+ *     the caller expected, so a success event cannot be emitted for a move the
+ *     machine turned into a failure.
+ */
+async function apply(progress: PlanProgress, input: ApplyInput): Promise<Applied> {
+  const step = input.step
+  const stepStatus = step === undefined ? undefined : (progress.stepStatuses[step.id] ?? 'pending')
+
+  const moved = advance({
+    planStatus: progress.planStatus,
+    stepStatus,
+    event: input.event,
+  })
+
+  if (!moved.ok) {
+    return { ok: false, because: 'FRIDAY could not move the plan on', error: moved.error }
+  }
+
+  const transition: PlanTransition = {
+    planId: input.planId,
+    event: input.event,
+    plan: { from: progress.planStatus, to: moved.value.plan },
+    step:
+      step === undefined || stepStatus === undefined || moved.value.step === undefined
+        ? undefined
+        : {
+            id: step.id,
+            description: step.description,
+            actionType: step.actionType,
+            attempt: (progress.attempts[step.id] ?? 0) + 1,
+            move: { from: stepStatus, to: moved.value.step },
+          },
+    detail: input.detail ?? {},
+  }
+
+  const recorded = await input.record(transition)
+
+  if (!recorded.ok) {
+    // ★ The plan is left exactly where it was. Carrying on would mean the log
+    // and the plan describe different runs, and the log is the one the owner
+    // is later shown.
+    return {
+      ok: false,
+      because: 'FRIDAY could not write down what she was doing, so she stopped',
+      error: recorded.error,
+    }
+  }
+
+  return { ok: true, progress: applyStatuses(progress, moved.value.plan, step, moved.value.step) }
+}
+
+/** Writes the accepted statuses into the progress, and nothing else. */
+function applyStatuses(
+  progress: PlanProgress,
+  planStatus: PlanStatus,
+  step: ExecutableStep | undefined,
+  stepStatus: PlanStepStatus | undefined,
+): PlanProgress {
+  if (step === undefined || stepStatus === undefined) {
+    return { ...progress, planStatus }
+  }
+
+  const finished = stepStatus === 'completed' || stepStatus === 'skipped'
+
+  return {
+    ...progress,
+    planStatus,
+    stepStatuses: { ...progress.stepStatuses, [step.id]: stepStatus },
+
+    // ★ Appended once. A step that reached an end twice would be counted twice
+    // for dependency resolution, and `filter` is cheaper than the bug.
+    completed: finished
+      ? [...progress.completed.filter((id) => id !== step.id), step.id]
+      : progress.completed,
+  }
+}
+
 /**
  * Drives a plan to its next stopping point.
  *
@@ -106,11 +231,12 @@ export function beginning(steps: readonly ExecutableStep[]): PlanProgress {
  * resume — and a resumed call re-authorises everything, because it has nothing
  * else it could do.
  *
- * @param options - The steps, the executor, and where the plan got to.
+ * @param options - The steps, the executor, where the plan got to, and where
+ *   its transitions are recorded.
  * @returns Where it stopped and the progress to persist.
  */
 export async function runPlan(options: RunPlanOptions): Promise<RunOutcome> {
-  const opened = openPlan(options)
+  const opened = await openPlan(options)
   if (opened.stopped !== undefined) return opened.stopped
 
   let progress = opened.progress
@@ -138,16 +264,15 @@ export async function runPlan(options: RunPlanOptions): Promise<RunOutcome> {
  * approval is about the shape of the work; every step is still pending and
  * still owes the Guardian a question.
  */
-function openPlan(options: RunPlanOptions): {
-  progress: PlanProgress
-  stopped: RunOutcome | undefined
-} {
+async function openPlan(
+  options: RunPlanOptions,
+): Promise<{ progress: PlanProgress; stopped: RunOutcome | undefined }> {
   const progress = options.progress
 
   if (progress.planStatus === 'awaiting_plan_approval') {
     return {
       progress,
-      stopped: failed(progress, 'this plan is waiting for you to approve its shape'),
+      stopped: stopped(progress, 'this plan is waiting for you to approve its shape'),
     }
   }
 
@@ -159,23 +284,26 @@ function openPlan(options: RunPlanOptions): {
     thresholdCents: options.approvalThresholdCents,
   })
 
-  const moved = advance({
-    planStatus: progress.planStatus,
+  const opened = await apply(progress, {
+    planId: options.planId,
+    record: options.record,
     event: { kind: 'validated', needsPlanApproval: because !== undefined },
+    detail: {
+      stepCount: options.steps.length,
+      estimateCents: options.estimateCents,
+      needsPlanApproval: because !== undefined,
+      approvalReason: because,
+    },
   })
 
-  if (!moved.ok) {
-    return { progress, stopped: failed(progress, 'this plan could not be started', moved.error) }
-  }
-
-  const opened = { ...progress, planStatus: moved.value.plan }
+  if (!opened.ok) return { progress, stopped: stopped(progress, opened.because, opened.error) }
 
   return {
-    progress: opened,
+    progress: opened.progress,
     stopped:
       because === undefined
         ? undefined
-        : { kind: 'awaiting_plan_approval', because, progress: opened },
+        : { kind: 'awaiting_plan_approval', because, progress: opened.progress },
   }
 }
 
@@ -185,27 +313,48 @@ async function attemptStep(
   before: PlanProgress,
   options: RunPlanOptions,
 ): Promise<{ progress: PlanProgress; stopped: RunOutcome | undefined }> {
-  const maxAttempts = options.maxAttempts ?? 3
-
   // ★ The step is `running` from the moment it is ATTEMPTED, before the
   // Guardian is asked. Chapter 12's machine has no transition from `pending`
   // straight to `awaiting_approval` — a step waiting for the owner is one that
   // was already being tried.
-  let progress = withStep(before, step.id, 'running', 'step_started')
+  const started = await apply(before, {
+    planId: options.planId,
+    record: options.record,
+    event: { kind: 'step_started' },
+    step,
+  })
+
+  if (!started.ok)
+    return { progress: before, stopped: stopped(before, started.because, started.error) }
+
+  const progress = started.progress
 
   // ★ Asked EVERY time — first attempt, retry, and resume alike. Nothing above
   // this line is a permission and nothing below it proceeds without one.
   const outcome = options.executor.authorise(step)
 
   if (outcome.kind === 'needs_approval') {
-    progress = withStep(progress, step.id, 'awaiting_approval', 'step_needs_approval')
-    return { progress, stopped: { kind: 'awaiting_approval', stepId: step.id, progress } }
+    const suspended = await apply(progress, {
+      planId: options.planId,
+      record: options.record,
+      event: { kind: 'step_needs_approval' },
+      step,
+    })
+
+    if (!suspended.ok) {
+      return { progress, stopped: stopped(progress, suspended.because, suspended.error) }
+    }
+
+    return {
+      progress: suspended.progress,
+      stopped: { kind: 'awaiting_approval', stepId: step.id, progress: suspended.progress },
+    }
   }
 
   if (outcome.kind === 'refused' || outcome.kind === 'unavailable') {
     // ★ Both reach the same place: no capability runs. A refusal and an
     // unanswerable Guardian are different incidents and neither is permission.
-    return afterFailure(progress, step, maxAttempts, {
+    return afterFailure(progress, step, options, {
       because:
         outcome.kind === 'refused'
           ? `FRIDAY was not allowed to ${step.description.toLowerCase()}`
@@ -219,48 +368,154 @@ async function attemptStep(
   const performed = await options.executor.runStep(outcome.authorised, step)
 
   if (!performed.ok) {
-    return afterFailure(progress, step, maxAttempts, {
+    return afterFailure(progress, step, options, {
       because: `a step failed: ${step.description}`,
       error: performed.error,
     })
   }
 
-  const remaining = options.steps.length - (progress.completed.length + 1)
-
-  return { progress: complete(progress, step, remaining), stopped: undefined }
+  return completeStep(progress, step, options)
 }
 
-/** Applies the step's declared failure action and decides whether to stop. */
-function afterFailure(
+/** Records that a step finished, and lets the machine decide if the plan did. */
+async function completeStep(
   progress: PlanProgress,
   step: ExecutableStep,
-  maxAttempts: number,
+  options: RunPlanOptions,
+): Promise<{ progress: PlanProgress; stopped: RunOutcome | undefined }> {
+  const done = await apply(progress, {
+    planId: options.planId,
+    record: options.record,
+    event: { kind: 'step_completed', remaining: unfinished(progress, options.steps, step.id) },
+    step,
+    detail: counts(progress, options.steps, step.id, 'completed'),
+  })
+
+  return done.ok
+    ? { progress: done.progress, stopped: undefined }
+    : { progress, stopped: stopped(progress, done.because, done.error) }
+}
+
+/**
+ * Applies the step's declared failure action and decides whether to stop.
+ *
+ * ★ Two transitions, not one, when a step is retried: it failed, and then it
+ * was tried again. Collapsing them into a single "back to pending" would erase
+ * the failure from the record, and a step that failed twice and then worked
+ * would read as a step that simply worked.
+ */
+async function afterFailure(
+  progress: PlanProgress,
+  step: ExecutableStep,
+  options: RunPlanOptions,
   why: { because: string; error: FridayError | undefined },
-): { progress: PlanProgress; stopped: RunOutcome | undefined } {
-  const next = onFailure(progress, step, maxAttempts)
+): Promise<{ progress: PlanProgress; stopped: RunOutcome | undefined }> {
+  const maxAttempts = options.maxAttempts ?? 3
+  const attempts = (progress.attempts[step.id] ?? 0) + 1
+  const willRetry = step.onFailure === 'retry' && attempts < maxAttempts
+
+  const failed = await apply(progress, {
+    planId: options.planId,
+    record: options.record,
+    event: {
+      kind: 'step_failed',
+      onFailure: step.onFailure,
+      remaining: unfinished(progress, options.steps, step.id),
+      willRetry,
+    },
+    step,
+    detail: {
+      ...counts(progress, options.steps, step.id, 'skipped'),
+      because: why.because,
+      onFailure: step.onFailure,
+      willRetry,
+    },
+  })
+
+  if (!failed.ok) return { progress, stopped: stopped(progress, failed.because, failed.error) }
+
+  // ★ Counted after the failure is recorded, so a run that could not write the
+  // failure down has not also silently spent an attempt.
+  const counted = {
+    ...failed.progress,
+    attempts: { ...failed.progress.attempts, [step.id]: attempts },
+  }
+
+  if (willRetry) return retry(counted, step, options)
 
   return {
-    progress: next.progress,
-    stopped: next.stop ? failed(next.progress, why.because, why.error) : undefined,
+    progress: counted,
+    stopped: counted.planStatus === 'failed' ? stopped(counted, why.because, why.error) : undefined,
   }
+}
+
+/** Returns a failed step to `pending`, which is what sends it back to the Guardian. */
+async function retry(
+  progress: PlanProgress,
+  step: ExecutableStep,
+  options: RunPlanOptions,
+): Promise<{ progress: PlanProgress; stopped: RunOutcome | undefined }> {
+  const again = await apply(progress, {
+    planId: options.planId,
+    record: options.record,
+    event: { kind: 'step_retried' },
+    step,
+  })
+
+  return again.ok
+    ? { progress: again.progress, stopped: undefined }
+    : { progress, stopped: stopped(progress, again.because, again.error) }
+}
+
+/** How many steps would still be unfinished once `exceptId` reaches an end. */
+function unfinished(
+  progress: PlanProgress,
+  steps: readonly ExecutableStep[],
+  exceptId: string,
+): number {
+  return steps.filter((step) => step.id !== exceptId && !isFinished(progress, step.id)).length
+}
+
+/** The tallies a terminal plan event carries, counting the step now ending. */
+function counts(
+  progress: PlanProgress,
+  steps: readonly ExecutableStep[],
+  endingId: string,
+  ending: 'completed' | 'skipped',
+): TransitionDetail {
+  const tally = (status: PlanStepStatus) =>
+    steps.filter((step) => step.id !== endingId && progress.stepStatuses[step.id] === status).length
+
+  return {
+    stepsCompleted: tally('completed') + (ending === 'completed' ? 1 : 0),
+    stepsSkipped: tally('skipped') + (ending === 'skipped' ? 1 : 0),
+  }
+}
+
+function isFinished(progress: PlanProgress, stepId: string): boolean {
+  const status = progress.stepStatuses[stepId]
+  return status === 'completed' || status === 'skipped'
 }
 
 /**
  * Whether the plan is done.
  *
- * ★ Decided by every step having reached a terminal state, not by a running
- * count. A skipped final step still completes the plan, and an earlier version
- * got that wrong by counting only completions.
+ * ★ Read off the plan's status, which the machine set. An earlier version
+ * recomputed it here from the step statuses, which meant two places decided
+ * whether a plan had finished — and the one that was wrong would have been the
+ * one nobody was looking at.
  */
 function finish(progress: PlanProgress, steps: readonly ExecutableStep[]): RunOutcome {
-  const unfinished = steps.filter((step) => {
-    const status = progress.stepStatuses[step.id]
-    return status !== 'completed' && status !== 'skipped'
-  })
+  if (progress.planStatus === 'completed') return { kind: 'completed', progress }
 
-  return unfinished.length > 0
-    ? failed(progress, 'the plan stopped with work left that nothing could start')
-    : { kind: 'completed', progress: { ...progress, planStatus: 'completed' } }
+  const left = steps.filter((step) => !isFinished(progress, step.id)).length
+
+  return stopped(
+    progress,
+    left > 0
+      ? 'the plan stopped with work left that nothing could start'
+      : 'the plan ran out of steps without finishing',
+  )
 }
 
 /** Whether a step is in a state this run may act on. */
@@ -272,92 +527,16 @@ function canRun(progress: PlanProgress, step: ExecutableStep): boolean {
   return status === 'pending'
 }
 
-/** Records a step transition and the plan transition it caused. */
-function withStep(
-  progress: PlanProgress,
-  stepId: string,
-  status: PlanStepStatus,
-  event: 'step_started' | 'step_needs_approval',
-): PlanProgress {
-  const moved = advance({
-    planStatus: progress.planStatus,
-    stepStatus: progress.stepStatuses[stepId] ?? 'pending',
-    event: { kind: event },
-  })
-
-  return {
-    ...progress,
-    planStatus: moved.ok ? moved.value.plan : progress.planStatus,
-    stepStatuses: { ...progress.stepStatuses, [stepId]: status },
-  }
-}
-
-/** Marks a step done and moves the plan on. */
-function complete(progress: PlanProgress, step: ExecutableStep, remaining: number): PlanProgress {
-  const moved = advance({
-    planStatus: progress.planStatus,
-    stepStatus: 'running',
-    event: { kind: 'step_completed', remaining },
-  })
-
-  return {
-    ...progress,
-    planStatus: moved.ok ? moved.value.plan : progress.planStatus,
-    stepStatuses: { ...progress.stepStatuses, [step.id]: 'completed' },
-    completed: [...progress.completed, step.id],
-  }
-}
-
-/** Applies a step's declared failure action. */
-function onFailure(
-  progress: PlanProgress,
-  step: ExecutableStep,
-  maxAttempts: number,
-): { progress: PlanProgress; stop: boolean } {
-  const attempts = (progress.attempts[step.id] ?? 0) + 1
-  const withAttempt = { ...progress, attempts: { ...progress.attempts, [step.id]: attempts } }
-
-  // ★ A retry re-enters the loop as `pending`, which means it goes through
-  // `authorise` again. There is no path that retries the EXECUTION without
-  // repeating the DECISION.
-  if (step.onFailure === 'retry' && attempts < maxAttempts) {
-    return {
-      progress: {
-        ...withAttempt,
-        stepStatuses: { ...withAttempt.stepStatuses, [step.id]: 'pending' },
-      },
-      stop: false,
-    }
-  }
-
-  if (step.onFailure === 'skip') {
-    return {
-      progress: {
-        ...withAttempt,
-        stepStatuses: { ...withAttempt.stepStatuses, [step.id]: 'skipped' },
-        completed: [...withAttempt.completed, step.id],
-      },
-      stop: false,
-    }
-  }
-
-  return {
-    progress: {
-      ...withAttempt,
-      planStatus: 'failed',
-      stepStatuses: { ...withAttempt.stepStatuses, [step.id]: 'failed' },
-    },
-    stop: true,
-  }
-}
-
-function failed(progress: PlanProgress, because: string, error?: FridayError): RunOutcome {
-  return {
-    kind: 'failed',
-    because,
-    error,
-    progress: { ...progress, planStatus: 'failed' },
-  }
+/**
+ * A run that stopped without finishing.
+ *
+ * ★ Reports the progress **as it is**, and does not stamp `failed` on it. The
+ * plan's status is the machine's to set; a run that could not proceed is not
+ * the same fact as a plan that failed, and overwriting the status here would
+ * make a plan waiting on the owner indistinguishable from one that broke.
+ */
+function stopped(progress: PlanProgress, because: string, error?: FridayError): RunOutcome {
+  return { kind: 'failed', because, error, progress }
 }
 
 /**
@@ -367,14 +546,22 @@ function failed(progress: PlanProgress, because: string, error?: FridayError): R
  * `pending`, and every one of them will call `authorise` when it is reached.
  * Approving a plan is not approving anything inside it.
  *
- * @param progress - Where the plan got to.
- * @returns The progress to persist, or a refusal if it was not waiting.
+ * @param input - Where the plan got to, which plan it is, and where the
+ *   transition is recorded.
+ * @returns The progress to persist, or undefined if it was not waiting.
  */
-export function approvePlan(progress: PlanProgress): PlanProgress | undefined {
-  const moved = advance({ planStatus: progress.planStatus, event: { kind: 'plan_approved' } })
-  if (!moved.ok) return undefined
+export async function approvePlan(input: {
+  progress: PlanProgress
+  planId: string
+  record: RecordTransition
+}): Promise<PlanProgress | undefined> {
+  const moved = await apply(input.progress, {
+    planId: input.planId,
+    record: input.record,
+    event: { kind: 'plan_approved' },
+  })
 
-  return { ...progress, planStatus: moved.value.plan }
+  return moved.ok ? moved.progress : undefined
 }
 
 /**
@@ -386,25 +573,28 @@ export function approvePlan(progress: PlanProgress): PlanProgress | undefined {
  * one answer from satisfying a different step, and what makes a plan approved
  * on Monday and resumed on Thursday run under Thursday's rules.
  *
- * @param progress - Where the plan got to.
- * @param stepId - The step the owner answered.
- * @returns The progress to persist, or a refusal if it was not waiting.
+ * @param input - Where the plan got to, the step the owner answered, and where
+ *   the transition is recorded.
+ * @returns The progress to persist, or undefined if it was not waiting.
  */
-export function approveStep(progress: PlanProgress, stepId: string): PlanProgress | undefined {
-  if (progress.stepStatuses[stepId] !== 'awaiting_approval') return undefined
+export async function approveStep(input: {
+  progress: PlanProgress
+  step: ExecutableStep
+  planId: string
+  record: RecordTransition
+}): Promise<PlanProgress | undefined> {
+  if (input.progress.stepStatuses[input.step.id] !== 'awaiting_approval') return undefined
 
-  const moved = advance({
-    planStatus: progress.planStatus,
-    stepStatus: 'awaiting_approval',
+  const moved = await apply(input.progress, {
+    planId: input.planId,
+    record: input.record,
     event: { kind: 'step_approved' },
+    step: input.step,
   })
 
-  if (!moved.ok) return undefined
-
-  return {
-    ...progress,
-    planStatus: moved.value.plan,
-    // ★ `pending`, so the loop re-authorises it. Never `running`.
-    stepStatuses: { ...progress.stepStatuses, [stepId]: 'pending' },
-  }
+  // ★ The machine returns the step to `pending`, so the loop re-authorises it.
+  // Nothing is adjusted here afterwards: a status the kernel wrote over the
+  // machine's answer would be a status the recorded event disagrees with, and
+  // the event is what the owner is later shown.
+  return moved.ok ? moved.progress : undefined
 }
