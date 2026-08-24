@@ -4,6 +4,8 @@ import {
   fridayError,
   isTerminalPlanStatus,
   ok,
+  PLAN_APPROVAL_REASONS,
+  type PlanApprovalReason,
   type PlanStatus,
   type PlanStepStatus,
   type Result,
@@ -36,10 +38,13 @@ import {
  * Reference: docs/01-bible/12-chief-of-staff.md · docs/01-bible/19-approval-system.md
  */
 
-/** Why a plan needs the owner's blessing before any step runs. */
-export const PLAN_APPROVAL_REASONS = ['high_risk_step', 'over_cost_threshold'] as const
-
-export type PlanApprovalReason = (typeof PLAN_APPROVAL_REASONS)[number]
+/**
+ * Why a plan needs the owner's blessing before any step runs.
+ *
+ * Defined in `@friday/contracts` because the event log records the reason, and
+ * re-exported here so callers of this package read one vocabulary.
+ */
+export { PLAN_APPROVAL_REASONS, type PlanApprovalReason }
 
 export interface PlanApprovalCheck {
   /** The risk the Guardian assigned to each step, in plan order. */
@@ -107,7 +112,43 @@ export type PlanEvent =
   | { readonly kind: 'step_completed'; readonly remaining: number }
   | { readonly kind: 'step_needs_approval' }
   | { readonly kind: 'step_approved' }
-  | { readonly kind: 'step_failed'; readonly onFailure: StepFailureAction }
+  | {
+      readonly kind: 'step_failed'
+      readonly onFailure: StepFailureAction
+
+      /**
+       * Steps still unfinished after this one, excluding it.
+       *
+       * ★ Present for the same reason it is on `step_completed`: a SKIPPED
+       * final step finishes the plan. Without this, a plan whose last step was
+       * passed over would sit in `running` for ever with nothing left to run,
+       * and something outside the machine would have to notice and declare it
+       * done — which is a second authority on whether a plan finished.
+       */
+      readonly remaining: number
+
+      /**
+       * Whether this failure will be tried again.
+       *
+       * ★ The kernel counts attempts; the machine decides what a failure
+       * *means*. Without this, a step whose retries are exhausted and a step
+       * about to be retried are the same event, and the plan would carry on
+       * running with nothing left that could run.
+       */
+      readonly willRetry: boolean
+    }
+  | {
+      /**
+       * A failed step is being tried again.
+       *
+       * ★ A transition of its own, rather than the kernel quietly putting the
+       * step back to `pending`. A retry is a real thing that happened — it is
+       * how one failure becomes three — and an event log that did not record
+       * it would show a step failing once and then succeeding, with no account
+       * of the attempts in between.
+       */
+      readonly kind: 'step_retried'
+    }
   | { readonly kind: 'cancelled' }
 
 /**
@@ -140,14 +181,15 @@ const PLAN_TRANSITIONS: Readonly<Record<PlanStatus, (event: PlanEvent) => PlanSt
       if (event.kind === 'step_started') return 'running'
       if (event.kind === 'step_needs_approval') return 'awaiting_approval'
       if (event.kind === 'step_completed') return event.remaining === 0 ? 'completed' : 'running'
-      if (event.kind === 'step_failed') return failureOutcome(event.onFailure)
+      if (event.kind === 'step_failed') return afterFailedStep(event)
+      if (event.kind === 'step_retried') return 'running'
 
       return undefined
     },
 
     awaiting_approval: (event) => {
       if (event.kind === 'step_approved') return 'running'
-      if (event.kind === 'step_failed') return failureOutcome(event.onFailure)
+      if (event.kind === 'step_failed') return afterFailedStep(event)
 
       return undefined
     },
@@ -183,6 +225,27 @@ export function nextStatus(status: PlanStatus, event: PlanEvent): Result<PlanSta
   const next = PLAN_TRANSITIONS[status](event)
 
   return next === undefined ? refuse(`a plan that is ${status} cannot ${event.kind}`) : ok(next)
+}
+
+/**
+ * Where a failed step leaves the plan.
+ *
+ * ★ A step that is passed over with nothing left after it finishes the plan.
+ * The plan did not fail — every step reached an end, and one of those ends was
+ * "we did not do this". Treating it as still running is how a plan hangs.
+ */
+function afterFailedStep(event: {
+  onFailure: StepFailureAction
+  remaining: number
+  willRetry: boolean
+}): PlanStatus {
+  // ★ A retry that will not happen is just a failure. The plan does not get to
+  // stay `running` on the strength of an intention nobody will act on.
+  if (event.onFailure === 'retry') return event.willRetry ? 'running' : 'failed'
+
+  if (event.onFailure === 'skip' && event.remaining === 0) return 'completed'
+
+  return failureOutcome(event.onFailure)
 }
 
 /** Where a failed step leaves the plan, per its declared failure action. */
@@ -224,18 +287,27 @@ const STEP_TRANSITIONS: Readonly<
     return undefined
   },
 
-  // ★ Resuming a suspended step puts it back to `running`, which means it goes
-  // through the Guardian again. The approval that unblocked it authorised THAT
-  // action; it did not exempt the step from asking.
+  // ★ The owner's answer puts a suspended step back to `pending` — back in the
+  // queue, not back in flight. `pending` is the only status the run will pick
+  // up and re-authorise, so the answer unblocks the QUESTION and is not itself
+  // the permission. Moving it straight to `running` would mean the work
+  // resumed on the strength of an approval given at some earlier time, under
+  // rules that may since have changed.
   awaiting_approval: (event) => {
-    if (event.kind === 'step_approved') return 'running'
+    if (event.kind === 'step_approved') return 'pending'
     if (event.kind === 'step_failed' || event.kind === 'cancelled') return 'failed'
 
     return undefined
   },
 
   completed: () => undefined,
-  failed: () => undefined,
+
+  // ★ Not terminal for one event only. A failed step may be RETRIED, and that
+  // is the single way out — there is no transition from `failed` to `running`,
+  // to `completed`, or to anything else. A retried step re-enters at `pending`,
+  // which is what sends it back through the Guardian.
+  failed: (event) => (event.kind === 'step_retried' ? 'pending' : undefined),
+
   skipped: () => undefined,
 }
 

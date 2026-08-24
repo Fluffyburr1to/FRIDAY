@@ -246,9 +246,12 @@ export {
 export {
   isAwaitingOwner,
   isTerminalPlanStatus,
+  PLAN_APPROVAL_REASONS,
   PLAN_STATUSES,
   PLAN_STEP_STATUSES,
   type Plan,
+  type PlanApprovalReason,
+  PlanApprovalReasonSchema,
   PlanSchema,
   type PlanStatus,
   PlanStatusSchema,
@@ -264,6 +267,23 @@ export {
   StepFailureActionSchema,
   TERMINAL_PLAN_STATUSES,
 } from './plan.js'
+export {
+  PLAN_EVENT_TYPES,
+  PlanCancelledPayloadSchema,
+  PlanCompletedPayloadSchema,
+  PlanCreatedPayloadSchema,
+  PlanFailedPayloadSchema,
+  PlanResumedPayloadSchema,
+  PlanStepCompletedPayloadSchema,
+  PlanStepFailedPayloadSchema,
+  PlanStepResumedPayloadSchema,
+  PlanStepRetriedPayloadSchema,
+  PlanStepSkippedPayloadSchema,
+  PlanStepStartedPayloadSchema,
+  PlanStepSuspendedPayloadSchema,
+  PlanSuspendedPayloadSchema,
+  registerPlanEventTypes,
+} from './plan-event-types.js'
 export { type Err, err, isErr, isOk, type Ok, ok, type Result, unwrapOr } from './result.js'
 // ── Classification ──────────────────────────────────────────────────────────
 export {

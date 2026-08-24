@@ -149,6 +149,122 @@ const PHRASINGS: Readonly<Record<string, Phrasing>> = {
     },
   },
 
+  'plan.created': {
+    significance: 'headline',
+    phrase: (event) => {
+      const steps = event.payload.stepCount
+      if (typeof steps !== 'number') return undefined
+
+      const made = `FRIDAY worked out how to do this, in ${steps} step${steps === 1 ? '' : 's'}.`
+      const reason = event.payload.approvalReason
+
+      // The plan stopped before starting, and why is on this same event.
+      if (reason === 'over_cost_threshold') {
+        return `${made} This would cost enough that she showed you the plan first.`
+      }
+
+      if (reason === 'high_risk_step') {
+        return `${made} Part of it is consequential, so she showed you the plan first.`
+      }
+
+      return made
+    },
+  },
+
+  'plan.suspended': {
+    significance: 'headline',
+    phrase: () => 'FRIDAY stopped partway through, waiting on you.',
+  },
+
+  // ★ Says what was approved, and — just as deliberately — what was not. The
+  // owner reading this back should not come away thinking they signed off on
+  // the individual actions, because they did not: every step still asked.
+  //
+  // Where the plan came FROM is what distinguishes the two cases, and both are
+  // this one event because both are the same move: the plan is going again.
+  'plan.resumed': {
+    significance: 'headline',
+    phrase: (event) =>
+      event.payload.from === 'awaiting_plan_approval'
+        ? 'You approved the shape of the plan. Each step still asked on its own.'
+        : 'You answered, so the plan carried on.',
+  },
+
+  'plan.completed': {
+    significance: 'headline',
+    phrase: (event) => {
+      const skipped = event.payload.stepsSkipped
+
+      return typeof skipped === 'number' && skipped > 0
+        ? `The plan finished, with ${skipped} step${skipped === 1 ? '' : 's'} passed over.`
+        : 'The plan finished.'
+    },
+  },
+
+  'plan.failed': {
+    significance: 'headline',
+    phrase: (event) => {
+      const because = text(event, 'because')
+      return because === undefined ? undefined : `The plan stopped: ${because}`
+    },
+  },
+
+  'plan.cancelled': {
+    significance: 'headline',
+    phrase: (event) => {
+      const because = text(event, 'because')
+      return because === undefined ? undefined : `The plan was called off: ${because}`
+    },
+  },
+
+  'plan.step.started': {
+    significance: 'spine',
+    phrase: (event) => describeStep(event, (what) => `FRIDAY started: ${what}`),
+  },
+
+  'plan.step.completed': {
+    significance: 'spine',
+    phrase: (event) => describeStep(event, (what) => `Done: ${what}`),
+  },
+
+  'plan.step.suspended': {
+    significance: 'headline',
+    phrase: (event) => describeStep(event, (what) => `FRIDAY stopped to ask you about: ${what}`),
+  },
+
+  'plan.step.resumed': {
+    significance: 'spine',
+    phrase: (event) =>
+      describeStep(
+        event,
+        (what) => `You answered, so FRIDAY tried again — and asked again: ${what}`,
+      ),
+  },
+
+  'plan.step.retried': {
+    significance: 'detail',
+    phrase: (event) => {
+      const attempt = event.payload.attempt
+      if (typeof attempt !== 'number') return undefined
+
+      return describeStep(event, (what) => `Trying again (attempt ${attempt}): ${what}`)
+    },
+  },
+
+  'plan.step.failed': {
+    significance: 'spine',
+    phrase: (event) => {
+      const because = text(event, 'because')
+      return because === undefined ? undefined : `A step did not work: ${because}`
+    },
+  },
+
+  'plan.step.skipped': {
+    significance: 'spine',
+    phrase: (event) =>
+      describeStep(event, (what) => `Passed over, and the plan carried on: ${what}`),
+  },
+
   'system.started': { significance: 'detail', phrase: () => 'FRIDAY started up.' },
   'system.stopped': { significance: 'detail', phrase: () => 'FRIDAY shut down.' },
 
@@ -159,6 +275,18 @@ const PHRASINGS: Readonly<Record<string, Phrasing>> = {
       return reason === undefined ? undefined : `Part of FRIDAY stopped working: ${reason}`
     },
   },
+}
+
+/**
+ * Describes a step by the description recorded WITH IT.
+ *
+ * ★ Not by looking the step up somewhere. The description on the event is the
+ * one that was true when the step ran; a plan edited afterwards would make a
+ * lookup describe work that never happened in those words.
+ */
+function describeStep(event: FridayEvent, sentence: (what: string) => string): string | undefined {
+  const what = text(event, 'description')
+  return what === undefined ? undefined : sentence(what)
 }
 
 /** How an approval was answered, when it was. */

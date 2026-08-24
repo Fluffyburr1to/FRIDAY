@@ -76,6 +76,15 @@ export {
   routePlan,
 } from './routing.js'
 export {
+  type EventContext,
+  eventsFor,
+  type Move,
+  type PlanTransition,
+  type RecordTransition,
+  type StepMove,
+  type TransitionDetail,
+} from './transitions.js'
+export {
   MAX_DEPTH,
   MAX_STEPS,
   type ProposedStep,

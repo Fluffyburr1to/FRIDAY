@@ -96,6 +96,9 @@ importers:
       '@friday/agent-runtime':
         specifier: workspace:*
         version: link:packages/agent-runtime
+      '@friday/audit':
+        specifier: workspace:*
+        version: link:packages/audit
       '@friday/chief-of-staff':
         specifier: workspace:*
         version: link:packages/chief-of-staff
@@ -105,6 +108,9 @@ importers:
       '@friday/guardian':
         specifier: workspace:*
         version: link:packages/guardian
+      '@friday/kernel':
+        specifier: workspace:*
+        version: link:packages/kernel
       '@friday/storage':
         specifier: workspace:*
         version: link:packages/storage
