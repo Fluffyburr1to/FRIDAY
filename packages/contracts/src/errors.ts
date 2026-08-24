@@ -64,6 +64,17 @@ export const ERROR_CODES = [
   'MODEL_UNAVAILABLE',
   'BUDGET_EXHAUSTED',
 
+  // ── The network boundary ────────────────────────────────────────────────
+  //
+  // `EGRESS_BLOCKED` is a refusal FRIDAY makes on purpose and must never read
+  // as a malfunction: a connector reached for a host its manifest does not
+  // declare, and the request did not happen. It is kept apart from
+  // `CONNECTOR_UNAVAILABLE` — the external service failing — because retrying
+  // an unavailable service is correct and retrying a blocked one would be an
+  // attempt to defeat the allowlist.
+  'EGRESS_BLOCKED',
+  'CONNECTOR_UNAVAILABLE',
+
   // ── Authorization ───────────────────────────────────────────────────────
   //
   // `NOT_AUTHORIZED` and `APPROVAL_REQUIRED` are distinct on purpose. The

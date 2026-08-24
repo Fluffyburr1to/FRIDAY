@@ -2,7 +2,7 @@
 
 **The contract every connector implements.**
 
-Milestone: **M4**
+Milestone: **M6**
 
 ## Charter
 
