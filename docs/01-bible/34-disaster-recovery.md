@@ -82,6 +82,32 @@ hourly schedule is up to an hour of the audit trail.
 The key lives in your Keychain **and** on the paper recovery card described below. Article IV means
 the backup provider learns nothing.
 
+### Where FRIDAY's secrets live
+
+**Two Keychain services, and the split is a safety property rather than tidiness.**
+
+| Service | Holds | Created by | Deleted by |
+|---|---|---|---|
+| `com.friday.credentials` | `field-encryption-key`, `backup-encryption-key`, model provider API keys | `friday init`, once | **Nothing in FRIDAY.** Create-only ([ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md)) |
+| `com.friday.connector-credentials` | one item per connector, plus a marker per revoked connector | connecting a service | revoking that connector |
+
+★ **The reason they are separate is that one of them is deletable and the other must never be.**
+Revoking a connector deletes its credential. If revocation and the encryption keys shared a service,
+the operation that withdraws a calendar's access would be one wrong string away from destroying
+`field-encryption-key` — which takes every encrypted field in the database with it, permanently.
+[ADR-0050](../adr/0050-revocation-is-a-credential-domain-operation.md) makes that structural: the
+credential store is bound to its own service at construction and cannot name the other one at all.
+
+**Only the first service is on the recovery card.** Connector credentials are deliberately not
+backed up and not printed — see *Credentials are deliberately not restored* below. Losing them costs
+you a re-authorization; losing the two keys on the card costs you everything.
+
+**A revoked connector leaves a marker behind**, in the same service, recording that you disconnected
+it. That is what stops a later write silently reconnecting something you refused. If a connector is
+removed from FRIDAY entirely, its marker stays — harmless, and **not cleaned up automatically by
+design**, because a sweeper that removes revocation markers is a sweeper that can un-revoke things.
+Deferred until there is a concrete reason to need it.
+
 ### The recovery card
 
 This is the piece people skip and then regret.
@@ -91,8 +117,9 @@ containing:
 
 - The backup encryption key — `backup-encryption-key`
 - **The field-encryption key** — `field-encryption-key`
-- Both keys are accounts in the `com.friday.credentials` Keychain service, stored base64-encoded and
-  decoding to exactly 32 bytes ([Chapter 18](18-security-model.md))
+- Both keys are accounts in the **`com.friday.credentials`** Keychain service, stored base64-encoded
+  and decoding to exactly 32 bytes ([Chapter 18](18-security-model.md)) — see *Where FRIDAY's
+  secrets live* below, because that is no longer the only service she uses
 - The B2 bucket name and read credentials
 - The passkey recovery codes ([Chapter 17](17-authentication-authorization.md))
 - A short, plain-language restore procedure
@@ -190,9 +217,16 @@ the guard.**
 the cheap check: a stored payload comes back as text rather than as `enc:v1:…`. Verifying the audit
 chain proves the log is intact; it does not prove you can read it, and those are different claims.
 
-**Credentials are deliberately not restored from backup.** Refresh tokens live in the Keychain and
-are re-authorized on the new machine. This is a small inconvenience that eliminates a large risk: a
-stolen backup can never yield working credentials to your accounts.
+**Credentials are deliberately not restored from backup.** Connector credentials live in
+`com.friday.connector-credentials` and are re-authorized on the new machine. This is a small
+inconvenience that eliminates a large risk: a stolen backup can never yield working credentials to
+your accounts.
+
+★ **A restored machine starts with no connector credentials and no revocation markers.** That means
+a connector you deliberately disconnected on the old machine is `absent` rather than `revoked` on
+the new one — so it can be reconnected without the explicit step that would otherwise be required.
+Revocation is durable against a later *write*, not against a *rebuild*. If you revoked something
+because it was compromised, revoke it at the provider too; that is the revocation that survives.
 
 ### Credential compromise
 
@@ -358,4 +392,5 @@ one-time configuration.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial ratification |
+| 1.2 | 2026-08-24 | **Both Keychain services documented**, ahead of the first real credential existing, so the recovery procedure describes reality rather than half of it. [ADR-0050](../adr/0050-revocation-is-a-credential-domain-operation.md) put connector credentials in a service of their own precisely so that revocation — which deletes — can never address the encryption keys, which are create-only. Records what is on the recovery card and what deliberately is not, that revocation markers are left behind on purpose and are not swept, and the consequence nobody had written down: **a rebuilt machine has no revocation markers**, so a connector revoked on the old machine reads as never-connected on the new one. Revocation is durable against a later write, not against a rebuild. |
 | 1.1 | 2026-08-14 | The field-encryption key added to the recovery card and to the lost-machine procedure, with the ordering that makes a by-the-book recovery yield readable payloads. Closes the gap [ADR-0035](../adr/0035-first-run-provisioning-is-creation-only.md) surfaced and assigned here. |
