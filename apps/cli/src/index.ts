@@ -4,6 +4,7 @@ export { numberFlag, parseArgs, stringFlag } from './args.js'
 // drive it with an INJECTED provisioner. Reaching it through `run` would build
 // the Keychain-backed one, and a test suite that writes real key material to
 // the developer's login Keychain is not a thing that may exist.
+export { type AskOptions, runAsk } from './commands/ask.js'
 export { runInit } from './commands/init.js'
 export {
   isOurs,
@@ -17,6 +18,7 @@ export { createOutput, EXIT, formatBytes, formatTime } from './output.js'
 
 import { createKeychainKeyProvisioner } from '@friday/storage'
 import { numberFlag, type ParsedArgs, parseArgs, stringFlag } from './args.js'
+import { runAsk } from './commands/ask.js'
 import { runEmit, runTail } from './commands/events.js'
 import { runInit } from './commands/init.js'
 import { runServiceInstall, runServiceUninstall } from './commands/service.js'
@@ -43,6 +45,10 @@ import { createOutput, EXIT, type ExitCode } from './output.js'
 
 const USAGE = `friday — FRIDAY's command line
 
+  friday ask "…"                   ask her to do something
+  friday ask --resume <id>         carry on where a plan stopped
+  friday ask --resume <id> --approve   answer what she is waiting on
+  friday ask --why <id>            what she did, from her own record
   friday init                      set her up for the first time
   friday status                    is she healthy?
   friday events tail               watch the event log live
@@ -122,12 +128,31 @@ function dispatch(input: Dispatch): Promise<ExitCode> {
       }),
     )
   }
+  if (command === 'ask') return dispatchAsk(input)
   if (command === 'status') return Promise.resolve(runStatus(context))
   if (command === 'verify') return Promise.resolve(dispatchVerify(input))
   if (command === 'events') return dispatchEvents(input)
   if (command === 'service') return Promise.resolve(dispatchService(input))
 
   return Promise.resolve(unknown(out, `friday ${command ?? ''}`))
+}
+
+/**
+ * `friday ask` — the only command that enters the whole system.
+ *
+ * ★ Everything it needs comes from `@friday/core`. The CLI's recovery
+ * commands still reach nothing but configuration and a read-only database, so
+ * the constraint that shapes this app is intact: `status`, `verify`, and
+ * `events tail` do not depend on the thing that might be broken.
+ */
+function dispatchAsk({ args, context }: Dispatch): Promise<ExitCode> {
+  return runAsk({
+    context,
+    utterance: args.command.slice(1).join(' ') || undefined,
+    resume: stringFlag(args.flags, 'resume'),
+    why: stringFlag(args.flags, 'why'),
+    approve: args.flags.approve === true,
+  })
 }
 
 function dispatchService({ args, context, out }: Dispatch): ExitCode {

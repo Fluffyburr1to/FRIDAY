@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "friday — terminal control, diagnostics, and recovery.",
+  "description": "friday \u2014 terminal control, diagnostics, and recovery.",
   "license": "UNLICENSED",
   "bin": {
     "friday": "./dist/index.js"
@@ -28,6 +28,7 @@
   "dependencies": {
     "@friday/config": "workspace:*",
     "@friday/contracts": "workspace:*",
+    "@friday/core": "workspace:*",
     "@friday/guardian": "workspace:*",
     "@friday/kernel": "workspace:*",
     "@friday/storage": "workspace:*",

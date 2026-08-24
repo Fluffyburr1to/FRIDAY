@@ -100,15 +100,17 @@ function world(options: { answers?: Partial<GuardianDecision>[]; performFails?: 
       const answer = options.answers?.[Math.min(call, options.answers.length - 1)] ?? {}
       call += 1
 
-      return ok({
-        id: uuidv7(),
-        decision: 'allow',
-        reason: 'policy_allowed',
-        riskClass: 'low' as RiskClass,
-        matched: ['agents-may-run-diagnostics'],
-        summary: 's',
-        ...answer,
-      } as GuardianDecision)
+      return Promise.resolve(
+        ok({
+          id: uuidv7(),
+          decision: 'allow',
+          reason: 'policy_allowed',
+          riskClass: 'low' as RiskClass,
+          matched: ['agents-may-run-diagnostics'],
+          summary: 's',
+          ...answer,
+        } as GuardianDecision),
+      )
     },
     perform: (_authorised, step) => {
       performed.push(step.actionType)
@@ -317,7 +319,8 @@ describe('★ 5 & 6 — refusal and outage make the capability unreachable', () 
       registry: registry(),
       actor: AGENT,
       principalId: 'usr_owner',
-      authorize: () => err(fridayError({ code: 'STORAGE_UNAVAILABLE', message: 'gone' })),
+      authorize: () =>
+        Promise.resolve(err(fridayError({ code: 'STORAGE_UNAVAILABLE', message: 'gone' }))),
       perform: (_a, s) => {
         performed.push(s.actionType)
         return Promise.resolve(ok({}))

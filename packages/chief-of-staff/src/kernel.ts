@@ -331,7 +331,7 @@ async function attemptStep(
 
   // ★ Asked EVERY time — first attempt, retry, and resume alike. Nothing above
   // this line is a permission and nothing below it proceeds without one.
-  const outcome = options.executor.authorise(step)
+  const outcome = await options.executor.authorise(step)
 
   if (outcome.kind === 'needs_approval') {
     const suspended = await apply(progress, {

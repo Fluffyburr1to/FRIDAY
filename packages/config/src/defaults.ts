@@ -20,6 +20,7 @@ export interface DeepPartialConfig {
     eventsDb?: string
     cacheDb?: string
     policiesDir?: string
+    departmentsDir?: string
   }
   server?: { host?: string; port?: number }
   logging?: { level?: string; directory?: string }
@@ -127,6 +128,7 @@ export function deriveDatabasePaths(config: DeepPartialConfig): DeepPartialConfi
       eventsDb: expandPath(config.paths?.eventsDb ?? join(dataDir, 'events.db')),
       cacheDb: expandPath(config.paths?.cacheDb ?? join(dataDir, 'cache.db')),
       policiesDir: expandPath(config.paths?.policiesDir ?? join(dataDir, 'policies')),
+      departmentsDir: expandPath(config.paths?.departmentsDir ?? join(dataDir, 'departments')),
     },
     logging: {
       ...config.logging,

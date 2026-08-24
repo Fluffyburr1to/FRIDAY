@@ -102,15 +102,27 @@ importers:
       '@friday/chief-of-staff':
         specifier: workspace:*
         version: link:packages/chief-of-staff
+      '@friday/cli':
+        specifier: workspace:*
+        version: link:apps/cli
+      '@friday/config':
+        specifier: workspace:*
+        version: link:packages/config
       '@friday/contracts':
         specifier: workspace:*
         version: link:packages/contracts
+      '@friday/core':
+        specifier: workspace:*
+        version: link:apps/core
       '@friday/guardian':
         specifier: workspace:*
         version: link:packages/guardian
       '@friday/kernel':
         specifier: workspace:*
         version: link:packages/kernel
+      '@friday/model-router':
+        specifier: workspace:*
+        version: link:packages/model-router
       '@friday/storage':
         specifier: workspace:*
         version: link:packages/storage
@@ -144,6 +156,9 @@ importers:
       '@friday/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@friday/core':
+        specifier: workspace:*
+        version: link:../core
       '@friday/guardian':
         specifier: workspace:*
         version: link:../../packages/guardian
@@ -175,6 +190,9 @@ importers:
 
   apps/core:
     dependencies:
+      '@friday/chief-of-staff':
+        specifier: workspace:*
+        version: link:../../packages/chief-of-staff
       '@friday/clerk':
         specifier: workspace:*
         version: link:../../packages/clerk
@@ -193,6 +211,12 @@ importers:
       '@friday/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@friday/model-router':
+        specifier: workspace:*
+        version: link:../../packages/model-router
+      '@friday/operations':
+        specifier: workspace:*
+        version: link:../../departments/operations
       '@friday/storage':
         specifier: workspace:*
         version: link:../../packages/storage

@@ -196,15 +196,17 @@ function executorAnswering(byAction: Record<string, Partial<GuardianDecision>>) 
     authorize: (input) => {
       asked.push(input.action)
 
-      return ok({
-        id: uuidv7(),
-        decision: 'allow',
-        reason: 'policy_allowed',
-        riskClass: 'low' as RiskClass,
-        matched: ['agents-may-run-diagnostics'],
-        summary: 's',
-        ...(byAction[input.action] ?? {}),
-      } as GuardianDecision)
+      return Promise.resolve(
+        ok({
+          id: uuidv7(),
+          decision: 'allow',
+          reason: 'policy_allowed',
+          riskClass: 'low' as RiskClass,
+          matched: ['agents-may-run-diagnostics'],
+          summary: 's',
+          ...(byAction[input.action] ?? {}),
+        } as GuardianDecision),
+      )
     },
     perform: (_a, step) => {
       performed.push(step.actionType)
@@ -227,15 +229,17 @@ function executorSaying(answer: Partial<GuardianDecision>) {
     authorize: (input) => {
       asked.push(input.action)
 
-      return ok({
-        id: uuidv7(),
-        decision: 'allow',
-        reason: 'policy_allowed',
-        riskClass: 'low' as RiskClass,
-        matched: ['agents-may-run-diagnostics'],
-        summary: 's',
-        ...answer,
-      } as GuardianDecision)
+      return Promise.resolve(
+        ok({
+          id: uuidv7(),
+          decision: 'allow',
+          reason: 'policy_allowed',
+          riskClass: 'low' as RiskClass,
+          matched: ['agents-may-run-diagnostics'],
+          summary: 's',
+          ...answer,
+        } as GuardianDecision),
+      )
     },
     perform: (_a, step) => {
       performed.push(step.actionType)

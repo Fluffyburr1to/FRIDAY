@@ -145,15 +145,17 @@ function executorAnswering(
     actor: AGENT,
     principalId: OWNER,
     authorize: (input) =>
-      ok({
-        id: uuidv7(),
-        decision: 'allow',
-        reason: 'policy_allowed',
-        riskClass: 'low',
-        matched: ['agents-may-run-diagnostics'],
-        summary: 's',
-        ...byAction[input.action],
-      } as GuardianDecision),
+      Promise.resolve(
+        ok({
+          id: uuidv7(),
+          decision: 'allow',
+          reason: 'policy_allowed',
+          riskClass: 'low',
+          matched: ['agents-may-run-diagnostics'],
+          summary: 's',
+          ...byAction[input.action],
+        } as GuardianDecision),
+      ),
     perform: (_authorised, step) => {
       performed.push(step.actionType)
 

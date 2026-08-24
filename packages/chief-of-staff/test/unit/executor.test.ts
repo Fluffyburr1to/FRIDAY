@@ -88,15 +88,17 @@ function guardian(answer: Partial<GuardianDecision> = {}) {
     authorize: (input: { action: string; resource: string }) => {
       asked.push({ action: input.action, resource: input.resource })
 
-      return ok({
-        id: uuidv7(),
-        decision: 'allow',
-        reason: 'policy_allowed',
-        riskClass: 'low' as RiskClass,
-        matched: ['agents-may-run-diagnostics'],
-        summary: 's',
-        ...answer,
-      } as GuardianDecision)
+      return Promise.resolve(
+        ok({
+          id: uuidv7(),
+          decision: 'allow',
+          reason: 'policy_allowed',
+          riskClass: 'low' as RiskClass,
+          matched: ['agents-may-run-diagnostics'],
+          summary: 's',
+          ...answer,
+        } as GuardianDecision),
+      )
     },
   }
 }
@@ -125,7 +127,7 @@ describe('the ordinary path', () => {
     const { executor, performed, guardian: g } = anExecutor()
     const step = aStep()
 
-    const outcome = executor.authorise(step)
+    const outcome = await executor.authorise(step)
     expect(outcome.kind).toBe('authorised')
     if (outcome.kind !== 'authorised') return
 
@@ -165,7 +167,7 @@ describe('★ trying to execute without a current Guardian decision', () => {
     const first = aStep({ sequence: 1 })
     const second = aStep({ sequence: 2, actionType: 'operations.log.compact' })
 
-    const outcome = executor.authorise(first)
+    const outcome = await executor.authorise(first)
     expect(outcome.kind).toBe('authorised')
     if (outcome.kind !== 'authorised') return
 
@@ -178,22 +180,22 @@ describe('★ trying to execute without a current Guardian decision', () => {
     expect(performed).toEqual([])
   })
 
-  it('★ a refused step yields nothing that can be executed with', () => {
+  it('★ a refused step yields nothing that can be executed with', async () => {
     // ★ There is no `authorised` on a refusal. The outcome union does not
     // carry one, so there is nothing to pass to `runStep`.
     const { executor } = anExecutor({ decision: 'deny', reason: 'no_policy_matched' })
 
-    const outcome = executor.authorise(aStep())
+    const outcome = await executor.authorise(aStep())
 
     expect(outcome.kind).toBe('refused')
     expect(outcome).not.toHaveProperty('authorised')
   })
 
-  it('★ a step needing approval yields nothing that can be executed with', () => {
+  it('★ a step needing approval yields nothing that can be executed with', async () => {
     // ★ Same shape. A suspension is not a weaker permission.
     const { executor } = anExecutor({ decision: 'needs_approval', riskClass: 'high' })
 
-    const outcome = executor.authorise(
+    const outcome = await executor.authorise(
       aStep({ actionType: 'operations.log.compact', resource: 'events:log/segments' }),
     )
 
@@ -201,17 +203,18 @@ describe('★ trying to execute without a current Guardian decision', () => {
     expect(outcome).not.toHaveProperty('authorised')
   })
 
-  it('★ a Guardian that cannot answer yields nothing to execute with', () => {
+  it('★ a Guardian that cannot answer yields nothing to execute with', async () => {
     // ★ Fails closed. Not a Guardian that said yes.
     const executor = createExecutor({
       registry: aRegistry(),
       actor: AGENT,
       principalId: 'usr_owner',
-      authorize: () => err(fridayError({ code: 'STORAGE_UNAVAILABLE', message: 'gone' })),
+      authorize: () =>
+        Promise.resolve(err(fridayError({ code: 'STORAGE_UNAVAILABLE', message: 'gone' }))),
       perform: () => Promise.resolve(ok({})),
     })
 
-    const outcome = executor.authorise(aStep())
+    const outcome = await executor.authorise(aStep())
 
     expect(outcome.kind).toBe('unavailable')
     expect(outcome).not.toHaveProperty('authorised')
@@ -230,20 +233,20 @@ describe('★ routing is not authorization', () => {
     if (route.ok) expect(route.value).not.toHaveProperty('decision')
   })
 
-  it('★ still asks the Guardian for an action routing resolved happily', () => {
+  it('★ still asks the Guardian for an action routing resolved happily', async () => {
     const { executor, guardian: g } = anExecutor()
 
-    executor.authorise(
+    await executor.authorise(
       aStep({ actionType: 'operations.log.compact', resource: 'events:log/segments' }),
     )
 
     expect(g.asked).toHaveLength(1)
   })
 
-  it('refuses a step whose department disagrees with the lookup', () => {
+  it('refuses a step whose department disagrees with the lookup', async () => {
     const { executor, guardian: g } = anExecutor()
 
-    const outcome = executor.authorise(aStep({ department: 'engineering' }))
+    const outcome = await executor.authorise(aStep({ department: 'engineering' }))
 
     expect(outcome.kind).toBe('unavailable')
     // Routing settled it; the Guardian was not troubled with a malformed step.
@@ -252,7 +255,7 @@ describe('★ routing is not authorization', () => {
 })
 
 describe('★ approval and resume are not shortcuts', () => {
-  it('★ asks again for every step, in an approved plan', () => {
+  it('★ asks again for every step, in an approved plan', async () => {
     // ★ Plan approval moves the plan to `running`. It authorises no step.
     const { executor, guardian: g } = anExecutor()
 
@@ -264,13 +267,13 @@ describe('★ approval and resume are not shortcuts', () => {
     expect(approved.ok && approved.value.plan).toBe('running')
 
     for (const step of [aStep({ sequence: 1 }), aStep({ sequence: 2 }), aStep({ sequence: 3 })]) {
-      executor.authorise(step)
+      await executor.authorise(step)
     }
 
     expect(g.asked).toHaveLength(3)
   })
 
-  it('★ a resumed step is re-authorised against current rules', () => {
+  it('★ a resumed step is re-authorised against current rules', async () => {
     // ★ The Guardian is called again on resume, so the answer reflects the
     // rules, grants, and expiries that exist NOW. A plan approved on Monday
     // and resumed on Thursday runs under Thursday's rules by construction —
@@ -279,11 +282,11 @@ describe('★ approval and resume are not shortcuts', () => {
 
     // Monday: allowed.
     const monday = anExecutor()
-    expect(monday.executor.authorise(step).kind).toBe('authorised')
+    expect((await monday.executor.authorise(step)).kind).toBe('authorised')
 
     // Thursday: the same step, and the rules now refuse it.
     const thursday = anExecutor({ decision: 'deny', reason: 'no_policy_matched' })
-    const resumed = thursday.executor.authorise(step)
+    const resumed = await thursday.executor.authorise(step)
 
     expect(resumed.kind).toBe('refused')
     expect(thursday.guardian.asked).toHaveLength(1)
@@ -295,7 +298,7 @@ describe('★ approval and resume are not shortcuts', () => {
     const { executor, performed } = anExecutor()
 
     const approved = aStep({ sequence: 1 })
-    const outcome = executor.authorise(approved)
+    const outcome = await executor.authorise(approved)
     if (outcome.kind !== 'authorised') throw new Error('expected authorised')
 
     await executor.runStep(outcome.authorised, approved)

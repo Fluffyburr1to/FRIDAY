@@ -47,6 +47,27 @@ const PathsSchema = z.object({
    * See docs/adr/0033-authorization-rules-are-loaded-from-a-configured-directory.md
    */
   policiesDir: z.string().min(1),
+
+  /**
+   * ★ The departments FRIDAY can actually reach.
+   *
+   * A directory of department folders, each with a `department.json`, read
+   * once at startup. **The manifest is the security boundary** (ADR-0007): a
+   * capability that is not declared here cannot be routed to, cannot be
+   * authorized, and cannot run — so what is in this directory is the whole of
+   * what FRIDAY can do.
+   *
+   * Deliberately configured rather than hard-coded to the repository's own
+   * `departments/`, for the same reason `policiesDir` is: what she ships with
+   * and what she runs are different things, and an update must not be able to
+   * silently widen the second.
+   *
+   * Unlike `policiesDir`, a missing or empty directory is **not** fatal. A
+   * Guardian with no rules refuses everything while looking strict, which is
+   * dangerous; FRIDAY with no departments can simply do nothing, which is
+   * merely useless — and says so.
+   */
+  departmentsDir: z.string().min(1),
 })
 
 const ServerSchema = z.object({

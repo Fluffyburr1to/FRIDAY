@@ -24,6 +24,7 @@ import {
 } from '@friday/guardian'
 import { announceStart, createEventBus } from '@friday/kernel'
 import { type EventStore, type KeyProvider, openStorage } from '@friday/storage'
+import { type AskSession, createAskSession } from './ask.js'
 import { coreVersion } from './version.js'
 
 /**
@@ -149,6 +150,23 @@ export interface OpenedContext {
    */
   announceStarted(): Promise<Result<FridayEvent, FridayError>>
 
+  /**
+   * Asking FRIDAY to do something — the whole path, composed once.
+   *
+   * ★ Built HERE, where the bus is, and for the same reason the bus stays
+   * here: a session can record that a plan advanced, and nothing that merely
+   * serves a request should be able to. It sits on `OpenedContext` rather than
+   * `CoreContext` so no tRPC procedure can reach it.
+   *
+   * ★ A `Result`, because loading the departments can fail and that must not
+   * stop FRIDAY starting. A misconfigured departments directory means she
+   * cannot *do* anything; it does not mean she cannot report her own health or
+   * let the owner read the log — and those are exactly the surfaces someone
+   * needs in order to work out why. The failure is carried, named, and shown
+   * when something tries to use it.
+   */
+  readonly ask: Result<AskSession, FridayError>
+
   close(): void
 }
 
@@ -226,6 +244,17 @@ export function openContext(input: {
 
   const approvals = createApprovalClerk({ approvals: storage.value.guardian.approvals, bus })
 
+  const authorizing = createAuthorizingClerk({
+    guardian: createGuardian({
+      policies: policies.value,
+      capabilities: capabilities.value,
+      grants: createGrantRegistry({ store: storage.value.guardian.grants }),
+    }),
+    clerk: approvals,
+    bus,
+    decisions: storage.value.guardian.decisions,
+  })
+
   return ok({
     context: {
       events: readerOver(storage.value.events),
@@ -242,15 +271,14 @@ export function openContext(input: {
     announceStarted: () =>
       announceStart({ bus, principalId: config.principalId, version: coreVersion() }),
 
-    authorizing: createAuthorizingClerk({
-      guardian: createGuardian({
-        policies: policies.value,
-        capabilities: capabilities.value,
-        grants: createGrantRegistry({ store: storage.value.guardian.grants }),
-      }),
-      clerk: approvals,
+    authorizing,
+
+    ask: createAskSession({
+      config,
+      storage: storage.value,
       bus,
-      decisions: storage.value.guardian.decisions,
+      authorizing,
+      capabilities: capabilities.value,
     }),
 
     close: storage.value.close,
