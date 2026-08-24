@@ -107,6 +107,23 @@ export {
   isCapabilityLive,
   MAX_CAPABILITY_LIFETIME_MS,
 } from './capability.js'
+// ── Connectors: the only components with network access ─────────────────────
+export {
+  AUTH_TYPES,
+  type AuthType,
+  AuthTypeSchema,
+  type ConnectorAuth,
+  ConnectorAuthSchema,
+  type ConnectorEgress,
+  ConnectorEgressSchema,
+  type ConnectorManifest,
+  ConnectorManifestSchema,
+  type ConnectorOperation,
+  ConnectorOperationSchema,
+  egressPermits,
+  mayRetry,
+  requiresDryRun,
+} from './connector.js'
 // ── Authorization: the answer ───────────────────────────────────────────────
 export {
   type AuthorizationRequest,
