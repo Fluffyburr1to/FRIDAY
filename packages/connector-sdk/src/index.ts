@@ -77,3 +77,10 @@ export {
   retryAfterMs,
   shouldRetry,
 } from './retry.js'
+// ── The whole outbound path, composed in one place ──────────────────────────
+export {
+  type ConnectorObserver,
+  type ConnectorRuntime,
+  type ConnectorRuntimeOptions,
+  createConnectorRuntime,
+} from './runtime.js'

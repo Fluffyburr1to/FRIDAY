@@ -124,6 +124,16 @@ export {
   mayRetry,
   requiresDryRun,
 } from './connector.js'
+export {
+  CONNECTOR_EVENT_TYPES,
+  ConnectorCalledPayloadSchema,
+  ConnectorDegradedPayloadSchema,
+  ConnectorRecoveredPayloadSchema,
+  CredentialIssuedPayloadSchema,
+  CredentialRevokedPayloadSchema,
+  EgressBlockedPayloadSchema,
+  registerConnectorEventTypes,
+} from './connector-event-types.js'
 // ── Authorization: the answer ───────────────────────────────────────────────
 export {
   type AuthorizationRequest,
