@@ -252,6 +252,18 @@ export {
   type Intent,
   IntentSchema,
 } from './intent.js'
+// ── Where the owner is, said as coarsely as the question allows ─────────────
+export {
+  COARSE_DECIMALS,
+  coarsen,
+  LOCATION_PRECISIONS,
+  type Location,
+  type LocationPrecision,
+  LocationPrecisionSchema,
+  LocationSchema,
+  locationCategory,
+  precisionReason,
+} from './location.js'
 // ── Thinking ────────────────────────────────────────────────────────────────
 export {
   MODEL_CAPABILITIES,
