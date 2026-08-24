@@ -39,6 +39,41 @@ export interface PlanStore {
   addStep(step: PlanStep): Result<PlanStep, FridayError>
 
   listSteps(input: { planId: string; principalId: PrincipalId }): Result<PlanStep[], FridayError>
+
+  /**
+   * Writes where a run got to.
+   *
+   * ★ **There is no permission in this shape, and that is the guarantee.**
+   * A plan's status, each step's status, and the attempt counts are all that
+   * crosses a restart. Nothing here can be read back as *"the Guardian already
+   * said yes"*, because nothing here records that it ever did — so a resumed
+   * plan has no choice but to ask again.
+   *
+   * `approval_id` on a step is a POINTER to an approval record, not a
+   * permission: it says which question was asked, never that the answer
+   * authorises execution now.
+   */
+  saveProgress(input: {
+    planId: string
+    principalId: PrincipalId
+    planStatus: Plan['status']
+    steps: readonly { id: string; status: PlanStep['status']; attempt: number }[]
+  }): Result<void, FridayError>
+
+  /**
+   * Reads back where a run got to.
+   *
+   * @returns The plan's status and each step's, or `undefined` when there is
+   *   no such plan.
+   */
+  loadProgress(input: { planId: string; principalId: PrincipalId }): Result<
+    | {
+        planStatus: Plan['status']
+        steps: { id: string; status: PlanStep['status']; attempt: number }[]
+      }
+    | undefined,
+    FridayError
+  >
 }
 
 /**
@@ -113,6 +148,52 @@ export function createPlanStore(db: BetterSQLite3Database): PlanStore {
       } catch (cause) {
         return err(writeFailed('plan step', step.id, cause))
       }
+    },
+
+    saveProgress({ planId, principalId, planStatus, steps }) {
+      try {
+        db.update(plans)
+          .set({ status: planStatus, updatedAt: Date.now() })
+          .where(and(eq(plans.id, planId), eq(plans.principalId, principalId)))
+          .run()
+
+        for (const step of steps) {
+          db.update(planSteps)
+            .set({ status: step.status, attempt: step.attempt })
+            .where(and(eq(planSteps.id, step.id), eq(planSteps.principalId, principalId)))
+            .run()
+        }
+
+        return ok(undefined)
+      } catch (cause) {
+        return err(writeFailed('plan progress', planId, cause))
+      }
+    },
+
+    loadProgress({ planId, principalId }) {
+      const plan = db
+        .select()
+        .from(plans)
+        .where(and(eq(plans.id, planId), eq(plans.principalId, principalId)))
+        .get()
+
+      if (plan === undefined) return ok(undefined)
+
+      const rows = db
+        .select()
+        .from(planSteps)
+        .where(and(eq(planSteps.planId, planId), eq(planSteps.principalId, principalId)))
+        .orderBy(asc(planSteps.sequence))
+        .all()
+
+      return ok({
+        planStatus: plan.status as Plan['status'],
+        steps: rows.map((row) => ({
+          id: row.id,
+          status: row.status as PlanStep['status'],
+          attempt: row.attempt,
+        })),
+      })
     },
 
     listSteps({ planId, principalId }) {

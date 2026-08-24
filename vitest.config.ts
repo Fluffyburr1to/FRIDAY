@@ -58,6 +58,18 @@ export default defineConfig({
           passWithNoTests: false,
         },
       },
+      {
+        test: {
+          // ★ The tier that exercises a LIFECYCLE rather than a unit: real
+          // databases opened, closed, and reopened from disk. A restart that
+          // kept its objects in memory would prove only that a field survived
+          // an assignment. See tests/e2e/README.md.
+          name: 'e2e',
+          include: ['tests/e2e/**/*.test.ts'],
+          testTimeout: 30_000,
+          passWithNoTests: false,
+        },
+      },
     ],
   },
 })
