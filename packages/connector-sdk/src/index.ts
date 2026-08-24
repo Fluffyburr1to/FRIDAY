@@ -12,6 +12,16 @@
  * See: README.md · docs/01-bible/14-connector-framework.md
  */
 // ── The contract a connector implements ─────────────────────────────────────
+
+export {
+  BREAKER_STATES,
+  type BreakerPolicy,
+  type BreakerState,
+  type CircuitBreaker,
+  createCircuitBreaker,
+  DEFAULT_BREAKER_POLICY,
+  tripsBreaker,
+} from './circuit-breaker.js'
 export type {
   AnyOperationMap,
   Connector,
