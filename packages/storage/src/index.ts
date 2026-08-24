@@ -19,6 +19,15 @@
  */
 
 export {
+  type CredentialItems,
+  type CredentialState,
+  type CredentialStore,
+  type CredentialStoreOptions,
+  createCredentialStore,
+  createInMemoryCredentialStore,
+  createKeychainCredentialStore,
+} from './crypto/credential-store.js'
+export {
   createInMemoryKeyProvider,
   createKeychainKeyProvider,
   describeReadFailure,
