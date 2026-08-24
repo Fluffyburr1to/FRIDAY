@@ -120,6 +120,82 @@ describe('no-ai-vendor-sdk-outside-model-router', () => {
   })
 })
 
+describe('no-http-client-outside-connector-sdk', () => {
+  const r = rule('no-http-client-outside-connector-sdk')
+  const pattern = matcher(r)
+
+  it.each(['axios', 'node-fetch', 'undici', 'got', 'ky', 'cross-fetch'])(
+    'catches %s — the egress allowlist has exactly one chokepoint',
+    (pkg) => {
+      for (const resolved of resolvedPaths(pkg)) {
+        expect(resolved, `${pkg} must be caught at ${resolved}`).toMatch(pattern)
+      }
+    },
+  )
+
+  it('does not match packages that merely read like one', () => {
+    expect('node_modules/got-stream/index.js').not.toMatch(pattern)
+    expect('node_modules/axios-mock-adapter/index.js').not.toMatch(pattern)
+  })
+})
+
+describe('no-node-network-outside-connector-sdk', () => {
+  const r = rule('no-node-network-outside-connector-sdk')
+  const pattern = matcher(r)
+
+  it('catches the sockets Node ships, which need no dependency at all', () => {
+    // The same bypass node:sqlite would be for the database rule: a request
+    // made with nothing added to any package.json leaves no trace in a
+    // dependency diff.
+    for (const core of ['node:http', 'node:https', 'node:http2', 'node:net', 'node:tls']) {
+      expect(core, `${core} must be caught`).toMatch(pattern)
+      expect(core.replace('node:', '')).toMatch(pattern)
+    }
+  })
+
+  it('scopes itself to core modules', () => {
+    expect(r.to.dependencyTypes).toEqual(['core'])
+  })
+
+  it('leaves the core modules FRIDAY legitimately uses alone', () => {
+    for (const core of ['node:fs', 'node:path', 'node:crypto', 'node:os', 'node:stream']) {
+      expect(core).not.toMatch(pattern)
+    }
+  })
+})
+
+describe('who may reach the network', () => {
+  const exempt = new RegExp(rule('no-node-network-outside-connector-sdk').from.pathNot as string)
+
+  it('exempts the SDK, because that is where the allowlist is enforced', () => {
+    expect('packages/connector-sdk/src/egress.ts').toMatch(exempt)
+  })
+
+  it('exempts fixtures that must be able to try, so a test can prove refusal', () => {
+    // The isolation test asserts observed refusals rather than the absence of
+    // success. A fixture forbidden from trying would assert nothing.
+    expect('packages/agent-runtime/test/fixtures/reaches-for-the-network.cjs').toMatch(exempt)
+  })
+
+  it('exempts nothing else — including the packages closest to the edge', () => {
+    for (const path of [
+      'apps/core/src/server.ts',
+      'packages/model-router/src/router.ts',
+      'packages/kernel/src/index.ts',
+      'connectors/example/src/index.ts',
+      'departments/operations/src/index.ts',
+    ]) {
+      expect(path, `${path} must NOT be exempt`).not.toMatch(exempt)
+    }
+  })
+
+  it('applies the same exemption to both halves of the rule', () => {
+    expect(rule('no-http-client-outside-connector-sdk').from.pathNot).toBe(
+      rule('no-node-network-outside-connector-sdk').from.pathNot,
+    )
+  })
+})
+
 describe('the rule set as a whole', () => {
   it('explains every rule it enforces', () => {
     // A violation message without a reason gets worked around rather than
@@ -140,6 +216,8 @@ describe('the rule set as a whole', () => {
       'no-database-access-outside-storage',
       'no-node-sqlite-outside-storage',
       'no-ai-vendor-sdk-outside-model-router',
+      'no-http-client-outside-connector-sdk',
+      'no-node-network-outside-connector-sdk',
       'departments-may-not-import-departments',
       'connectors-import-only-sdk-and-contracts',
       'contracts-imports-nothing-internal',
