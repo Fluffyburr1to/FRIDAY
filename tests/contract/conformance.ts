@@ -11,13 +11,13 @@ import {
   type ConnectorManifest,
   ConnectorManifestSchema,
   type ConnectorOperation,
-  type CorrelationId,
   HealthReportSchema,
   ImpactSchema,
   isErr,
   isOk,
   PreviewSchema,
   requiresDryRun,
+  uuidv7,
 } from '@friday/contracts'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -101,7 +101,7 @@ export async function observe(
 }
 
 function callContext(overrides: Partial<OperationContext> = {}): OperationContext {
-  return { correlationId: 'cor_contract' as CorrelationId, ...overrides }
+  return { correlationId: uuidv7(), ...overrides }
 }
 
 /**

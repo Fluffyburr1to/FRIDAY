@@ -14,12 +14,22 @@ import type { EventRegistry, EventTypeDefinition } from './event-registry.js'
  * for which operation, and how it ended. Chapter 22 puts a redaction layer in
  * the logger; this is designed so that layer has nothing to catch.
  *
- * Sensitivity follows the rule the Guardian's types already use: the *fact* of
- * a call is metadata, but the *host* and the *data categories* say something
- * about the owner's life. `security.egress.blocked` names a host the owner
- * never authorised, which is exactly the kind of thing they need to see, so it
- * is `internal` rather than `private` — a refusal must never be too sensitive
- * to show on the screen that exists to show it.
+ * ★★ **All of these are `private`, and the reasoning is worth stating because
+ * an earlier draft got it wrong.** `internal` in this codebase does not mean
+ * "local only" — it means **eligible to be sent to a cloud model**. These
+ * events name concrete external services: which providers the owner has
+ * accounts with, when they are used, and — for a blocked egress — an
+ * arbitrary hostname. That is a fact about the owner's life, and it is
+ * precisely the disclosure the whole connector design exists to minimise.
+ *
+ * The rule the Guardian's types already state applies unchanged: *a decision
+ * is metadata, but the thing decided about frequently is not*, so any type
+ * carrying a concrete resource is `private`.
+ *
+ * `private` does **not** hide these from the owner. They are still on the
+ * dashboard and still in the audit trail; they are encrypted at rest and
+ * ineligible to leave the machine. The mistake in the earlier draft was
+ * treating sensitivity as a display setting rather than an egress one.
  *
  * Reference: docs/01-bible/14-connector-framework.md · Chapter 10 · Chapter 22
  */
@@ -116,42 +126,42 @@ export const CONNECTOR_EVENT_TYPES: readonly EventTypeDefinition[] = [
     type: 'credential.issued',
     payloadVersion: 1,
     schema: CredentialIssuedPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'A short-lived key was issued to a connector for one job.',
   },
   {
     type: 'credential.revoked',
     payloadVersion: 1,
     schema: CredentialRevokedPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'A connector lost its access.',
   },
   {
     type: 'connector.called',
     payloadVersion: 1,
     schema: ConnectorCalledPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'FRIDAY made a request to an outside service.',
   },
   {
     type: 'security.egress.blocked',
     payloadVersion: 1,
     schema: EgressBlockedPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'A connector tried to reach somewhere it had not declared, and was stopped.',
   },
   {
     type: 'connector.degraded',
     payloadVersion: 1,
     schema: ConnectorDegradedPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'A service stopped answering, so FRIDAY stopped calling it for a while.',
   },
   {
     type: 'connector.recovered',
     payloadVersion: 1,
     schema: ConnectorRecoveredPayloadSchema,
-    maxSensitivity: 'internal',
+    maxSensitivity: 'private',
     description: 'A service started answering again.',
   },
 ]
