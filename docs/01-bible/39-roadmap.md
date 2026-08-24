@@ -872,18 +872,26 @@ now is, and the answer is two-sided:
 | `apps/desktop` | Tauri, menu bar, global hotkey, signed and notarized |
 | `packages/ui-kit` | Shared component library |
 | `connector-sdk` + contract test suite | |
-| **First real connector** | Recommendation: **Google Calendar** — read-only first |
-| `departments/knowledge` (minimal) | Enough to answer questions about your calendar |
+| **First real connector** | **Weather** — [ADR-0048](../adr/0048-the-first-connector-is-weather.md). Calendar deferred, not rejected |
+| `departments/knowledge` (minimal) | Enough to answer questions about what the first connector returns |
 | `notifications` | Desktop notifications, urgency, quiet hours |
 | Apple Developer Program enrolled | ~$99/yr; needed for signing |
 
 **Done when:** you ask FRIDAY "what does my week look like?" from the menu bar, get a useful answer
 in under two seconds, and can click through to see exactly how she produced it.
 
-**Why Google Calendar as the first connector:** read-only to start (low risk), the data is
-structurally simple, the API is well-documented, and the value is immediate and daily. It exercises
-OAuth, the credential broker, rate limiting, and the egress allowlist without risking anything
-irreversible.
+**Why weather rather than calendar, decided 2026-08-24:** this chapter recommended Google Calendar
+from ratification, on the grounds that read-only access risks nothing irreversible.
+[ADR-0048](../adr/0048-the-first-connector-is-weather.md) supersedes that, because **reversibility
+was the wrong test.** The risk a *first* connector carries is disclosure, not destruction, and
+read-only bounds what FRIDAY can change rather than what she can see — a calendar names who you
+meet, when you are away from home, and who you are interviewing with.
+
+Weather exercises the same machinery: the egress allowlist, rate limiting, retry, the circuit
+breaker, health checks, and the shared conformance suite. **What it may not exercise is OAuth and
+the credential broker**, which was a real reason for choosing calendar, and that cost is recorded in
+ADR-0048 rather than glossed. Calendar is deferred on its own merits and
+[RFC-0002](../rfc/0002-the-first-connector.md) keeps its full contract for whenever it returns.
 
 **This is the point where the foundation-first decision pays off or does not.**
 
@@ -1099,3 +1107,4 @@ manage that. They are worth protecting when they seem like overhead.
 | 2.2 | 2026-08-17 | **M5 scope settled before implementation**, and ADRs 0039, 0040, 0041, and 0045 accepted. Operations gets two capabilities — one that runs and one that must ask — and `vault` is corrected out of M5 into M7, because it depends on a memory system two milestones ahead. No provider spending in M5; `private` fails closed when no local model exists. Diagnostics ships health and self-check only, with improvement proposals moved to M8. ADR-0029's review trigger is deferred until there is enough Chief of Staff to answer it honestly, and ADR-0011's Temporal trigger is recorded as owed. |
 | 2.3 | 2026-08-17 | M5's carried implementation risks recorded under rule 5, from the agent runtime: a runaway worker thread is not killed, worker isolation is not a security sandbox, and `resourceLimits` is unproven. The first is a **blocker on scheduling an agent unattended** rather than a note. |
 | 2.4 | 2026-08-24 | **M5 closed**, with its whole record brought onto `main` in one change under rule 8. The done-when demonstrated clause by clause through `friday ask` against the shipped manifest, the shipped rules, the real clerk and real SQLite. The four properties the milestone was actually defending recorded as **structural rather than procedural**, and the mutation-testing discipline recorded with the four tests that proved nothing until a mutation exposed them — including one design defect that only a continuity check over the event log could have found. Three known items carried out and named: **DAG concurrency deferred**, **`friday init` does not create the departments directory**, and **`operations.log.compact` stays `NOT_IMPLEMENTED`** by owner decision, because faking success on the capability that rewrites the record is the worst possible stub. ADR-0011's Temporal trigger answered by ADR-0046; ADR-0029's router-shape reassessment answered — the shape survived, and its **second** trigger fired and is carried into M6 as a question. M5's actual-versus-estimated recorded: seven days against 6–8 weeks, and why size in deliverables does not predict cost — **unspecified decisions do.** |
+| 2.5 | 2026-08-24 | **The first connector is weather, not calendar** ([ADR-0048](../adr/0048-the-first-connector-is-weather.md)). This chapter had recommended Google Calendar since ratification; the recommendation is superseded rather than corrected, because it was not wrong about calendar — it optimised for **reversibility** when the risk a first connector actually carries is **disclosure**. Recorded with its cost: weather may not exercise OAuth or the credential broker at all, which was a stated reason for calendar, so the broker may ship built but unvalidated by any real connector. Calendar is deferred rather than rejected and RFC-0002 keeps its full contract. [ADR-0047](../adr/0047-egress-hosts-are-exact-and-a-pattern-is-a-separate-decision.md) accepted in the same decision: exact egress hosts stay, and wildcards are **never** added for shared multi-tenant namespaces. Provider selection and location precision remain undecided and come back separately. |

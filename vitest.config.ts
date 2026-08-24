@@ -41,11 +41,16 @@ export default defineConfig({
       {
         test: {
           // The conformance suite every connector must pass, run against
-          // recorded fixtures. Arrives at Milestone 4 with the first connector.
+          // recorded fixtures.
+          //
+          // `passWithNoTests` is false now that the tier has content: deleting
+          // the conformance suite must fail the build rather than leave it
+          // green. A suite that can be removed without anyone noticing is the
+          // same failure as a suite that never fired.
           name: 'contract',
           include: ['tests/contract/**/*.test.ts'],
           testTimeout: 30_000,
-          passWithNoTests: true,
+          passWithNoTests: false,
         },
       },
       {
