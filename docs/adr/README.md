@@ -77,6 +77,7 @@ Decisions taken since, as implementation met the design:
 | [0048](0048-the-first-connector-is-weather.md) | The first connector is weather, not calendar | accepted | low | [14](../01-bible/14-connector-framework.md) |
 | [0049](0049-a-call-that-never-happened-is-never-a-success.md) | A call that never happened is never a success | accepted | low→**high** | [14](../01-bible/14-connector-framework.md) |
 | [0050](0050-revocation-is-a-credential-domain-operation.md) | Revocation is a credential-domain operation, never a Keychain delete | accepted | low→**high** | [14](../01-bible/14-connector-framework.md) |
+| [0051](0051-the-least-precise-location-that-answers-the-question.md) | The least precise location that answers the question | accepted | low | [14](../01-bible/14-connector-framework.md) |
 
 ‡ **Amended before acceptance, not after.** Three of these were drafted on 2026-08-12 or later,
 reviewed on 2026-08-17, and **edited in the same change that accepted them** — 0039 gained a §0
