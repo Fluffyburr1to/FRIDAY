@@ -130,7 +130,7 @@ dry run is how the approval screen gets it.
 Connector needs to call Google
         │
         ▼
-Requests a token from the Credential Broker (in the kernel)
+Requests a token from the Credential Broker
         │
         ├─ Broker checks: does this connector's manifest permit this scope?
         ├─ Broker fetches the refresh token from the macOS Keychain
@@ -139,6 +139,29 @@ Requests a token from the Credential Broker (in the kernel)
         ▼
 Connector receives a scoped token valid for ~15 minutes, in memory only
 ```
+
+**★ Where the broker lives, stated so there is one reading rather than two.**
+An earlier version of this chapter said *"the Credential Broker (in the kernel)"*, which was
+intended to mean **not in the connector** — the broker is a FRIDAY-level security boundary — and was
+read by an implementer as naming a package. Those differ, and the difference matters, because
+putting the concrete implementation in `packages/kernel` would make the event bus depend on
+`connector-sdk` and point the dependency arrow from the foundation toward the thing built on it.
+
+The intent is the boundary, not the address. Concretely:
+
+```
+connector-sdk  →  credential-store port  ←  storage implementation
+```
+
+The broker owns the lifecycle and the security semantics — scope minimisation, issuance, the three
+credential states, revocation — and lives in `packages/connector-sdk`. **Where the secret actually
+rests is supplied through a port**, implemented in `packages/storage` over the macOS Keychain
+([ADR-0050](../adr/0050-revocation-is-a-credential-domain-operation.md)). A connector still cannot
+reach either: it may import only `connector-sdk` and `contracts`, and the broker hands it a
+short-lived value rather than a way to fetch one.
+
+What was never negotiable, and is unchanged: **the broker is not part of any connector**, no
+connector sees a long-lived credential, and revocation is central rather than per-connector.
 
 What this buys:
 
@@ -293,4 +316,5 @@ mechanical mapping code, with the manifest always hand-written and reviewed.
 
 | Version | Date | Change |
 |---|---|---|
+| 1.1 | 2026-08-24 | **The Credential Broker's placement disambiguated.** *"(in the kernel)"* meant *not in the connector* — a FRIDAY-level security boundary — and was read as naming a package. Recorded explicitly, with the dependency direction that follows: the broker owns the lifecycle in `connector-sdk`, and persistence is supplied through a port implemented in `storage` ([ADR-0050](../adr/0050-revocation-is-a-credential-domain-operation.md)). Locating the implementation in `packages/kernel` would have made the event bus depend on `connector-sdk`, inverting the dependency arrow for no gain. The guarantees the original wording existed to state are unchanged. |
 | 1.0 | 2026-08-06 | Initial ratification |
