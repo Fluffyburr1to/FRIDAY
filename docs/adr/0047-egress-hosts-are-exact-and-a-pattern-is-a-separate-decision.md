@@ -1,7 +1,8 @@
 # ADR-0047 — Egress hosts are exact, and a pattern is a separate decision
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-08-24
+- **Accepted:** 2026-08-24
 - **Deciders:** Tyler Hutson
 - **Supersedes:** none
 - **Related:** [Chapter 14](../01-bible/14-connector-framework.md) · [Chapter 18](../01-bible/18-security-model.md) · PR #75 · PR #76
@@ -117,6 +118,11 @@ support for constrained patterns as a **separate decision, made only when a conn
 actually wants presents a case that exact hosts cannot express.**
 
 Until then the conservative behaviour stands, and **it is not weakened to accommodate a provider.**
+
+**Accepted 2026-08-24 with one condition made explicit by the owner:** wildcard egress is **not** to
+be added for the shared multi-tenant namespaces under any circumstances. Where a future connector
+genuinely requires dynamic hosts, that comes back as its own decision against that connector —
+**the policy is not broadened pre-emptively to make room for it.**
 
 ---
 

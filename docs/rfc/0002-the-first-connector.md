@@ -1,10 +1,31 @@
 # RFC-0002 — The first connector
 
-- **Status:** awaiting owner decision
+- **Status:** **closed — resolved 2026-08-24 by [ADR-0048](../adr/0048-the-first-connector-is-weather.md)**
 - **Date:** 2026-08-24
 - **Author:** FRIDAY Engineering (AI contributor)
 - **Asking for:** a product decision, not a review of code
 - **Related:** [Chapter 14](../01-bible/14-connector-framework.md) · [Chapter 19](../01-bible/19-approval-system.md) · [ADR-0047](../adr/0047-egress-hosts-are-exact-and-a-pattern-is-a-separate-decision.md) · [Roadmap M6](../01-bible/39-roadmap.md)
+
+---
+
+## Resolution
+
+**Closed 2026-08-24.** The owner chose **weather**, not calendar, and accepted the §1 argument
+against this document's own recommendation: calendar is a much more consequential privacy surface
+than it first appears, and read-only does not make the data low-risk.
+
+Recorded in [ADR-0048](../adr/0048-the-first-connector-is-weather.md).
+
+**Calendar is deferred, not rejected** — everything below about its manifest, scopes, credential
+lifecycle, approval points, and success semantics stays accurate and is the starting point whenever
+calendar is revisited. That is why this document is kept rather than deleted.
+
+[ADR-0047](../adr/0047-egress-hosts-are-exact-and-a-pattern-is-a-separate-decision.md) was accepted
+in the same decision, with the condition that wildcard egress is never added for shared
+multi-tenant namespaces.
+
+**Two things this document did not settle and that weather still needs:** which provider, and how
+precisely the owner's location is disclosed. Both come back as their own package.
 
 ---
 
