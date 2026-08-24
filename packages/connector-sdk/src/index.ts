@@ -65,6 +65,12 @@ export {
   type RateLimits,
   rateLimiterFor,
 } from './rate-limit.js'
+// ── What she did, on the record ─────────────────────────────────────────────
+export {
+  type ConnectorEventSink,
+  type RecordingOptions,
+  recordingObserver,
+} from './recording.js'
 export {
   backoffDelayMs,
   DEFAULT_RETRY_POLICY,

@@ -8,12 +8,12 @@ import {
 import {
   type ConnectorManifest,
   ConnectorManifestSchema,
-  type CorrelationId,
   err,
   fridayError,
   isErr,
   isOk,
   ok,
+  uuidv7,
 } from '@friday/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -51,7 +51,7 @@ const CONTEXT: ConnectorContext = {
   now: () => 1_000,
 }
 
-const CALL: OperationContext = { correlationId: 'cor_1' as CorrelationId }
+const CALL: OperationContext = { correlationId: uuidv7() }
 
 interface Spy {
   initialize: ReturnType<typeof vi.fn>

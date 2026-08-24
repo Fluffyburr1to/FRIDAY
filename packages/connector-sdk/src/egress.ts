@@ -1,6 +1,7 @@
 import {
   type ConnectorManifest,
   type ConnectorOperation,
+  type CorrelationId,
   egressPermits,
   err,
   type FridayError,
@@ -78,8 +79,16 @@ export type ConnectorRequestInit = Omit<RequestInit, 'redirect' | 'signal'> & {
    */
   readonly idempotencyKey?: string | undefined
 
-  /** Ties this request to the plan step that caused it, in the audit trail. */
-  readonly correlationId?: string | undefined
+  /**
+   * Ties this request to the plan step that caused it, in the audit trail.
+   *
+   * ★ Typed as `CorrelationId` rather than `string` on purpose. The event log
+   * requires a UUID, so a plain string would compile, reach the bus, and be
+   * refused at publish time — losing the audit record for a call that had
+   * already gone out. The compiler is the only place that can catch it before
+   * it becomes a hole in the trail.
+   */
+  readonly correlationId?: CorrelationId | undefined
 }
 
 /**

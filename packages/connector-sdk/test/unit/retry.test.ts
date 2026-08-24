@@ -10,8 +10,8 @@ import {
   retryAfterMs,
   shouldRetry,
 } from '@friday/connector-sdk'
-import type { ConnectorOperation, CorrelationId, ErrorCode, FridayError } from '@friday/contracts'
-import { ERROR_CODES, fridayError } from '@friday/contracts'
+import type { ConnectorOperation, ErrorCode, FridayError } from '@friday/contracts'
+import { ERROR_CODES, fridayError, uuidv7 } from '@friday/contracts'
 import { describe, expect, it } from 'vitest'
 
 const READ: ConnectorOperation = {
@@ -35,7 +35,7 @@ const SEND: ConnectorOperation = {
   riskClass: 'medium',
 }
 
-const CALL: OperationContext = { correlationId: 'cor_1' as CorrelationId }
+const CALL: OperationContext = { correlationId: uuidv7() }
 const KEYED: OperationContext = { ...CALL, idempotencyKey: 'idem_1' }
 
 function fail(code: ErrorCode): FridayError {

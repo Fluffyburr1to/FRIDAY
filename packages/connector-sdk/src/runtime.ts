@@ -1,6 +1,8 @@
 import {
   type ConnectorManifest,
   type ConnectorOperation,
+  type CorrelationId,
+  type ErrorCode,
   err,
   type FridayError,
   fridayError,
@@ -68,7 +70,7 @@ export interface ConnectorObserver {
         readonly durationMs: number
         readonly attempts: number
         readonly errorCode: string | null
-        readonly correlationId: string | undefined
+        readonly correlationId: CorrelationId | undefined
       }) => void)
     | undefined
 
@@ -358,8 +360,18 @@ export function createConnectorRuntime(options: ConnectorRuntimeOptions): Connec
       breaker.releaseProbe(at)
     }
 
-    if (!step.result.ok) call.report('failed', step.status, step.result.error.code)
-    else call.report(succeeded(step.status), step.status, null)
+    if (!step.result.ok) {
+      // ★ ADR-0049 invariant 4. A blocked host or an abandoned call is FRIDAY
+      // declining, not the provider failing — and a dashboard that called it a
+      // failure would present our own safety controls as somebody's outage.
+      call.report(
+        ourRefusal(step.result.error.code) ? 'refused' : 'failed',
+        step.status,
+        step.result.error.code,
+      )
+    } else {
+      call.report(succeeded(step.status), step.status, null)
+    }
 
     return step.result
   }
@@ -432,6 +444,17 @@ function providerFailure(
     message: 'the service did not serve',
     detail: { connector: connectorId, operation: operationId, status },
   })
+}
+
+/**
+ * Whether this failure is FRIDAY declining rather than the provider failing.
+ *
+ * `CONNECTOR_FAULTED` is deliberately absent: a connector that crashed while
+ * handling a response did make the call, and calling that a refusal would
+ * hide a bug behind a word that sounds deliberate.
+ */
+function ourRefusal(code: ErrorCode): boolean {
+  return code === 'EGRESS_BLOCKED' || code === 'CANCELLED'
 }
 
 /** Statuses the provider is answerable for, as opposed to ones we caused. */

@@ -5,6 +5,7 @@ import {
   type ConnectorOperation,
   isErr,
   isOk,
+  uuidv7,
 } from '@friday/contracts'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -219,8 +220,9 @@ describe('the order the controls run in', () => {
 describe('what the owner is told', () => {
   it('reports every call, however it ended', async () => {
     const runner = runtime(respond(200) as unknown as typeof globalThis.fetch)
+    const correlationId = uuidv7()
 
-    await runner.fetch(READ, URL_OK, { correlationId: 'cor_1' })
+    await runner.fetch(READ, URL_OK, { correlationId })
 
     expect(seen.called).toHaveLength(1)
     expect(only(seen.called, 'call')).toMatchObject({
@@ -229,7 +231,7 @@ describe('what the owner is told', () => {
       outcome: 'succeeded',
       status: 200,
       attempts: 1,
-      correlationId: 'cor_1',
+      correlationId,
     })
   })
 
