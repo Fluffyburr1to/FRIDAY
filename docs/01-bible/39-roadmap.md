@@ -85,18 +85,18 @@ re-estimating from four data points that compressed by two orders of magnitude w
 number with no information in it. They are re-set at the M4 boundary, against evidence.
 
 ```
-DELIVERED ─ 2026-08-06 → 2026-08-17
-  M0 ───── M1 ──────── M2 ────────── M3 ──────────── M4
-  Ground   Heartbeat   Conscience    Authority       Installable
-           she records she can be    her rules load, ★ she runs
-                       told no       decisions are     on your Mac
-                                     written down      · v0.1.0
+DELIVERED ─ 2026-08-06 → 2026-08-24
+  M0 ───── M1 ──────── M2 ────────── M3 ──────────── M4 ───────────── M5
+  Ground   Heartbeat   Conscience    Authority       Installable      Mind
+           she records she can be    her rules load, ★ she runs       ★ she plans,
+                       told no       decisions are     on your Mac      asks, and
+                                     written down      · v0.1.0         explains
 
 PLANNED
-  M5 ───── M6 ──── M7 ────────── M8 ────────── M9 ───── M10
-  Mind     Face    Memory &      Self-         Reach    Breadth
-           ★ first Endurance     Improvement
-             useful day
+  M6 ──── M7 ────────── M8 ────────── M9 ───── M10
+  Face    Memory &      Self-         Reach    Breadth
+  ★ first Endurance     Improvement
+    useful day
 ```
 
 | # | Name | What exists at the end | Estimate | Status |
@@ -106,7 +106,7 @@ PLANNED
 | **M2** | **Conscience** | Guardian, approvals, audit, thin dashboard | 4–5 wks | ✅ 2026-08-08 |
 | **M3** | **Authority** | Rules loaded from disk, decisions recorded, `friday init` | — | ✅ 2026-08-10 ⚠ |
 | **M4** | **Installable** | Packaging, launchd supervision, release machinery | 2–3 wks | ✅ 2026-08-17 · `v0.1.0` |
-| **M5** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | |
+| **M5** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | ✅ 2026-08-24 |
 | **M6** | **Face** | Dashboard, Mac app, first connector — **first useful day** | 6–8 wks | |
 | **M7** | **Memory & Endurance** | Four-layer memory, always-on host, DR | 6–8 wks | |
 | **M8** | **Self-Improvement** | Engineering dept; FRIDAY's first PR | 6–10 wks | |
@@ -692,6 +692,23 @@ already live. A diagnostics finding with nothing to do about it is a notificatio
 and `trends` (M6+, all need `connector-sdk`), the improvement-proposal pipeline (M8), and the
 remaining HUD panels.
 
+### M5, actual versus estimated
+
+Rule 5, recorded at the boundary. Estimated 6–8 weeks; **elapsed seven days**, 2026-08-17 to
+2026-08-24, across thirty-one pull requests and five accepted ADRs. That is the same elapsed time as
+M4 for a milestone estimated three times larger, and the reason is the one M1 and M4 already
+established from opposite directions: **where the Bible is specific, implementation compresses.**
+Chapters 11, 12, and 13 specify the agent runtime, the plan engine, and departments in operational
+detail, so most of this milestone was transcription — and where it was not, the time went into the
+same place M4's did. The plan record needed an ADR before the engine could be built (0045), the
+Temporal question needed answering before durable execution was hand-built (0046), and one product
+decision had to go to the owner because the Bible contradicted itself about the approval threshold.
+
+**★ The estimate was wrong in a way worth keeping.** This chapter twice warned M5 was *"the largest
+milestone and the one most likely to slip"*. It did not slip, and the warning was not therefore
+wrong — what it mispredicted was **which** work is expensive. Size in deliverables is not the
+predictor; **unspecified decisions are.** M5 had many deliverables and few open questions.
+
 ### Carried M5 implementation risks
 
 Found while building the agent runtime, recorded rather than fixed opportunistically — the same
@@ -712,6 +729,136 @@ against an unbuilt component would be a guess wearing a review trigger's clothes
 **Owed here too:** [ADR-0011](../adr/0011-plan-engine-state-machine.md)'s *"reconsider Temporal"*
 trigger. Chapter 12 calls a workflow engine **"the strongest alternative in the Bible"**, and M5 is
 where FRIDAY starts hand-building the durable execution it would have provided.
+
+### ★ The done-when, demonstrated — 2026-08-24
+
+The done-when had five clauses and they are checked one at a time, because a demonstration that
+satisfies four of them is not a milestone.
+
+```
+$ friday ask "check my records"
+
+FRIDAY's plan — One step: "Check that FRIDAY is internally consistent and her
+record is intact." is the only thing FRIDAY has that matches what you asked for.
+  1. Check that FRIDAY is internally consistent and her record is intact.
+
+The plan finished.
+  FRIDAY worked out how to do this, in 1 step.
+  FRIDAY started: Check that FRIDAY is internally consistent and her record is intact.
+  An agent may check FRIDAY's own health and verify her records, the same as a
+  scheduled job may. Nothing outside FRIDAY is touched.
+  Done: Check that FRIDAY is internally consistent and her record is intact.
+  The plan finished.
+```
+
+**Transcribed from a real run, wrapped for the page and not otherwise edited** — including the
+headline appearing twice, which is a presentation defect and is left visible rather than tidied out
+of the record. The third line is the **Guardian's own sentence**, composed at decision time from the
+rule the owner wrote; the explanation quotes it rather than describing the decision a second time.
+
+| Clause | Where it is demonstrated |
+|---|---|
+| *you type a request into the CLI* | `friday ask`, through the real entry point ([#71](https://github.com/Fluffyburr1to/FRIDAY/pull/71)) |
+| *FRIDAY produces a visible plan* | Printed before anything runs, **unconditionally** — not only when she judges it worth showing |
+| *executes it through agents* | The Chief of Staff kernel, the executor's Guardian gate, and `departments/operations` |
+| *requests approval where required* | `operations.log.compact` stops twice: the plan's shape, then the step ([#67](https://github.com/Fluffyburr1to/FRIDAY/pull/67), [#68](https://github.com/Fluffyburr1to/FRIDAY/pull/68)) |
+| *explains what she did, every claim traceable to an event* | `composeExplanation` over the plan's own correlation id, with `unsupportedClaims` run rather than assumed |
+
+The run above is `tests/e2e/friday-ask.test.ts`, which uses the shipped department manifest on disk,
+the shipped rules in `packages/guardian/policies/`, the real clerk, the real bus, and real SQLite.
+**The only injected thing is the key provider**, which is [ADR-0020](../adr/0020-key-material-comes-from-an-injected-key-provider.md)'s
+seam and the only way to run this without the machine's Keychain.
+
+### ★ M5 is closed — 2026-08-24
+
+**Thirty-one pull requests, [#41](https://github.com/Fluffyburr1to/FRIDAY/pull/41)–[#71](https://github.com/Fluffyburr1to/FRIDAY/pull/71),
+and four accepted ADRs (0039, 0040, 0041, 0045, 0046).** Every deliverable row in the table above is
+merged on `main`.
+
+**What was actually being defended.** The done-when can be satisfied by a happy path, and the value
+of this milestone is that it is not. Four properties are structural rather than procedural — they
+hold because there is no way to write the alternative, not because every path remembers to check:
+
+| Property | Why it holds |
+|---|---|
+| **A step cannot execute without a current Guardian decision** | `runStep` takes an `Authorised`, whose private `Symbol` cannot be forged or spread. `authorise()` is the only source of one, and it calls the Guardian every time — first attempt, retry, and resume alike |
+| **Nothing that survives a restart can be mistaken for a prior approval** | `PlanProgress` has **no field** that could hold one. A resumed plan does not choose to re-ask; it has no alternative, and a test asserts the serialised shape contains no decision, authorisation, capability, or permit |
+| **An event cannot describe a transition that did not happen** | A `PlanTransition` is built only where the state machine *accepted* a move, and an event only from a transition. A move that cannot be **recorded** leaves the plan where it was — [Chapter 10](10-event-bus.md)'s rule that writing the event is how the thing happens, taken literally |
+| **A capability identifies the step without authorising it** | Minted before the Guardian is asked, naming the plan and the step, single-use. It is the evidence an agent must carry; the Guardian still decides and still says no |
+
+**★ The discipline that found the real defects.** Every guard was written, then tested, then
+**deliberately broken to confirm the test failed**. Twenty mutations were run across the three
+closing changes and all were eventually caught — but **four tests proved nothing until the mutation
+exposed them**, and those four are the reason the practice is recorded here rather than left as a
+habit:
+
+- A test that a suspended step is not counted as finished did not exist. That bypass is quiet and
+  complete: the plan would skip work the owner was asked about and never approved, and report
+  success.
+- A test that every event carries where it came from checked only that the *field was present*. It
+  passed while `stepFrom` was set to `stepTo` — a log whose moves do not join up.
+- A test that another plan's events do not leak passed with the filter deleted, because the event
+  type it used never appeared in either plan.
+- A test that a plan breaking Chapter 12's bounds is refused was rejected by the response schema
+  before the validator it claimed to test ever ran.
+
+**★ A design defect that only the log exposed.** The first draft had step events carry the plan's
+move *and* published a plan event for the same move. Both looked correct in isolation. A reader
+chaining `from` to `to` counted that move twice and drifted from the real plan **on the first
+suspension** — and the fix was not a smarter reader, it was that each level states its own moves
+once. It was found only because the continuity test was rewritten to assert that every `from` *is*
+the previous `to`.
+
+### What the demonstration did not establish
+
+- **Nothing about a real model.** The shipped planner is keyword matching over the manifests and
+  says so in those words. It is replaced **by configuration, not by code** — a real model is a
+  provider on the same router — but no model has been through this path, so nothing here evidences
+  that plan generation survives one.
+- **Nothing about cost.** `estimateCents` is honestly zero because the shipped provider is local and
+  free. The plan-approval threshold has therefore only ever fired on **risk**, never on cost, and
+  the cost limb of [Chapter 12](12-chief-of-staff.md)'s trigger is untested in production.
+- **Nothing about a second concurrent plan.** Every run demonstrated was one plan at a time.
+- **Nothing about the approval preview.** [Chapter 19](19-approval-system.md) wants the connector's
+  dry run, and the departments shipping today produce no artifact. The owner approves **by name**,
+  and the risk line says so. This becomes real with the first connector, in M6.
+
+### Known remaining items, carried out of M5
+
+Recorded rather than waived. None of these blocks the done-when; all three are things a reader
+would otherwise rediscover as a surprise.
+
+| Item | State | Why it is left |
+|---|---|---|
+| **DAG concurrency** | **Deferred.** Steps run one at a time; `dependsOn` semantics are intact and enforced, and a plan's graph is validated for cycles and depth | A performance limitation, not a correctness one. [Chapter 12](12-chief-of-staff.md)'s three-independent-lookups example runs three times slower than it needs to and produces the same result. Owner decision of 2026-08-23: not worth padding M5 for |
+| **`friday init` does not create the departments directory** | **Open.** `paths.departmentsDir` defaults under the data directory and nothing populates it, so `friday ask` refuses by name until `FRIDAY_DEPARTMENTS_DIR` points somewhere that exists | The same gap `policiesDir` already has, and it is `init`'s to close rather than M5's. The refusal names the fix, which is the property that matters |
+| **`operations.log.compact` is `NOT_IMPLEMENTED`** | **Open, and deliberately so.** She asks, you approve, and then she says plainly that she cannot do it yet | ★ **The approval path is fully real; only the work behind it is absent.** Reporting success for a compaction that did not happen would be the worst possible stub — the capability's whole subject is the trustworthiness of the record. Owner decision of 2026-08-24: keep it refusing |
+
+`NOT_IMPLEMENTED` was added to the error taxonomy for this. *Declared but not built* is a different
+fact from a refusal and from a malfunction, and a department manifest is a promise about what FRIDAY
+can do.
+
+### The two owed triggers, answered
+
+**[ADR-0011](../adr/0011-plan-engine-state-machine.md)'s *"reconsider Temporal"*** — answered before
+implementation by [ADR-0046](../adr/0046-durable-execution-stays-hand-built-at-m5.md), accepted
+2026-08-17. Durable execution stays hand-built at M5, with an M6 compensation trigger recorded.
+
+**[ADR-0029](../adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md)'s router-shape
+reassessment** — deferred at 2.2 until there was enough Chief of Staff to answer it honestly. There
+now is, and the answer is two-sided:
+
+- **The router shape survived.** `appRouter` is still translation-only over `CoreContext`, and the
+  Chief of Staff did not need it changed. The plan engine deliberately does **not** go through a
+  tRPC procedure: the session sits on `OpenedContext`, outside the procedure surface, because a
+  procedure that could run a plan would be a procedure that decides when FRIDAY acts.
+- **★ ADR-0029's second trigger fired, and is recorded rather than closed.** *"`apps/core` acquires
+  anything that is not composition"* — it has. `scripted-planner.ts` is a calculation, and `ask.ts`
+  holds a resource-naming rule and a cost estimate. Each is small and each has a reason, but the
+  rule they cross was written precisely because that is how logic leaves `packages/` — one
+  defensible exception at a time. **Carried into M6 as a question, not a defect.**
+
+---
 
 ---
 
@@ -917,8 +1064,11 @@ It will. Rules for changing it:
 
 ## The honest summary
 
-**FRIDAY records, she can be told no, her decisions are written down, and she runs on the owner's
-Mac and starts when he logs in.** She does not yet think or connect to anything.
+**FRIDAY records, she can be told no, her decisions are written down, she runs on the owner's Mac
+and starts when he logs in, and she can now be asked to do something — she plans it, shows the plan,
+asks where it matters, does the work, and explains it afterwards from her own record.** She does not
+yet connect to anything outside herself, and the thinking behind the plan is scripted rather than a
+model.
 
 The foundation-first decision is what makes the remaining list long, and it is also what made the
 first four milestones land in five days: every one of them was implementing a design the Bible had
@@ -929,10 +1079,11 @@ week and wrote three ADRs to fill the gap. The compression is a property of the 
 settled, not of who is writing the code.
 
 The single greatest risk was named as the months between M0 and *first useful day* where the work is
-real and the output is invisible. **That risk has changed shape rather than passed.** The dashboard
-exists and the event log is watchable, so there is something to look at — but the gap between "she
-records what a test told her to record" and "she does something you wanted" is still the whole of
-M5 and M6. Every design decision here that looks slightly inefficient — the dashboard pulled forward,
+real and the output is invisible. **That risk has narrowed to one milestone.** The gap between "she
+records what a test told her to record" and "she does something you wanted" was the whole of M5 and
+M6; M5 closed the first half. She now does a thing you asked for, end to end — the thing is checking
+her own records, which is useful to her rather than to you, and **everything that would make it
+useful to you is a connector, which is M6.** Every design decision here that looks slightly inefficient — the dashboard pulled forward,
 the demonstrable outcome required at every milestone, M4 being small enough to finish — exists to
 manage that. They are worth protecting when they seem like overhead.
 
@@ -947,3 +1098,4 @@ manage that. They are worth protecting when they seem like overhead.
 | 2.1 | 2026-08-17 | **M4 closed at `v0.1.0`** and its whole record brought onto `main` in one change. The done-when demonstrated on the owner's Mac, with its four-event result and why installing the agent produces a start of its own; every deliverable row resolved, including the two that were still open on the day of the demonstration and were closed afterwards. `friday events emit` (ADR-0043) and `system.started` (ADR-0044) marked settled, and ADR-0021's second obligation corrected — it is that ADR's **Notes**, not a review trigger. M4's actual-versus-estimated recorded under rule 5: seven days against 2–3 weeks, the first milestone whose elapsed time is the same order of magnitude as its estimate, and why. **Rule 8 added** after this chapter was found describing M4 as *next* for three days while the milestone was being released, its record uncommitted. The HUD vitals slice and ADRs 0039–0042 recorded as built-but-unmerged rather than as delivered. Dates inside each section are when the work was done and observed, not when this entry was written. |
 | 2.2 | 2026-08-17 | **M5 scope settled before implementation**, and ADRs 0039, 0040, 0041, and 0045 accepted. Operations gets two capabilities — one that runs and one that must ask — and `vault` is corrected out of M5 into M7, because it depends on a memory system two milestones ahead. No provider spending in M5; `private` fails closed when no local model exists. Diagnostics ships health and self-check only, with improvement proposals moved to M8. ADR-0029's review trigger is deferred until there is enough Chief of Staff to answer it honestly, and ADR-0011's Temporal trigger is recorded as owed. |
 | 2.3 | 2026-08-17 | M5's carried implementation risks recorded under rule 5, from the agent runtime: a runaway worker thread is not killed, worker isolation is not a security sandbox, and `resourceLimits` is unproven. The first is a **blocker on scheduling an agent unattended** rather than a note. |
+| 2.4 | 2026-08-24 | **M5 closed**, with its whole record brought onto `main` in one change under rule 8. The done-when demonstrated clause by clause through `friday ask` against the shipped manifest, the shipped rules, the real clerk and real SQLite. The four properties the milestone was actually defending recorded as **structural rather than procedural**, and the mutation-testing discipline recorded with the four tests that proved nothing until a mutation exposed them — including one design defect that only a continuity check over the event log could have found. Three known items carried out and named: **DAG concurrency deferred**, **`friday init` does not create the departments directory**, and **`operations.log.compact` stays `NOT_IMPLEMENTED`** by owner decision, because faking success on the capability that rewrites the record is the worst possible stub. ADR-0011's Temporal trigger answered by ADR-0046; ADR-0029's router-shape reassessment answered — the shape survived, and its **second** trigger fired and is carried into M6 as a question. M5's actual-versus-estimated recorded: seven days against 6–8 weeks, and why size in deliverables does not predict cost — **unspecified decisions do.** |
