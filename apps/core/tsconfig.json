@@ -16,7 +16,10 @@
     { "path": "../../packages/kernel" },
     { "path": "../../packages/clerk" },
     { "path": "../../packages/diagnostics" },
-    { "path": "../../packages/storage" }
+    { "path": "../../packages/storage" },
+    { "path": "../../packages/chief-of-staff" },
+    { "path": "../../packages/model-router" },
+    { "path": "../../departments/operations" }
   ],
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "coverage", "test"]
