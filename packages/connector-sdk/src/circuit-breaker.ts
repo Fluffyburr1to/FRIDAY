@@ -80,6 +80,19 @@ export interface CircuitBreaker {
 
   recordSuccess(now: number): void
   recordFailure(now: number): void
+
+  /**
+   * Hands back a reserved probe without deciding anything.
+   *
+   * ★ For a call that was allowed through and then never sent — throttled,
+   * cancelled, refused at our own boundary. Recording a success instead would
+   * **close the circuit on the strength of a request that never happened**,
+   * which is how a service that is still down starts being called again at
+   * full volume. Leaving the probe reserved is the opposite failure: the
+   * circuit never probes again and the connector wedges. Neither is
+   * acceptable, so this is its own operation.
+   */
+  releaseProbe(now: number): void
 }
 
 /**
@@ -132,6 +145,11 @@ export function createCircuitBreaker(
 
       probeInFlight = true
       return true
+    },
+
+    releaseProbe(now: number): void {
+      settle(now)
+      if (state === 'half_open') probeInFlight = false
     },
 
     recordSuccess(now: number): void {

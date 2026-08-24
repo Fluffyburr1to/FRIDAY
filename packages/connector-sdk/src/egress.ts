@@ -66,6 +66,20 @@ export interface ConnectorFetchOptions {
  */
 export type ConnectorRequestInit = Omit<RequestInit, 'redirect' | 'signal'> & {
   readonly signal?: AbortSignal | null | undefined
+
+  /**
+   * The provider's deduplication token, when this call has one.
+   *
+   * ★ Carried on the request rather than taken from the operation context,
+   * so that **forgetting it is the safe mistake.** A connector that omits it
+   * on a non-idempotent call simply does not get retried; a connector that
+   * omitted a whole context would still be retried, on the assumption that
+   * someone else had thought about it.
+   */
+  readonly idempotencyKey?: string | undefined
+
+  /** Ties this request to the plan step that caused it, in the audit trail. */
+  readonly correlationId?: string | undefined
 }
 
 /**
@@ -223,8 +237,12 @@ export function createConnectorFetch(options: ConnectorFetchOptions): ConnectorF
     const caller = init?.signal
 
     try {
+      // `idempotencyKey` and `correlationId` are FRIDAY's, not the platform's.
+      // Passing them through would put unknown keys on a real RequestInit.
+      const { idempotencyKey: _key, correlationId: _correlation, ...forwarded } = init ?? {}
+
       const response = await options.fetch(url, {
-        ...init,
+        ...forwarded,
 
         // ★ The guard must own redirects. Letting the underlying fetch follow
         // one would let a declared host hand the connector to an undeclared

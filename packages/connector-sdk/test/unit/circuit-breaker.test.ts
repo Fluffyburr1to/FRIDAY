@@ -169,6 +169,57 @@ describe('finding out whether it is back', () => {
   })
 })
 
+describe('handing a probe back without a verdict', () => {
+  function opened() {
+    const breaker = createCircuitBreaker(POLICY)
+    failTimes(breaker, THRESHOLD)
+    return breaker
+  }
+
+  it('lets another probe through afterwards', () => {
+    const breaker = opened()
+    expect(breaker.attempt(OPEN_MS)).toBe(true)
+
+    breaker.releaseProbe(OPEN_MS)
+
+    expect(breaker.attempt(OPEN_MS)).toBe(true)
+  })
+
+  it('does not close the circuit on a request that never happened', () => {
+    // ★ The whole reason this is its own operation. Recording a success would
+    // close the circuit on the strength of a call that was never sent, and a
+    // service that is still down would start being called at full volume.
+    const breaker = opened()
+    breaker.attempt(OPEN_MS)
+
+    breaker.releaseProbe(OPEN_MS)
+
+    expect(breaker.stateAt(OPEN_MS)).toBe('half_open')
+  })
+
+  it('does not forget the failures that opened it', () => {
+    const breaker = opened()
+    breaker.attempt(OPEN_MS)
+    breaker.releaseProbe(OPEN_MS)
+
+    // One failure re-opens it, because the count was never reset.
+    breaker.attempt(OPEN_MS)
+    breaker.recordFailure(OPEN_MS)
+
+    expect(breaker.stateAt(OPEN_MS)).toBe('open')
+  })
+
+  it('does nothing when the circuit is not half-open', () => {
+    const closed = createCircuitBreaker(POLICY)
+    closed.releaseProbe(0)
+    expect(closed.stateAt(0)).toBe('closed')
+
+    const open = opened()
+    open.releaseProbe(0)
+    expect(open.stateAt(0)).toBe('open')
+  })
+})
+
 describe('whose fault it was', () => {
   it.each(['TIMEOUT', 'CONNECTOR_UNAVAILABLE'] as const)(
     'counts %s against the service',
