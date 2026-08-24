@@ -17,8 +17,8 @@ packages:
 catalog:
   # Toolchain
   '@types/node': ^24.13.3
-  '@vitest/coverage-v8': ^4.1.10
-  vitest: ^4.1.10
+  '@vitest/coverage-v8': ^4.1.11
+  vitest: ^4.1.11
 
   # Milestone 1 — Heartbeat
   #
