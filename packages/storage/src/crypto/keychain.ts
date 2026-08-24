@@ -174,3 +174,41 @@ export function writeNewPassword(input: {
     return { outcome: 'failed', failure }
   }
 }
+
+/**
+ * Removes an item.
+ *
+ * ★ **Deliberately not exported from this package**, and deliberately not on
+ * `KeyProvider` or `KeyProvisioner`. Its only caller is the connector
+ * credential store, which supplies its own bound service —
+ * [ADR-0050](../../../../docs/adr/0050-revocation-is-a-credential-domain-operation.md) §2.
+ *
+ * The asymmetry with `readPassword` is the point rather than an oversight:
+ * reading the wrong item is a bug, and deleting the wrong item is a disaster.
+ * `field-encryption-key` has no backup inside FRIDAY, and losing it takes every
+ * encrypted field in the database with it. So there is no public API in FRIDAY
+ * that accepts an arbitrary Keychain name and deletes it.
+ *
+ * @param input - The service and account naming the item.
+ * @returns Whether it was removed, was already gone, or could not be reached.
+ */
+export function deletePassword(input: {
+  service: string
+  account: string
+}): { outcome: 'deleted' | 'absent' } | { outcome: 'failed'; failure: KeychainFailure } {
+  try {
+    execFileSync(SECURITY, ['delete-generic-password', '-s', input.service, '-a', input.account], {
+      timeout: KEYCHAIN_TIMEOUT_MS,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    })
+
+    return { outcome: 'deleted' }
+  } catch (cause) {
+    const failure = failureOf(cause)
+
+    // Already gone is the outcome the caller wanted, not an error.
+    if (failure.status === ITEM_NOT_FOUND) return { outcome: 'absent' }
+
+    return { outcome: 'failed', failure }
+  }
+}
