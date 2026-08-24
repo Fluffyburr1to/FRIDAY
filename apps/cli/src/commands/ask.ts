@@ -58,6 +58,16 @@ export async function runAsk(options: AskOptions): Promise<ExitCode> {
   const { context } = options
   const { out } = context
 
+  // ★ Before anything is opened. "You did not say what you want" needs no
+  // database, no signing key, and no departments — and a command that opened
+  // all three first would answer a typo with whichever of them was missing.
+  // That is how someone ends up debugging their Keychain because they forgot
+  // the quotes.
+  if (!isAnAsk(options)) {
+    out.problem('Tell FRIDAY what you want. For example: friday ask "check my records"')
+    return EXIT.usage
+  }
+
   const opened = openContext({ config: context.config, keys: context.keys })
 
   if (!opened.ok) {
@@ -80,6 +90,15 @@ export async function runAsk(options: AskOptions): Promise<ExitCode> {
   } finally {
     opened.value.close()
   }
+}
+
+/** Whether this invocation names something to do, resume, or explain. */
+function isAnAsk(options: AskOptions): boolean {
+  return (
+    (options.utterance ?? '').trim().length > 0 ||
+    options.resume !== undefined ||
+    options.why !== undefined
+  )
 }
 
 async function conversation(input: {
@@ -122,17 +141,8 @@ async function start(
 ): Promise<ReturnType<AskSession['propose']> extends Promise<infer T> ? T : never> {
   const { out } = options.context
 
-  if (options.utterance === undefined || options.utterance.trim().length === 0) {
-    return {
-      ok: false,
-      error: {
-        code: 'VALIDATION_FAILED',
-        message: 'Tell FRIDAY what you want. For example: friday ask "check my records"',
-      },
-    }
-  }
-
-  const proposed = await session.propose(options.utterance)
+  // `isAnAsk` has already established there is one; this keeps the type honest.
+  const proposed = await session.propose(options.utterance ?? '')
   if (!proposed.ok) return proposed
 
   // ★ Printed BEFORE anything runs, every time, including when nothing in the
