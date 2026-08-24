@@ -479,6 +479,156 @@ body {
   color: var(--warn);
 }
 
+/* ── Plans ───────────────────────────────────────────────────────────────────
+ *
+ * Chapter 26 rule 6: nothing blinks, pulses, or demands. A running plan is
+ * distinguished by a colour on its rule, not by movement — the one animated
+ * element on this screen is already spent on the link indicator.
+ */
+
+.plans {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.plan {
+  border: 1px solid var(--rule);
+  border-left-width: 2px;
+}
+
+.plan--running {
+  border-left-color: var(--healthy);
+}
+
+.plan--awaiting_plan_approval,
+.plan--awaiting_approval {
+  border-left-color: var(--warn);
+}
+
+.plan--failed {
+  border-left-color: var(--critical);
+}
+
+.plan__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 0.7rem;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.plan__head:hover {
+  color: var(--healthy);
+}
+
+.plan__asked {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan__status,
+.plan__progress {
+  font-size: 0.72rem;
+  color: var(--quiet);
+  white-space: nowrap;
+}
+
+.plan__detail {
+  border-top: 1px solid var(--rule);
+  padding: 0.6rem 0.7rem;
+}
+
+.plan__rationale {
+  margin: 0 0 0.6rem;
+  color: var(--quiet);
+  font-size: 0.75rem;
+}
+
+.plan__steps {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 0.6rem;
+  font-size: 0.75rem;
+}
+
+.step__status {
+  color: var(--dim);
+}
+
+.step--completed .step__status {
+  color: var(--healthy);
+}
+
+.step--awaiting_approval .step__status {
+  color: var(--warn);
+}
+
+.step--failed .step__status {
+  color: var(--critical);
+}
+
+.why__heading {
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.why__headline {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+}
+
+.why__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.why__line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+}
+
+/*
+ * The event id, always shown. It is what makes the raw record reachable from
+ * the plain-language account, and what stops this reading as a story.
+ */
+.why__event {
+  color: var(--dim);
+  font-size: 0.68rem;
+}
+
+.why__omitted {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: var(--quiet);
+}
+
 /* ── Narrower windows ────────────────────────────────────────────────────────
  *
  * Below 1200px the three columns cannot hold their content without crushing the

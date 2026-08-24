@@ -22,15 +22,21 @@ export type {
   ProposedRun,
 } from './ask.js'
 export { createAskSession } from './ask.js'
-export type { CoreContext, EventReader, OpenedContext } from './context.js'
+export type { CoreContext, EventReader, OpenedContext, PlanReader } from './context.js'
 export { openContext } from './context.js'
 export type { AppRouter } from './router.js'
 export {
   appRouter,
   ListEventsInput,
   ListEventsOutput,
+  ListPlansInput,
+  ListPlansOutput,
   PendingApprovalsOutput,
+  PlanIdInput,
+  PlanWithStepsSchema,
   RespondInput,
+  WhyInput,
+  WhyOutput,
 } from './router.js'
 export type { SelfCheckOutcome } from './self-check.js'
 export { fatalProblem, runStartupSelfCheck } from './self-check.js'
