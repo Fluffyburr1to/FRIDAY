@@ -11,6 +11,17 @@
  *
  * See: README.md · docs/01-bible/14-connector-framework.md
  */
+// ── The contract a connector implements ─────────────────────────────────────
+export type {
+  AnyOperationMap,
+  Connector,
+  ConnectorContext,
+  ConnectorOperationMap,
+  DryRunResult,
+  OperationContext,
+} from './connector.js'
+export { operationById } from './connector.js'
+// ── The boundary its requests pass through ──────────────────────────────────
 export {
   type BlockedEgress,
   type BlockedEgressReason,
@@ -18,3 +29,10 @@ export {
   type ConnectorFetchOptions,
   createConnectorFetch,
 } from './egress.js'
+// ── The rules it cannot break by being careless ─────────────────────────────
+export {
+  CONNECTOR_STATES,
+  type ConnectorState,
+  type SupervisedConnector,
+  superviseConnector,
+} from './lifecycle.js'

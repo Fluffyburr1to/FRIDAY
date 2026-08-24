@@ -75,6 +75,20 @@ export const ERROR_CODES = [
   'EGRESS_BLOCKED',
   'CONNECTOR_UNAVAILABLE',
 
+  // Three failures of FRIDAY's own making, kept apart from the two above
+  // because those blame the provider and these blame us. A diagnostic that
+  // conflated them would send someone to read a provider's status page while
+  // the bug sat in this repository.
+  //
+  // `CONNECTOR_NOT_READY`  — used before `initialize`, or after `shutdown`.
+  // `OPERATION_NOT_DECLARED` — asked for something its manifest does not list.
+  // `CONNECTOR_FAULTED`   — the connector threw. Chapter 14 expects connectors
+  //   to be the component most likely written quickly, by an AI, or by a third
+  //   party, so one misbehaving must not take the kernel down with it.
+  'CONNECTOR_NOT_READY',
+  'OPERATION_NOT_DECLARED',
+  'CONNECTOR_FAULTED',
+
   // ── Authorization ───────────────────────────────────────────────────────
   //
   // `NOT_AUTHORIZED` and `APPROVAL_REQUIRED` are distinct on purpose. The
