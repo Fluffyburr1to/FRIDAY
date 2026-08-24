@@ -68,8 +68,12 @@ export {
 export {
   backoffDelayMs,
   DEFAULT_RETRY_POLICY,
+  isRetryableStatus,
   isTransient,
   mayRepeat,
+  nextRetryDelay,
+  type RetryDelay,
   type RetryPolicy,
+  retryAfterMs,
   shouldRetry,
 } from './retry.js'
