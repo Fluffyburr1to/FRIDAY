@@ -1,10 +1,13 @@
 import {
   backoffDelayMs,
   DEFAULT_RETRY_POLICY,
+  isRetryableStatus,
   isTransient,
   mayRepeat,
+  nextRetryDelay,
   type OperationContext,
   type RetryPolicy,
+  retryAfterMs,
   shouldRetry,
 } from '@friday/connector-sdk'
 import type { ConnectorOperation, CorrelationId, ErrorCode, FridayError } from '@friday/contracts'
@@ -130,7 +133,7 @@ describe('the decision as a whole', () => {
 })
 
 describe('how long to wait', () => {
-  const policy: RetryPolicy = { maxAttempts: 10, baseDelayMs: 1_000, maxDelayMs: 30_000 }
+  const policy: RetryPolicy = { maxAttempts: 10, baseMs: 1_000, maxMs: 30_000 }
   const highest = () => 0.999_999_9
   const lowest = () => 0
 
@@ -162,8 +165,126 @@ describe('how long to wait', () => {
       for (const random of [lowest, () => 0.5, highest]) {
         const delay = backoffDelayMs(attempt, policy, random)
         expect(delay).toBeGreaterThanOrEqual(0)
-        expect(delay).toBeLessThanOrEqual(policy.maxDelayMs)
+        expect(delay).toBeLessThanOrEqual(policy.maxMs)
       }
     }
+  })
+})
+
+describe('which HTTP answers are worth trying again', () => {
+  it.each([408, 429, 500, 502, 503, 504])('retries %i', (status) => {
+    expect(isRetryableStatus(status)).toBe(true)
+  })
+
+  it.each([200, 201, 301, 400, 401, 404, 409, 422])('does not retry %i', (status) => {
+    expect(isRetryableStatus(status)).toBe(false)
+  })
+
+  it('does not retry a 403, even though some providers throttle with one', () => {
+    // ★ A 403 is far more often a permission problem, and hammering a service
+    // that is refusing on authorisation grounds is how an application gets
+    // banned rather than throttled.
+    expect(isRetryableStatus(403)).toBe(false)
+  })
+
+  it('is separate from the error-based decision, because a 503 is not an error', () => {
+    // The boundary returns a 503 as an ordinary answer — deciding what a
+    // status means is the connector's job, not the transport's.
+    expect(isTransient(fail('CONNECTOR_UNAVAILABLE'))).toBe(true)
+    expect(isRetryableStatus(503)).toBe(true)
+  })
+})
+
+describe('what the provider asked for', () => {
+  function headers(value?: string): Headers {
+    return new Headers(value === undefined ? {} : { 'retry-after': value })
+  }
+
+  it('reads the seconds form', () => {
+    expect(retryAfterMs(headers('120'), 0)).toBe(120_000)
+  })
+
+  it('reads zero as no wait at all', () => {
+    expect(retryAfterMs(headers('0'), 0)).toBe(0)
+  })
+
+  it('reads the date form, relative to now', () => {
+    const at = Date.parse('Wed, 21 Oct 2015 07:28:00 GMT')
+
+    expect(retryAfterMs(headers('Wed, 21 Oct 2015 07:28:00 GMT'), at - 30_000)).toBe(30_000)
+  })
+
+  it('treats a date already past as no wait', () => {
+    const at = Date.parse('Wed, 21 Oct 2015 07:28:00 GMT')
+
+    expect(retryAfterMs(headers('Wed, 21 Oct 2015 07:28:00 GMT'), at + 60_000)).toBe(0)
+  })
+
+  it('reports nothing when the header is absent or unusable', () => {
+    for (const value of [undefined, '', '   ', 'soon', 'tomorrow']) {
+      expect(retryAfterMs(headers(value), 0), `"${value}"`).toBeNull()
+    }
+  })
+
+  it('does not let a malformed header mean "retry immediately"', () => {
+    // ★ `Date.parse` reads "-5" as a date in 2001 and "1.5" as January 2001.
+    // Both are past, so a lenient parser resolves them to a zero wait — the
+    // most damaging possible reading of an instruction to slow down.
+    for (const value of ['-5', '1.5', '5 minutes', '2015-10-21']) {
+      expect(retryAfterMs(headers(value), 0), `"${value}"`).toBeNull()
+    }
+  })
+
+  it('does not accept a date format the specification does not require', () => {
+    // The obsolete RFC 850 and asctime forms fall back to our own backoff
+    // rather than being guessed at. Safe direction to be wrong in.
+    expect(retryAfterMs(headers('Wednesday, 21-Oct-15 07:28:00 GMT'), 0)).toBeNull()
+    expect(retryAfterMs(headers('Wed Oct 21 07:28:00 2015'), 0)).toBeNull()
+  })
+})
+
+describe('choosing the wait', () => {
+  const policy: RetryPolicy = { maxAttempts: 5, baseMs: 1_000, maxMs: 30_000 }
+
+  it('uses our own backoff when the provider said nothing', () => {
+    const delay = nextRetryDelay({ attempt: 1, policy, random: () => 0.5 })
+
+    expect(delay).toEqual({ kind: 'wait', ms: 500 })
+  })
+
+  it('obeys the provider over our own arithmetic', () => {
+    // ★ Our backoff is a guess about a system we cannot see. Retry-After is
+    // that system telling us the answer.
+    const delay = nextRetryDelay({ attempt: 1, policy, retryAfterMs: 12_000, random: () => 0.5 })
+
+    expect(delay).toEqual({ kind: 'wait', ms: 12_000 })
+  })
+
+  it('obeys it even when it is longer than our own backoff would be', () => {
+    const delay = nextRetryDelay({ attempt: 1, policy, retryAfterMs: 25_000 })
+
+    expect(delay).toEqual({ kind: 'wait', ms: 25_000 })
+  })
+
+  it('gives up rather than waiting less than it was told', () => {
+    // ★ Retrying earlier than instructed is what turns throttling into a ban,
+    // and sleeping for the hour asked would leave a plan silently stalled.
+    // Stopping, and recording what was asked, is the only honest third option.
+    const delay = nextRetryDelay({ attempt: 1, policy, retryAfterMs: 3_600_000 })
+
+    expect(delay).toEqual({ kind: 'give_up', askedForMs: 3_600_000 })
+  })
+
+  it('accepts a wait exactly at the ceiling', () => {
+    expect(nextRetryDelay({ attempt: 1, policy, retryAfterMs: policy.maxMs })).toEqual({
+      kind: 'wait',
+      ms: policy.maxMs,
+    })
+  })
+
+  it('falls back to backoff when the header was unusable', () => {
+    const delay = nextRetryDelay({ attempt: 1, policy, retryAfterMs: null, random: () => 0 })
+
+    expect(delay).toEqual({ kind: 'wait', ms: 0 })
   })
 })
