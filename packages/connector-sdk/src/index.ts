@@ -36,3 +36,11 @@ export {
   type SupervisedConnector,
   superviseConnector,
 } from './lifecycle.js'
+// ── Reliability, implemented once rather than per connector ─────────────────
+export {
+  createRateLimiter,
+  type RateLimitDecision,
+  type RateLimiter,
+  type RateLimits,
+  rateLimiterFor,
+} from './rate-limit.js'
