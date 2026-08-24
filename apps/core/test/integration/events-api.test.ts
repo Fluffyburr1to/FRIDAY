@@ -116,7 +116,7 @@ describe('the events API', () => {
       const page = await caller.events.list({ limit: 10 })
 
       expect(page.events).toHaveLength(3)
-      expect(page.events.map((event) => event.payload['index'])).toEqual([2, 1, 0])
+      expect(page.events.map((event) => event.payload.index)).toEqual([2, 1, 0])
 
       // seq is the ordering authority, not the timestamp. Asserting on it
       // rather than on recordedAt keeps this test honest on a fast machine

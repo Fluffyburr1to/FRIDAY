@@ -15,6 +15,13 @@ import { startServer } from './server.js'
  * See: README.md · docs/01-bible/05-backend-architecture.md
  */
 
+export type {
+  AskOutcome,
+  AskSession,
+  AskSessionOptions,
+  ProposedRun,
+} from './ask.js'
+export { createAskSession } from './ask.js'
 export type { CoreContext, EventReader, OpenedContext } from './context.js'
 export { openContext } from './context.js'
 export type { AppRouter } from './router.js'

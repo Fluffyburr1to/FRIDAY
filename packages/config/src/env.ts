@@ -27,6 +27,7 @@ export const ENV_VARIABLES = [
   'FRIDAY_EVENTS_DB_PATH',
   'FRIDAY_CACHE_DB_PATH',
   'FRIDAY_POLICIES_DIR',
+  'FRIDAY_DEPARTMENTS_DIR',
   'FRIDAY_HOST',
   'FRIDAY_PORT',
   'FRIDAY_LOG_LEVEL',
@@ -123,6 +124,7 @@ export function readEnvironment(env: EnvSource = process.env): DeepPartialConfig
       eventsDb: str(env, 'FRIDAY_EVENTS_DB_PATH'),
       cacheDb: str(env, 'FRIDAY_CACHE_DB_PATH'),
       policiesDir: str(env, 'FRIDAY_POLICIES_DIR'),
+      departmentsDir: str(env, 'FRIDAY_DEPARTMENTS_DIR'),
     }),
     server: prune({ host: str(env, 'FRIDAY_HOST'), port: int(env, 'FRIDAY_PORT') }),
     logging: prune({

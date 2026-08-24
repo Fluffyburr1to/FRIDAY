@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "friday-core — the kernel service and the API the dashboard reads.",
+  "description": "friday-core \u2014 the kernel service and the API the dashboard reads.",
   "license": "UNLICENSED",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -24,12 +24,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@friday/chief-of-staff": "workspace:*",
     "@friday/clerk": "workspace:*",
     "@friday/config": "workspace:*",
     "@friday/contracts": "workspace:*",
     "@friday/diagnostics": "workspace:*",
     "@friday/guardian": "workspace:*",
     "@friday/kernel": "workspace:*",
+    "@friday/model-router": "workspace:*",
+    "@friday/operations": "workspace:*",
     "@friday/storage": "workspace:*",
     "@trpc/server": "catalog:",
     "zod": "catalog:"

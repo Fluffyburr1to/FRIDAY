@@ -77,12 +77,33 @@ export interface ExecutableStep {
   readonly onFailure: 'retry' | 'skip' | 'abort' | 'ask_user' | 'alternate'
 }
 
+/**
+ * Asking the Guardian.
+ *
+ * ★ Asynchronous, and that is not incidental. The real Guardian does not just
+ * answer — it **records** the answer and, when the answer is "ask the owner",
+ * raises the approval. Both are writes. A synchronous port would have forced
+ * the composition either to skip the recording or to build a second, quieter
+ * path to a decision, and a decision nobody wrote down is the one thing
+ * authorization cannot have.
+ */
 export type Authorize = (input: {
   actor: Actor
   principalId: PrincipalId
   action: string
   resource: string
-}) => Result<GuardianDecision, FridayError>
+
+  /**
+   * Which step is asking.
+   *
+   * ★ Carried because an agent must present a capability to act at all, and a
+   * capability is *evidence of which step* rather than permission to act — the
+   * thing that ties an action to work the owner asked for. Without the step id
+   * the composition could only mint a capability that named no step, which is
+   * precisely the untraceable state the requirement exists to prevent.
+   */
+  stepId: string
+}) => Promise<Result<GuardianDecision, FridayError>>
 
 /** Performs the work, once something has proved it may be performed. */
 export type PerformCapability = (
@@ -110,7 +131,7 @@ export interface Executor {
    *
    * ★ The only source of an `Authorised` in the system.
    */
-  authorise(step: ExecutableStep): AuthorisationOutcome
+  authorise(step: ExecutableStep): Promise<AuthorisationOutcome>
 
   /**
    * Runs one step that has been authorised.
@@ -134,7 +155,7 @@ export function createExecutor(options: ExecutorOptions): Executor {
   const { registry, authorize, perform, actor, principalId } = options
 
   return {
-    authorise(step) {
+    async authorise(step) {
       // Routing first: it says WHO would do this. It grants nothing, and the
       // value it returns cannot be executed with.
       const route = registry.route(step.actionType)
@@ -158,11 +179,12 @@ export function createExecutor(options: ExecutorOptions): Executor {
       // carried across steps, and nothing consults a previous answer. A
       // resumed plan therefore runs against current rules, grants, and
       // expiries by construction rather than by remembering to refresh.
-      const decided = authorize({
+      const decided = await authorize({
         actor,
         principalId,
         action: step.actionType,
         resource: step.resource,
+        stepId: step.id,
       })
 
       if (!decided.ok) {

@@ -51,6 +51,7 @@ export {
   type PlanEvent,
   planApprovalReason,
 } from './machine.js'
+export { loadDepartments } from './manifests.js'
 export {
   fromStored,
   type StoredProgress,

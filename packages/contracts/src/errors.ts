@@ -40,6 +40,14 @@ export const ERROR_CODES = [
   'CONFIG_UNREADABLE',
 
   // ── Dispatch ────────────────────────────────────────────────────────────
+  //
+  // `NOT_IMPLEMENTED` is its own code because "declared but not built yet" is
+  // a different fact from both a refusal and a malfunction. A department
+  // manifest is a promise about what FRIDAY can do; when the code behind one
+  // is missing, she must say so in those words rather than fail in a way that
+  // reads as broken — or, far worse, report success for work that did not
+  // happen.
+  'NOT_IMPLEMENTED',
   'SUBSCRIBER_FAILED',
   'TIMEOUT',
   'SHUTTING_DOWN',
