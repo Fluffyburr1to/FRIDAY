@@ -31,6 +31,16 @@ export type {
   OperationContext,
 } from './connector.js'
 export { operationById } from './connector.js'
+// ── Credentials: asked for, never held ──────────────────────────────────────
+export {
+  type CredentialBroker,
+  type CredentialRequest,
+  checkRequestedScopes,
+  credentialRequestFor,
+  type IssuedCredential,
+  isCredentialLive,
+  issuedCredential,
+} from './credentials.js'
 // ── The boundary its requests pass through ──────────────────────────────────
 export {
   type BlockedEgress,

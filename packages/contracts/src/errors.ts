@@ -91,6 +91,17 @@ export const ERROR_CODES = [
   // it is not one — retrying it would be reviving work already dropped.
   'CANCELLED',
 
+  // ── Credentials ─────────────────────────────────────────────────────────
+  //
+  // `SCOPE_NOT_DECLARED` is a refusal FRIDAY makes on purpose: a connector
+  // asked for permission its own manifest does not list. It is kept apart
+  // from `CREDENTIAL_UNAVAILABLE` — no usable credential exists — because the
+  // first is a connector overreaching and the second is setup that is not
+  // finished. One is a security event and the other is a chore.
+  'SCOPE_NOT_DECLARED',
+  'CREDENTIAL_UNAVAILABLE',
+  'CREDENTIAL_REVOKED',
+
   'CONNECTOR_NOT_READY',
   'OPERATION_NOT_DECLARED',
   'CONNECTOR_FAULTED',
