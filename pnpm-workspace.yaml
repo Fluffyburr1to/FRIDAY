@@ -37,7 +37,7 @@ catalog:
   # package" threshold — the failure mode of a hand-rolled one is a config file
   # that parses to something subtly different from what it says.
   # See docs/adr/0022.
-  smol-toml: ^1.7.1
+  smol-toml: ^1.8.0
 
   # storage ONLY. Cold-tier archives are Parquet so they stay queryable without
   # FRIDAY (Chapter 10). Two packages total — the writer depends only on the
@@ -50,13 +50,13 @@ catalog:
   # earlier — which pnpm then wanted to add a minimum-release-age exclusion
   # for. A brand-new release is precisely what that policy exists to keep out,
   # and silently excluding a package defeats it.
-  hyparquet: 1.27.1
-  'hyparquet-writer': ^0.16.5
+  hyparquet: 1.29.1
+  'hyparquet-writer': ^0.16.6
 
   # telemetry ONLY. Chapter 22's rotation rules — daily, 100 MB per file, 30
   # days, and a 1 GB ceiling on the directory — are all this package's options.
   # Chosen over pino-roll; the reasoning is in docs/adr/0023.
-  rotating-file-stream: ^3.2.9
+  rotating-file-stream: ^3.2.10
 
   # Milestone 2 — Conscience: the thin dashboard
   #
@@ -88,7 +88,7 @@ catalog:
   # the rule it exists to enforce: server data is never copied into client
   # state, because copying is how a screen ends up showing a stale approval
   # that was already granted.
-  '@tanstack/react-query': ^5.101.4
+  '@tanstack/react-query': ^5.102.3
 
   # apps/web build tooling. Chapter 06 rejects the meta-frameworks — there is
   # no SEO and no edge to deploy to, the server is your Mac — so Vite is the
