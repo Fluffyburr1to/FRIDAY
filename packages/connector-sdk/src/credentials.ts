@@ -1,4 +1,5 @@
 import {
+  type Actor,
   type ConnectorManifest,
   err,
   type FridayError,
@@ -71,8 +72,16 @@ export interface IssuedCredential {
   /** When this stops working. Short by design — minutes, not days. */
   readonly expiresAt: number
 
-  /** The secret. Deliberately awkward to reach by accident. */
-  reveal(): string
+  /**
+   * The secret, while the lease holds.
+   *
+   * ★ Returns a `Result` rather than the value, because a lease that has run
+   * out is an ordinary outcome — time passing is not a bug — and because the
+   * check has to be *here*. `expiresAt` sitting on the object as a number that
+   * nothing consults is decoration: every caller would have to remember to
+   * look, and the one that forgot would be the one that mattered.
+   */
+  reveal(): Result<string, FridayError>
 
   toString(): string
   toJSON(): string
@@ -88,7 +97,25 @@ export interface CredentialBroker {
    * Central and immediate, per Chapter 14: revoking here means every connector
    * loses access at once, rather than each being asked nicely.
    */
-  revoke(connectorId: string): Promise<Result<void, FridayError>>
+  revoke(request: RevocationRequest): Promise<Result<void, FridayError>>
+}
+
+/**
+ * Withdrawing a connector's access, and who is asking.
+ *
+ * ★ `requestedBy` is required and has no default. The broker cannot assume the
+ * owner asked — FRIDAY revoking something herself, after a failed health
+ * policy or a suspected compromise, is a different fact and the audit trail
+ * must be able to say which happened.
+ */
+export interface RevocationRequest {
+  readonly connectorId: string
+
+  /** Who actually requested this. Never inferred. */
+  readonly requestedBy: Actor
+
+  /** Plain language, shown back to the owner. */
+  readonly reason: string
 }
 
 const REDACTED = '[redacted credential]'
@@ -104,19 +131,44 @@ export function issuedCredential(input: {
   readonly scopes: readonly string[]
   readonly expiresAt: number
   readonly token: string
+
+  /** Injected, so the lease can be tested without waiting for one. */
+  readonly now: () => number
 }): IssuedCredential {
   // Closed over rather than stored as a property, so it cannot be reached by
   // spreading, enumerating, or serialising the object.
   const secret = input.token
 
-  return {
+  const credential: IssuedCredential = {
     connectorId: input.connectorId,
     scopes: [...input.scopes],
     expiresAt: input.expiresAt,
-    reveal: () => secret,
+
+    reveal: () => {
+      // ★ Checked at the moment of use, not at issuance — at issuance it is
+      // always live. Expiry exactly at `expiresAt` counts as expired: a lease
+      // that is "good for fifteen minutes" is not good at the fifteenth
+      // minute, and an inclusive boundary here is the kind of off-by-one that
+      // only ever shows up as a credential working slightly longer than it
+      // was meant to.
+      if (!isCredentialLive(credential, input.now())) {
+        return err(
+          fridayError({
+            code: 'CREDENTIAL_EXPIRED',
+            message: `The key for ${input.connectorId} has expired. FRIDAY will ask for another.`,
+            detail: { connectorId: input.connectorId, expiresAt: input.expiresAt },
+          }),
+        )
+      }
+
+      return ok(secret)
+    },
+
     toString: () => REDACTED,
     toJSON: () => REDACTED,
   }
+
+  return credential
 }
 
 /**

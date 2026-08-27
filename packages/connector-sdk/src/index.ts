@@ -47,6 +47,7 @@ export {
   type IssuedCredential,
   isCredentialLive,
   issuedCredential,
+  type RevocationRequest,
 } from './credentials.js'
 // ── The boundary its requests pass through ──────────────────────────────────
 export {

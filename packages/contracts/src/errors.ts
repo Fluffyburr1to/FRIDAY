@@ -102,6 +102,12 @@ export const ERROR_CODES = [
   'CREDENTIAL_UNAVAILABLE',
   'CREDENTIAL_REVOKED',
 
+  // ★ Distinct from `CREDENTIAL_REVOKED`: a lease that ran out is not a
+  // decision anyone made. Asking again is the correct response to this one and
+  // the wrong response to the other, so a caller must be able to tell them
+  // apart without reading a message.
+  'CREDENTIAL_EXPIRED',
+
   'CONNECTOR_NOT_READY',
   'OPERATION_NOT_DECLARED',
   'CONNECTOR_FAULTED',

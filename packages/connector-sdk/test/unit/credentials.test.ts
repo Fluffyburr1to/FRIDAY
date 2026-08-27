@@ -12,7 +12,7 @@ import {
   isErr,
   isOk,
 } from '@friday/contracts'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const MANIFEST: ConnectorManifest = ConnectorManifestSchema.parse({
   id: 'example-notes',
@@ -61,14 +61,89 @@ function request(overrides: Partial<CredentialRequest> = {}): CredentialRequest 
 
 const SECRET = 'ya29.super-secret-token-value'
 
+let clock = 0
+
 function credential(expiresAt = 60_000) {
   return issuedCredential({
     connectorId: 'example-notes',
     scopes: ['notes.read'],
     expiresAt,
     token: SECRET,
+    now: () => clock,
   })
 }
+
+beforeEach(() => {
+  clock = 0
+})
+
+describe('the lease is checked when the secret is used', () => {
+  it('hands over the secret while the lease holds', () => {
+    const revealed = credential(60_000).reveal()
+
+    expect(isOk(revealed) && revealed.value).toBe(SECRET)
+  })
+
+  it('refuses one second before expiry, and gives it up to the last moment', () => {
+    const held = credential(60_000)
+
+    clock = 59_999
+    expect(isOk(held.reveal())).toBe(true)
+  })
+
+  it('★ counts expiry exactly at the current time as expired', () => {
+    // A lease good for fifteen minutes is not good AT the fifteenth minute.
+    // An inclusive boundary here is the off-by-one that only ever shows up as
+    // a credential working slightly longer than it was meant to.
+    const held = credential(60_000)
+
+    clock = 60_000
+
+    const revealed = held.reveal()
+    expect(isErr(revealed)).toBe(true)
+    if (isErr(revealed)) expect(revealed.error.code).toBe('CREDENTIAL_EXPIRED')
+  })
+
+  it('refuses after expiry', () => {
+    const held = credential(60_000)
+
+    clock = 60_001
+
+    expect(isErr(held.reveal())).toBe(true)
+  })
+
+  it('never materialises the secret once expired', () => {
+    // ★ The whole point: an expired credential must not return the value at
+    // all, not merely report alongside it that it is stale.
+    const held = credential(60_000)
+    clock = 120_000
+
+    const revealed = held.reveal()
+
+    expect(JSON.stringify(revealed)).not.toContain(SECRET)
+  })
+
+  it('names the connector, so a diagnostic says which one went stale', () => {
+    const held = credential(60_000)
+    clock = 120_000
+
+    const revealed = held.reveal()
+    if (isErr(revealed)) {
+      expect(revealed.error.detail).toMatchObject({ connectorId: 'example-notes' })
+    }
+  })
+
+  it('does not renew itself by being asked again', () => {
+    // No refresh semantics. An expired lease stays unavailable until some
+    // explicit future operation establishes a new one.
+    const held = credential(60_000)
+    clock = 60_000
+
+    expect(isErr(held.reveal())).toBe(true)
+    expect(isErr(held.reveal())).toBe(true)
+    expect(held.expiresAt).toBe(60_000)
+  })
+})
 
 describe('a credential does not leak by being handled', () => {
   it('redacts when interpolated into a string', () => {
@@ -97,7 +172,8 @@ describe('a credential does not leak by being handled', () => {
 
   it('gives the secret only to something that asks for it by name', () => {
     // `reveal` is one greppable word, so every real use is visible in review.
-    expect(credential().reveal()).toBe(SECRET)
+    const revealed = credential().reveal()
+    expect(isOk(revealed) && revealed.value).toBe(SECRET)
   })
 
   it('still says which connector and scopes it is for', () => {
