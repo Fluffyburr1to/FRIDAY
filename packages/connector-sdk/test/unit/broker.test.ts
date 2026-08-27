@@ -3,9 +3,11 @@ import {
   type CredentialSource,
   createCredentialBroker,
   DEFAULT_LEASE_MS,
+  type RevocationRequest,
   recordingObserver,
 } from '@friday/connector-sdk'
 import {
+  type Actor,
   type ConnectorManifest,
   ConnectorManifestSchema,
   createEventRegistry,
@@ -75,6 +77,12 @@ function request(overrides: Partial<CredentialRequest> = {}): CredentialRequest 
   }
 }
 
+const OWNER: Actor = { type: 'user', id: 'usr_owner' }
+
+function revocation(connectorId: string, requestedBy: Actor = OWNER): RevocationRequest {
+  return { connectorId, requestedBy, reason: 'You disconnected it.' }
+}
+
 beforeEach(() => {
   clock = 1_000
   recorded = []
@@ -139,7 +147,8 @@ describe('what it hands over', () => {
 
     expect(isOk(result)).toBe(true)
     if (isOk(result)) {
-      expect(result.value.reveal()).toBe(SECRET)
+      const revealed = result.value.reveal()
+      expect(isOk(revealed) && revealed.value).toBe(SECRET)
       expect(result.value.scopes).toEqual(['notes.read'])
     }
   })
@@ -148,6 +157,31 @@ describe('what it hands over', () => {
     const result = await broker().issue(request())
 
     if (isOk(result)) expect(result.value.expiresAt).toBe(clock + DEFAULT_LEASE_MS)
+  })
+
+  it('★ stops working once the lease it was given runs out', async () => {
+    // ★ The credential must watch the SAME clock that set its expiry. Wired to
+    // a different one it would outlive its own lease, and every test that only
+    // reads `expiresAt` would still pass — the number would be right and the
+    // behaviour wrong.
+    const result = await broker().issue(request())
+    expect(isOk(result)).toBe(true)
+    if (!isOk(result)) return
+
+    clock += DEFAULT_LEASE_MS
+
+    const revealed = result.value.reveal()
+    expect(isErr(revealed)).toBe(true)
+    if (isErr(revealed)) expect(revealed.error.code).toBe('CREDENTIAL_EXPIRED')
+  })
+
+  it('still works a moment before the lease runs out', async () => {
+    const result = await broker().issue(request())
+    if (!isOk(result)) throw new Error('should have issued')
+
+    clock += DEFAULT_LEASE_MS - 1
+
+    expect(isOk(result.value.reveal())).toBe(true)
   })
 
   it('hands over something that redacts itself', async () => {
@@ -176,14 +210,14 @@ describe('what it hands over', () => {
 
 describe('revoking', () => {
   it('withdraws through the store', async () => {
-    expect(isOk(await broker().revoke('example-notes'))).toBe(true)
+    expect(isOk(await broker().revoke(revocation('example-notes')))).toBe(true)
     expect(source.revoke).toHaveBeenCalledWith('example-notes')
   })
 
   it('revokes a connector FRIDAY no longer declares', async () => {
     // ★ Refusing to withdraw access because the thing holding it is no longer
     // declared would be exactly backwards.
-    const result = await broker().revoke('a-connector-since-removed')
+    const result = await broker().revoke(revocation('a-connector-since-removed'))
 
     expect(isOk(result)).toBe(true)
     expect(source.revoke).toHaveBeenCalledWith('a-connector-since-removed')
@@ -195,10 +229,52 @@ describe('revoking', () => {
       err(fridayError({ code: 'CREDENTIAL_UNAVAILABLE', message: 'keychain locked' })),
     )
 
-    const result = await broker().revoke('example-notes')
+    const result = await broker().revoke(revocation('example-notes'))
 
     expect(isErr(result)).toBe(true)
     expect(recorded).toEqual([])
+  })
+})
+
+describe('who asked', () => {
+  const FRIDAY: Actor = { type: 'system', id: 'system:diagnostics' }
+
+  it('records the actor the caller supplied, not an assumption', async () => {
+    // ★ An earlier version hardcoded the owner, so every revocation claimed
+    // the owner had asked — including the ones FRIDAY makes herself. A field
+    // that is true only by coincidence is worse than no field, because it
+    // reads as evidence.
+    await broker().revoke(revocation('example-notes', FRIDAY))
+
+    const [event] = recorded
+    expect(event?.payload).toMatchObject({ requestedBy: FRIDAY })
+  })
+
+  it('stamps the same actor on the event itself', async () => {
+    // The audit spine reads the event's own actor. A revocation attributed to
+    // the system when the owner asked is a wrong answer to "who did this?".
+    await broker().revoke(revocation('example-notes', FRIDAY))
+
+    expect(recorded[0]?.actor).toEqual(FRIDAY)
+  })
+
+  it('records the owner when the owner asked', async () => {
+    await broker().revoke(revocation('example-notes', OWNER))
+
+    expect(recorded[0]?.actor).toEqual(OWNER)
+    expect(recorded[0]?.payload).toMatchObject({ requestedBy: OWNER })
+  })
+
+  it('carries the reason the caller gave, not a canned one', async () => {
+    await broker().revoke({
+      connectorId: 'example-notes',
+      requestedBy: FRIDAY,
+      reason: 'Its certificate stopped verifying.',
+    })
+
+    expect(recorded[0]?.payload).toMatchObject({
+      reason: 'Its certificate stopped verifying.',
+    })
   })
 })
 
@@ -220,24 +296,24 @@ describe('what reaches the record', () => {
 
   it('never records the secret', async () => {
     await broker().issue(request())
-    await broker().revoke('example-notes')
+    await broker().revoke(revocation('example-notes'))
 
     expect(JSON.stringify(recorded)).not.toContain(SECRET)
   })
 
   it('records a revocation', async () => {
-    await broker().revoke('example-notes')
+    await broker().revoke(revocation('example-notes'))
 
     const [event] = recorded
     expect(event?.type).toBe('credential.revoked')
-    expect(event?.payload).toMatchObject({ connectorId: 'example-notes', requestedBy: 'owner' })
+    expect(event?.payload).toMatchObject({ connectorId: 'example-notes', requestedBy: OWNER })
   })
 
   it('produces events the log would accept', async () => {
     const registry = registerConnectorEventTypes(createEventRegistry())
 
     await broker().issue(request())
-    await broker().revoke('example-notes')
+    await broker().revoke(revocation('example-notes'))
 
     expect(recorded).toHaveLength(2)
     for (const event of recorded) {

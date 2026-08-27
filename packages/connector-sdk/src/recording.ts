@@ -165,13 +165,18 @@ export function recordingObserver(
     },
 
     onRevoked: (revoked) => {
-      sink.record(
-        event('credential.revoked', {
+      // ★ The revoking actor is stamped on the event itself, not only in the
+      // payload — the audit spine reads the event's own `actor`, and a
+      // revocation attributed to the system when the owner asked (or the
+      // reverse) is a wrong answer to "who disconnected this?".
+      sink.record({
+        ...event('credential.revoked', {
           connectorId: revoked.connectorId,
           requestedBy: revoked.requestedBy,
           reason: revoked.reason,
         }),
-      )
+        actor: revoked.requestedBy,
+      })
     },
   }
 }

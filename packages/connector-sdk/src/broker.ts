@@ -1,4 +1,5 @@
 import {
+  type Actor,
   type ConnectorManifest,
   err,
   type FridayError,
@@ -12,6 +13,7 @@ import {
   checkRequestedScopes,
   type IssuedCredential,
   issuedCredential,
+  type RevocationRequest,
 } from './credentials.js'
 
 /**
@@ -65,7 +67,7 @@ export interface CredentialObserver {
   readonly onRevoked?:
     | ((event: {
         readonly connectorId: string
-        readonly requestedBy: 'owner' | 'system'
+        readonly requestedBy: Actor
         readonly reason: string
       }) => void)
     | undefined
@@ -150,6 +152,11 @@ export function createCredentialBroker(options: BrokerOptions): CredentialBroker
         scopes: scopes.value,
         expiresAt,
         token: secret.value,
+
+        // ★ The broker's own clock, so the lease is checked against the same
+        // time that set it. A credential holding a different clock could
+        // outlive its own expiry.
+        now: options.now,
       })
 
       // ★ Recorded with the operation, so the trail says WHY a credential was
@@ -166,17 +173,20 @@ export function createCredentialBroker(options: BrokerOptions): CredentialBroker
       return Promise.resolve(ok(credential))
     },
 
-    revoke(connectorId: string): Promise<Result<void, FridayError>> {
+    revoke(request: RevocationRequest): Promise<Result<void, FridayError>> {
       // ★ Not gated on the manifest. A connector that has been removed from
       // FRIDAY must still be revocable — refusing to withdraw access because
       // the thing holding it is no longer declared would be exactly backwards.
-      const revoked = options.source.revoke(connectorId)
+      const revoked = options.source.revoke(request.connectorId)
       if (!revoked.ok) return Promise.resolve(revoked)
 
+      // ★ The actor comes from the caller and is never assumed. An earlier
+      // version hardcoded the owner here, which would have put a claim in the
+      // audit trail that was true only by coincidence.
       options.observer?.onRevoked?.({
-        connectorId,
-        requestedBy: 'owner',
-        reason: 'You disconnected it.',
+        connectorId: request.connectorId,
+        requestedBy: request.requestedBy,
+        reason: request.reason,
       })
 
       return Promise.resolve(ok(undefined))

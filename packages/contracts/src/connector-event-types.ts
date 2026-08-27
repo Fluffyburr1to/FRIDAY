@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ActorSchema } from './actor.js'
 import type { EventRegistry, EventTypeDefinition } from './event-registry.js'
 
 /**
@@ -53,8 +54,15 @@ export const CredentialIssuedPayloadSchema = z.object({
 export const CredentialRevokedPayloadSchema = z.object({
   connectorId: ConnectorIdSchema,
 
-  /** Whether the owner did this, or FRIDAY did it on their behalf. */
-  requestedBy: z.enum(['owner', 'system']),
+  /**
+   * ★ Who actually asked, as an actor rather than a category.
+   *
+   * An earlier version hardcoded `'owner'`, which meant every revocation
+   * claimed the owner had asked — including the ones FRIDAY would make
+   * herself. A field that can only tell the truth by coincidence is worse
+   * than no field, because it reads as evidence.
+   */
+  requestedBy: ActorSchema,
   reason: z.string().min(1).max(512),
 })
 
