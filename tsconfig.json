@@ -23,6 +23,7 @@
   "references": [
     { "path": "packages/contracts" },
     { "path": "packages/connector-sdk" },
+    { "path": "connectors/open-meteo" },
     { "path": "packages/config" },
     { "path": "packages/telemetry" },
     { "path": "packages/storage" },

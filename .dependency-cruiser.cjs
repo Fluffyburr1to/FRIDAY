@@ -282,10 +282,15 @@ module.exports = {
         'Connectors are the component most likely to be written quickly, by an AI, or by ' +
         'a third party — and they are the only ones with network access. They may import ' +
         '@friday/connector-sdk and @friday/contracts. Nothing else.',
-      from: { path: '^connectors/' },
+      // ★ `$1` is the connector's own directory, captured above. Without this
+      // back-reference the rule forbade a connector importing its OWN files,
+      // which made every connector a single file by accident rather than by
+      // design — found by the first connector that needed two. Another
+      // connector's internals stay forbidden, which is what the rule is for.
+      from: { path: '^connectors/([^/]+)/' },
       to: {
         path: '^(apps|packages|departments|connectors)/',
-        pathNot: '^packages/(connector-sdk|contracts)/',
+        pathNot: '^(packages/(connector-sdk|contracts)|connectors/$1)/',
       },
     },
 

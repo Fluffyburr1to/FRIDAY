@@ -196,6 +196,59 @@ describe('who may reach the network', () => {
   })
 })
 
+describe('connectors-import-only-sdk-and-contracts', () => {
+  const r = rule('connectors-import-only-sdk-and-contracts')
+
+  /** Resolves the rule's back-reference the way dependency-cruiser does. */
+  function exemptFor(connector: string): RegExp {
+    return new RegExp((r.to.pathNot as string).replace('$1', connector))
+  }
+
+  it('lets a connector import its own files', () => {
+    // ★ Without the back-reference this rule forbade a connector importing
+    // ITSELF, which made every connector one file by accident. Found by the
+    // first one that needed two.
+    const exempt = exemptFor('open-meteo')
+
+    expect('connectors/open-meteo/src/manifest.ts').toMatch(exempt)
+    expect('connectors/open-meteo/src/disclosure.ts').toMatch(exempt)
+  })
+
+  it('still forbids reaching into another connector', () => {
+    const exempt = exemptFor('open-meteo')
+
+    expect('connectors/some-other/src/index.ts').not.toMatch(exempt)
+    expect('connectors/open-meteo-evil/src/index.ts').not.toMatch(exempt)
+  })
+
+  it('still permits exactly the two packages it always did', () => {
+    const exempt = exemptFor('open-meteo')
+
+    expect('packages/connector-sdk/src/index.ts').toMatch(exempt)
+    expect('packages/contracts/src/index.ts').toMatch(exempt)
+  })
+
+  it('still forbids every other package', () => {
+    const exempt = exemptFor('open-meteo')
+
+    for (const path of [
+      'packages/storage/src/index.ts',
+      'packages/kernel/src/index.ts',
+      'packages/guardian/src/index.ts',
+      'apps/core/src/index.ts',
+      'departments/operations/src/index.ts',
+    ]) {
+      expect(path, `${path} must stay forbidden`).not.toMatch(exempt)
+    }
+  })
+
+  it('captures the connector directory, which the exemption depends on', () => {
+    // If the capture group is removed, `$1` silently becomes a literal and
+    // the exemption stops matching anything.
+    expect(r.from.path).toBe('^connectors/([^/]+)/')
+  })
+})
+
 describe('the rule set as a whole', () => {
   it('explains every rule it enforces', () => {
     // A violation message without a reason gets worked around rather than

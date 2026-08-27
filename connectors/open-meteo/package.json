@@ -1,0 +1,37 @@
+{
+  "name": "@friday/connector-open-meteo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Weather from Open-Meteo. No account, no key, and the least precise location that answers the question.",
+  "license": "UNLICENSED",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist coverage .turbo",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@friday/connector-sdk": "workspace:*",
+    "@friday/contracts": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@friday/tsconfig": "workspace:*",
+    "@friday/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
