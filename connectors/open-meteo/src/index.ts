@@ -44,6 +44,21 @@ export { OPEN_METEO_HOST, OPEN_METEO_MANIFEST } from './manifest.js'
  * constructed without its written justification — the rule is enforced by the
  * shape rather than by this connector remembering to check.
  */
+/**
+ * Where the health check asks about, and it is nowhere anyone lives.
+ *
+ * ★ **A constant, not a parameter, and deliberately not derived from anything
+ * the caller supplies.** `health()` takes no arguments and this value is
+ * closed over at module scope, so there is no context — shared, cached, or
+ * ambient — through which the owner's position could reach a probe. A check
+ * running every fifteen minutes carrying a real location would be a daily
+ * location feed dressed as monitoring, and it would look like monitoring in
+ * every review.
+ *
+ * Null Island: latitude 0, longitude 0. Nobody is there.
+ */
+const HEALTH_PROBE = { latitude: 0, longitude: 0 } as const
+
 export const WeatherRequestSchema = z.object({ location: LocationSchema })
 export type WeatherRequest = z.infer<typeof WeatherRequestSchema>
 
@@ -144,7 +159,11 @@ export function createOpenMeteoConnector(context: ConnectorContext): Connector {
       // owner's location. A health check is FRIDAY's business, and sending
       // where the owner is every fifteen minutes to find out whether a
       // service is up would be a daily location feed dressed as monitoring.
-      const result = await ask('current-weather', { location: coarsen(0, 0) })
+      // No `call` argument: a health check belongs to no plan and no request,
+      // so there is nothing for it to inherit even by accident.
+      const result = await ask('current-weather', {
+        location: coarsen(HEALTH_PROBE.latitude, HEALTH_PROBE.longitude),
+      })
 
       return {
         component: OPEN_METEO_MANIFEST.id,

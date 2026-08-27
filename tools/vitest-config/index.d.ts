@@ -36,9 +36,13 @@ export interface FridayTestOptions {
   readonly environment?: 'node' | 'jsdom'
 
   /**
-   * The package's own import name, aliased to `src/index.ts` so its tests can
-   * import through the public surface while coverage still instruments source.
-   * Defaults to `@friday/<name>`; set it only when the two differ.
+   * The package's own import name.
+   *
+   * ★ Almost never needed: the name is read from the package's own
+   * `package.json`, so it cannot drift from reality. Supplying it is only a
+   * way to be explicit, and a value that disagrees with `package.json` is
+   * refused rather than honoured — an alias that matches nothing sends a
+   * package's tests to a stale `dist/` while every one of them passes.
    */
   readonly packageName?: string
 }

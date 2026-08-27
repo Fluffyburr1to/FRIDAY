@@ -12,6 +12,9 @@
  * Reference: docs/01-bible/28-testing-strategy.md
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 /** Unit tests do no I/O. A unit test that needs longer than this is not one. */
 const UNIT_TIMEOUT_MS = 5_000
 
@@ -59,19 +62,68 @@ function selfAlias(packageName) {
 }
 
 /**
+ * The package's real name, read rather than guessed.
+ *
+ * ★ This used to be guessed as `@friday/${name}`, and a package whose name did
+ * not fit that shape — `@friday/connector-open-meteo`, whose short name is
+ * `open-meteo` — got an alias that matched nothing. Its tests then resolved
+ * through `node_modules` to a stale `dist/`, and **every deliberate break to
+ * its source still passed.** The suite was green the entire time.
+ *
+ * That is the second time this exact failure has happened here; the comment
+ * above records the first. Reading the name removes the guess, so the two
+ * cannot disagree.
+ *
+ * @param {string} cwd
+ * @returns {string}
+ */
+function packageNameAt(cwd) {
+  const manifest = join(cwd, 'package.json')
+
+  if (!existsSync(manifest)) {
+    throw new Error(
+      `fridayTest: no package.json beside the Vitest config in ${cwd}. ` +
+        'The package name cannot be read, so its tests would silently resolve ' +
+        'to a built dist/ instead of to src/.',
+    )
+  }
+
+  const { name } = JSON.parse(readFileSync(manifest, 'utf8'))
+
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new Error(`fridayTest: package.json in ${cwd} has no name.`)
+  }
+
+  return name
+}
+
+/**
  * @param {import('./index.js').FridayTestOptions} options
  * @returns {import('./index.js').FridayTestConfig}
  */
 export function fridayTest(options) {
-  const {
-    name,
-    setupFiles = [],
-    coverageThresholds,
-    environment = 'node',
-    packageName = `@friday/${name}`,
-  } = options
+  const { name, setupFiles = [], coverageThresholds, environment = 'node', packageName } = options
 
-  const resolve = { alias: selfAlias(packageName) }
+  const cwd = process.cwd()
+  const actualName = packageNameAt(cwd)
+
+  // ★ An explicit override that disagrees with the package is the same silent
+  // failure by another route, so it is refused rather than honoured.
+  if (packageName !== undefined && packageName !== actualName) {
+    throw new Error(
+      `fridayTest: packageName "${packageName}" does not match "${actualName}" in ${cwd}/package.json. ` +
+        "The self-alias would match nothing and this package's tests would run " +
+        'against a built dist/ rather than its source.',
+    )
+  }
+
+  // Packages with no `src/index.ts` — the Vite app, and this preset itself —
+  // have nothing to alias TO. Aliasing to a file that does not exist would be
+  // the same lie in a different shape, so no alias is created. Neither imports
+  // itself by name; a package that did would fail loudly on the missing file.
+  const resolve = existsSync(join(cwd, 'src', 'index.ts'))
+    ? { alias: selfAlias(actualName) }
+    : { alias: [] }
 
   /** @type {import('./index.js').FridayTestConfig} */
   const config = {
