@@ -32,8 +32,15 @@ export const OPEN_METEO_MANIFEST: ConnectorManifest = ConnectorManifestSchema.pa
     dataCategories: ['coarse_location', 'precise_location'],
 
     transmitsPersonalData: true,
+
+    // ★ **Unverified, and it says so.** This is FRIDAY's reading of public
+    // documentation, not a term anyone has agreed or a guarantee anyone has
+    // given. The field name invites being read as a provider commitment, so
+    // the value states its own provenance — a manifest is a description of
+    // what we currently believe, and believing something is not the same as
+    // having been promised it.
     dataRetentionByProvider:
-      'Open-Meteo states it does not require an account and does not track users; retention is theirs and not controlled by FRIDAY.',
+      'UNVERIFIED — FRIDAY has not read or agreed to any terms with this provider. Based on public documentation stating that no account is required. Retention is entirely theirs and is not controlled, guaranteed, or checked by FRIDAY.',
   },
 
   operations: [
@@ -59,8 +66,15 @@ export const OPEN_METEO_MANIFEST: ConnectorManifest = ConnectorManifestSchema.pa
     },
   ],
 
-  // Well inside Open-Meteo's published free-tier allowance. FRIDAY asking
-  // about the weather more than once a second would be a bug, not a need.
+  // ★ **FRIDAY's own ceiling, not the provider's.** This field feeds the
+  // SDK's token bucket, which is a limit FRIDAY imposes on herself — it is
+  // not a published allowance and must never be read as one. Open-Meteo's
+  // actual limits have not been verified, and nothing here would notice if
+  // they were lower than this.
+  //
+  // Chosen because asking about the weather more than once a second would be
+  // a bug rather than a need. Deliberately far below any plausible provider
+  // limit, so being wrong about theirs still leaves us inside it.
   rateLimits: { requestsPerMinute: 60, burstSize: 10 },
 
   healthCheck: { operation: 'current-weather', intervalSeconds: 900 },

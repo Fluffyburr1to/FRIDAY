@@ -136,6 +136,38 @@ describe('checking itself', () => {
     expect(seen[0]).toContain('longitude=0')
   })
 
+  it('★ does not inherit a location from an earlier request', async () => {
+    // ★ The failure this guards against is a refactor, not today's code: some
+    // future "shared request context" holding the last location, and a health
+    // check quietly picking it up. Asking about a real place first and then
+    // probing is what would catch that.
+    const open = await started()
+
+    await open.execute('current-weather', weatherNear(55.953_252_1, -3.188_267_4), {
+      correlationId: '01920000-0000-7000-8000-00000000000a' as never,
+    })
+    await open.health()
+
+    const probe = new URL(seen[1] as string)
+    expect(probe.searchParams.get('latitude')).toBe('0')
+    expect(probe.searchParams.get('longitude')).toBe('0')
+  })
+
+  it('probes the same place every time, however often it is asked', async () => {
+    const open = await started()
+
+    await open.health()
+    await open.health()
+    await open.health()
+
+    const places = seen.map((url) => {
+      const parsed = new URL(url)
+      return `${parsed.searchParams.get('latitude')},${parsed.searchParams.get('longitude')}`
+    })
+
+    expect(new Set(places)).toEqual(new Set(['0,0']))
+  })
+
   it('says unhealthy rather than guessing when the service does not answer', async () => {
     const open = await started(() => Promise.reject(new Error('ECONNREFUSED')))
 

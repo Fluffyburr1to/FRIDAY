@@ -35,6 +35,20 @@ answer by nothing.
   nothing that could be repeated harmfully.
 - **No credentials.** There is no code path here that reads, holds, or asks for one.
 
+## What is verified, and what is not
+
+| Claim | Status |
+|---|---|
+| The host, the parameters, and the precision that leave | **Verified in code**, asserted by tests, and generated from the same value that is sent |
+| Every operation is read-only and idempotent | **Verified** — declared in the manifest and enforced by the schema |
+| No credential exists | **Verified** — there is no code path here that reads or holds one |
+| `dataRetentionByProvider` | **UNVERIFIED.** FRIDAY's reading of public documentation. No terms have been read or agreed |
+| The rate limits in the manifest | **FRIDAY's own ceiling**, not a published allowance. The provider's real limits are unverified |
+| The response shapes the tests use | **UNVERIFIED.** Taken from published documentation; no real response has ever been observed |
+
+★ The manifest describes what we currently believe. Two of its fields would
+otherwise read as commitments a provider had made, and neither is.
+
 ## Honest limits
 
 Rounding is not anonymity. Open-Meteo sees the connection's IP address, which places you at least as

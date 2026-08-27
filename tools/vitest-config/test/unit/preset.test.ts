@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_COVERAGE_THRESHOLDS,
   fridayTest,
@@ -115,5 +118,82 @@ describe('fridayTest', () => {
   it('defaults to the node environment', () => {
     expect(fridayTest({ name: 'cli' }).test.environment).toBe('node')
     expect(fridayTest({ name: 'ui-kit', environment: 'jsdom' }).test.environment).toBe('jsdom')
+  })
+})
+
+/** The repository root, from this package's own location. */
+const ROOT = resolve(process.cwd(), '../..')
+const HERE = process.cwd()
+
+interface Aliased {
+  resolve: { alias: ReadonlyArray<{ find: string; replacement: string }> }
+}
+
+afterEach(() => {
+  process.chdir(HERE)
+})
+
+describe('the self-alias cannot drift from the package it names', () => {
+  it('reads the name rather than guessing it from the short name', () => {
+    // ★ The regression this exists for. `@friday/connector-open-meteo` has the
+    // short name `open-meteo`, so the old guess produced `@friday/open-meteo`
+    // — an alias matching nothing. Its tests then resolved through
+    // node_modules to a stale dist/, and every deliberate break to its source
+    // still passed. The suite was green throughout.
+    process.chdir(join(ROOT, 'connectors/open-meteo'))
+
+    const config = fridayTest({ name: 'open-meteo' }) as unknown as Aliased
+
+    expect(config.resolve.alias[0]?.find).toBe('@friday/connector-open-meteo')
+  })
+
+  it('points the alias at the package source', () => {
+    process.chdir(join(ROOT, 'packages/contracts'))
+
+    const config = fridayTest({ name: 'contracts' }) as unknown as Aliased
+
+    expect(config.resolve.alias[0]?.find).toBe('@friday/contracts')
+    expect(config.resolve.alias[0]?.replacement).toContain('packages/contracts/src/index.ts')
+  })
+
+  it('refuses an explicit name that disagrees with the package', () => {
+    // Overriding it wrongly is the same silent failure by another route.
+    process.chdir(join(ROOT, 'packages/contracts'))
+
+    expect(() => fridayTest({ name: 'contracts', packageName: '@friday/nope' })).toThrow(
+      /does not match/,
+    )
+  })
+
+  it('accepts an explicit name that agrees', () => {
+    process.chdir(join(ROOT, 'packages/contracts'))
+
+    expect(() => fridayTest({ name: 'contracts', packageName: '@friday/contracts' })).not.toThrow()
+  })
+
+  it('refuses to configure a directory with no package.json', () => {
+    process.chdir(mkdtempSync(join(tmpdir(), 'friday-preset-')))
+
+    expect(() => fridayTest({ name: 'nowhere' })).toThrow(/no package.json/)
+  })
+
+  it('refuses a package.json with no name', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'friday-preset-'))
+    writeFileSync(join(dir, 'package.json'), '{}')
+    process.chdir(dir)
+
+    expect(() => fridayTest({ name: 'nameless' })).toThrow(/has no name/)
+  })
+
+  it('creates no alias when there is no source to alias to', () => {
+    // The Vite app and this preset have no `src/index.ts`. Aliasing to a file
+    // that does not exist would be the same lie in a different shape.
+    const dir = mkdtempSync(join(tmpdir(), 'friday-preset-'))
+    writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: '@friday/no-src' }))
+    process.chdir(dir)
+
+    const config = fridayTest({ name: 'no-src' }) as unknown as Aliased
+
+    expect(config.resolve.alias).toEqual([])
   })
 })
