@@ -17,8 +17,8 @@ packages:
 catalog:
   # Toolchain
   '@types/node': ^24.13.3
-  '@vitest/coverage-v8': ^4.1.10
-  vitest: ^4.1.10
+  '@vitest/coverage-v8': ^4.1.11
+  vitest: ^4.1.11
 
   # Milestone 1 — Heartbeat
   #
@@ -82,7 +82,7 @@ catalog:
   react: ^19.2.8
   'react-dom': ^19.2.8
   '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.4
+  '@types/react-dom': ^19.2.5
 
   # apps/web ONLY. Chapter 06 assigns server data to TanStack Query and states
   # the rule it exists to enforce: server data is never copied into client
