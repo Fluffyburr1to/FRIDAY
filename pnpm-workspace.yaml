@@ -26,7 +26,7 @@ catalog:
   # four that confinement is enforced by .dependency-cruiser.cjs rather than by
   # convention. Zod is the exception: it is allowed anywhere, because validating
   # at every boundary is the rule rather than a privilege.
-  zod: ^4.4.3 # contracts, config — the single source of truth for data shapes
+  zod: ^4.6.2 # contracts, config — the single source of truth for data shapes
   drizzle-orm: ^0.45.2 # storage ONLY — deny-listed everywhere else
   better-sqlite3: ^13.0.3 # storage ONLY — see docs/adr/0018
   '@types/better-sqlite3': ^9.6.0 # lags the runtime package; see ADR-0018's negative consequences
@@ -37,7 +37,7 @@ catalog:
   # package" threshold — the failure mode of a hand-rolled one is a config file
   # that parses to something subtly different from what it says.
   # See docs/adr/0022.
-  smol-toml: ^1.7.1
+  smol-toml: ^1.8.0
 
   # storage ONLY. Cold-tier archives are Parquet so they stay queryable without
   # FRIDAY (Chapter 10). Two packages total — the writer depends only on the
@@ -50,13 +50,13 @@ catalog:
   # earlier — which pnpm then wanted to add a minimum-release-age exclusion
   # for. A brand-new release is precisely what that policy exists to keep out,
   # and silently excluding a package defeats it.
-  hyparquet: 1.27.1
-  'hyparquet-writer': ^0.16.5
+  hyparquet: 1.30.1
+  'hyparquet-writer': ^0.16.9
 
   # telemetry ONLY. Chapter 22's rotation rules — daily, 100 MB per file, 30
   # days, and a 1 GB ceiling on the directory — are all this package's options.
   # Chosen over pino-roll; the reasoning is in docs/adr/0023.
-  rotating-file-stream: ^3.2.9
+  rotating-file-stream: ^3.2.10
 
   # Milestone 2 — Conscience: the thin dashboard
   #
@@ -79,16 +79,16 @@ catalog:
   # apps/web ONLY. Chapter 06 — the reasoning is explicitly that AI assistants
   # write correct React far more reliably than correct anything else, which is
   # a first-class engineering concern here rather than an embarrassing one.
-  react: ^19.2.8
-  'react-dom': ^19.2.8
-  '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.4
+  react: ^19.3.0
+  'react-dom': ^19.3.0
+  '@types/react': ^19.3.0
+  '@types/react-dom': ^19.3.0
 
   # apps/web ONLY. Chapter 06 assigns server data to TanStack Query and states
   # the rule it exists to enforce: server data is never copied into client
   # state, because copying is how a screen ends up showing a stale approval
   # that was already granted.
-  '@tanstack/react-query': ^5.101.4
+  '@tanstack/react-query': ^5.102.8
 
   # apps/web build tooling. Chapter 06 rejects the meta-frameworks — there is
   # no SEO and no edge to deploy to, the server is your Mac — so Vite is the
@@ -111,7 +111,7 @@ catalog:
   # @friday/vitest-config already types `environment` as 'node' | 'jsdom', so
   # jsdom is the one this repository was written expecting.
   jsdom: ^30.0.1
-  '@testing-library/react': ^16.3.2
+  '@testing-library/react': ^16.3.3
   '@testing-library/dom': ^10.4.1 # peer of the above; pinned so there is one
 
 # ── Overrides ────────────────────────────────────────────────────────────────
