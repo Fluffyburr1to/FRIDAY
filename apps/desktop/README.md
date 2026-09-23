@@ -1,34 +1,59 @@
 # apps/desktop — FRIDAY.app
 
-**A thin Tauri shell around `apps/web`.**
+**A window onto the core, and nothing more.**
 
-Milestone: **M4**
+Milestone: **M6**
 
-## Charter
+## What this is
 
-The desktop app is a window into FRIDAY, not FRIDAY. Close it and she keeps working.
+A Tauri shell that opens a native macOS window at `http://127.0.0.1:7420` — the address
+`apps/core` already serves, where the dashboard and the API share one origin.
 
-Four jobs, and nothing else:
+That is the whole shell. There is no bundled copy of the interface, no Rust that talks to the API,
+and no command exposed to the web view.
 
-1. Render the dashboard in the system web view
-2. Live in the menu bar — health at a glance, pending approval count
-3. Provide instant summon — global hotkey (`⌥Space`), 50 ms target
-4. Bridge to macOS — notifications, Keychain, microphone, launch-at-login, auto-update
+## What it is deliberately not
 
-## What does NOT live here
+★ **It is not trusted because it is native.**
+[ADR-0052](../../docs/adr/0052-a-native-shell-is-not-evidence-of-a-human.md): a Tauri process
+running as this user, talking to the same loopback port, is exactly as unprivileged as a browser
+tab. Core cannot tell them apart, so `via: 'desktop'` would be a claim rather than evidence.
 
-**Any FRIDAY logic.** If the shell were rewritten in something else, nothing about FRIDAY would
-change.
+This shell therefore has **exactly the authority the browser has** — and structurally, not by
+promise: it loads the same bytes from the same origin. High-risk approvals remain unanswerable in
+it, as they are in the browser.
 
-## Rules
+**It does not manufacture `authenticatedAt`.** There is no code path here that could. Adding one
+requires ADR-0052 §4 *and* §5 — Touch ID **and** a device key core can verify — landing together.
 
-1. **`src-tauri/` Rust stays under 500 lines.** Exceeding it means the shell is doing too much; move
-   the logic into core. This is the fence around the one-language exception.
-2. **Signed and notarized from the first release.** An unsigned Mac app is actively hard to open.
-3. **Updates are signed and verified**, with the key held offline. The updater is a remote code
-   execution channel into the machine holding your life.
-4. **Updates are never silent.** Article III applies to FRIDAY updating herself.
+## What it is not yet
 
-Fallback if Tauri disappoints: Electron. The React app is unchanged; roughly a week of work.
+Not built, and each is its own milestone: menu-bar presence, status indicator, pending-approval
+badge, global hotkey, native notifications, close-to-tray, signing, notarization, auto-update.
 
-Reference: [Chapter 07](../../docs/01-bible/07-desktop-strategy.md)
+The window also does not yet handle the core being unavailable — it will show whatever the web view
+shows for a refused connection. Lifecycle is the next milestone.
+
+## Running it
+
+The core must be running and serving the dashboard. From the repository root:
+
+```bash
+pnpm --filter @friday/web build     # the interface the core serves
+pnpm --filter @friday/desktop app:dev
+```
+
+`app:build` produces `FRIDAY.app`. Both need Rust; **neither runs in CI**, which has no Rust
+toolchain — that is why they are not called `build`, so `turbo run build` does not pick them up. A
+macOS build workflow arrives with the release pipeline.
+
+The icons are **placeholders** — a solid square. Real branding is a design decision, not something
+to invent in a build step.
+
+## Its one rule
+
+Closing this window must never stop FRIDAY. The core runs under `launchd`, started at login and
+restarted if it dies. Article III requires an approval to survive waiting days; a window that took
+the core with it would silently decline every approval waiting in it.
+
+Reference: [Chapter 07](../../docs/01-bible/07-desktop-strategy.md) · [ADR-0052](../../docs/adr/0052-a-native-shell-is-not-evidence-of-a-human.md)

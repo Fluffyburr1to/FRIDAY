@@ -29,6 +29,11 @@ const SKIP_DIRS = new Set([
   'build',
   'coverage',
   '.turbo',
+
+  // Cargo's build output, and Tauri's generated sources. The Rust equivalent
+  // of dist/ — thousands of directories, none of them ours to document.
+  'target',
+  'gen',
   '.changeset',
   'src',
   'test',

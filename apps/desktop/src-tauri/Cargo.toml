@@ -1,0 +1,27 @@
+[package]
+name = "friday-desktop"
+version = "0.1.0"
+description = "FRIDAY.app — a window onto the core, and nothing more."
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+[lib]
+# Named so the mobile targets Tauri 2 supports can link it later without the
+# shell being restructured. Nothing depends on that today.
+name = "friday_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+# The shell holds no logic worth optimising for speed; it holds a webview.
+# Optimising for size keeps the download small, which matters for an app that
+# will eventually update itself.
+opt-level = "s"
+lto = true
+strip = true

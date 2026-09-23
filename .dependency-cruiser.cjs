@@ -411,7 +411,10 @@ module.exports = {
     doNotFollow: { path: 'node_modules' },
     exclude: {
       path: [
-        '(^|/)(dist|coverage|\\.turbo)/',
+        // `target` is Cargo's build output — the Rust equivalent of dist/. It
+        // contains generated JavaScript that Tauri embeds, which is nobody's
+        // module graph but Tauri's.
+        '(^|/)(dist|coverage|target|\\.turbo)/',
         // Build and tool configuration — vitest.config.ts, and later
         // vite/playwright/tailwind. These rules enforce the architecture of
         // code that runs as part of FRIDAY; configuration that runs as part of

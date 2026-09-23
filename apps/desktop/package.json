@@ -1,0 +1,17 @@
+{
+  "name": "@friday/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FRIDAY.app — a window onto the core, and nothing more.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "app:build": "tauri build",
+    "app:dev": "tauri dev",
+    "clean": "rm -rf src-tauri/target .turbo",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.9.2"
+  }
+}

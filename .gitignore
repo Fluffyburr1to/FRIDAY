@@ -36,8 +36,8 @@ out/
 .turbo/
 *.tsbuildinfo
 target/
-src-tauri/target/
-src-tauri/gen/
+**/src-tauri/target/
+**/src-tauri/gen/
 
 # ─── Dependencies ────────────────────────────────────────────────────────────
 node_modules/
