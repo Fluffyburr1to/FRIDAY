@@ -1,6 +1,8 @@
+import { createServer } from 'node:http'
 import type { FridayConfig } from '@friday/config'
-import { createHTTPServer } from '@trpc/server/adapters/standalone'
+import { createHTTPHandler } from '@trpc/server/adapters/standalone'
 import type { CoreContext } from './context.js'
+import { createDashboardFiles } from './dashboard.js'
 import { appRouter } from './router.js'
 
 /**
@@ -11,7 +13,18 @@ import { appRouter } from './router.js'
  * framework earns its place doing, and the rule is to prefer writing the lines
  * over adding the package.
  *
- * Reference: docs/01-bible/20-api-standards.md
+ * ★ It serves the dashboard's files too, when a build is configured. Chapter
+ * 06 always said the browser surface is served directly by core; until now it
+ * was not, and the dashboard asked for its API at a same-origin path nothing
+ * served. Keeping both on one origin is also what lets the desktop shell be a
+ * window rather than a second copy of the UI — see ADR-0052 §10 and
+ * ./dashboard.ts.
+ *
+ * The dashboard is checked first and claims only paths that are real files, so
+ * the API's procedure routes are unaffected. With no build configured, this is
+ * exactly the API-only server it has always been.
+ *
+ * Reference: docs/01-bible/20-api-standards.md · docs/01-bible/06-frontend-architecture.md
  */
 
 /** A running server, and the way to stop it. */
@@ -33,12 +46,25 @@ export interface RunningServer {
 export function startServer(input: {
   config: FridayConfig
   context: CoreContext
+
+  /**
+   * Where `apps/web`'s build output lives. Omitted means no dashboard is
+   * served and core is API-only, which is what every existing caller gets.
+   */
+  dashboardDir?: string | undefined
 }): Promise<RunningServer> {
   const { config, context } = input
 
-  const server = createHTTPServer({
-    router: appRouter,
-    createContext: () => context,
+  const api = createHTTPHandler({ router: appRouter, createContext: () => context })
+  const dashboard =
+    input.dashboardDir === undefined ? null : createDashboardFiles(input.dashboardDir)
+
+  const server = createServer((request, response) => {
+    // A real file wins; everything else is a procedure call. The two cannot
+    // collide because procedure paths are not files in the build output.
+    if (dashboard?.serve(request, response) === true) return
+
+    void api(request, response)
   })
 
   return new Promise((resolve, reject) => {

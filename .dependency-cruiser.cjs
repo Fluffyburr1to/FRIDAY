@@ -256,19 +256,40 @@ module.exports = {
       },
     },
     {
-      name: 'no-node-network-outside-connector-sdk',
+      name: 'no-node-sockets-outside-connector-sdk',
       severity: 'error',
       comment:
         'Node ships sockets in core, so a request can be made with no dependency at all — ' +
         'which would route straight around the rule above, exactly as node:sqlite would ' +
         'route around the database rule. Core modules resolve by name rather than to a ' +
-        'path, so they need their own clause. apps/core serves the dashboard over loopback ' +
-        "through tRPC's adapter rather than importing node:http itself; if that ever " +
-        'changes, this rule is where the decision should surface rather than be assumed.',
+        'path, so they need their own clause. None of these five has a listening use ' +
+        'anywhere in FRIDAY, so outside the SDK the ban on them is absolute.',
       from: { pathNot: MAY_REACH_THE_NETWORK },
       to: {
         dependencyTypes: ['core'],
-        path: '^(node:)?(http|https|http2|net|tls|dgram)$',
+        path: '^(node:)?(https|http2|net|tls|dgram)$',
+      },
+    },
+    {
+      name: 'no-node-http-outside-connector-sdk-and-core',
+      severity: 'error',
+      comment:
+        'The same ban, for one module, with one more exemption. ' +
+        '★ apps/core LISTENS on loopback; it does not reach out. The previous single ' +
+        'rule said in its own comment that if apps/core ever imported node:http itself ' +
+        'this is where the decision should surface — it now does. tRPC offers no way to ' +
+        'serve the dashboard bundle and the API from one origin without composing the ' +
+        'server by hand, and one origin is what keeps the desktop shell a window rather ' +
+        'than a second copy of the UI, and what keeps a CORS surface off core. ' +
+        'See ADR-0052 and apps/core/src/dashboard.ts. ' +
+        'The cost, stated because dependency-cruiser cannot tell listening from calling: ' +
+        'node:http also exposes http.request, so apps/core is now ABLE to make an ' +
+        'outbound plaintext call. Nothing does, biome still bans global fetch there, and ' +
+        'a second exemption would have to be argued here.',
+      from: { pathNot: `${MAY_REACH_THE_NETWORK}|^apps/core/` },
+      to: {
+        dependencyTypes: ['core'],
+        path: '^(node:)?http$',
       },
     },
 

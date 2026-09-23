@@ -24,6 +24,7 @@ export type {
 export { createAskSession } from './ask.js'
 export type { CoreContext, EventReader, OpenedContext, PlanReader } from './context.js'
 export { openContext } from './context.js'
+export { createDashboardFiles, type DashboardFiles } from './dashboard.js'
 export type { AppRouter } from './router.js'
 export {
   appRouter,

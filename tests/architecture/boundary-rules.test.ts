@@ -139,18 +139,25 @@ describe('no-http-client-outside-connector-sdk', () => {
   })
 })
 
-describe('no-node-network-outside-connector-sdk', () => {
-  const r = rule('no-node-network-outside-connector-sdk')
+describe('no-node-sockets-outside-connector-sdk', () => {
+  const r = rule('no-node-sockets-outside-connector-sdk')
   const pattern = matcher(r)
 
   it('catches the sockets Node ships, which need no dependency at all', () => {
     // The same bypass node:sqlite would be for the database rule: a request
     // made with nothing added to any package.json leaves no trace in a
     // dependency diff.
-    for (const core of ['node:http', 'node:https', 'node:http2', 'node:net', 'node:tls']) {
+    for (const core of ['node:https', 'node:http2', 'node:net', 'node:tls', 'node:dgram']) {
       expect(core, `${core} must be caught`).toMatch(pattern)
       expect(core.replace('node:', '')).toMatch(pattern)
     }
+  })
+
+  it('does not cover node:http, which has its own rule and its own exemption', () => {
+    // ★ Split deliberately. These five have no listening use anywhere in
+    // FRIDAY, so their ban stays absolute; http does, so it does not.
+    expect('node:http').not.toMatch(pattern)
+    expect('http').not.toMatch(pattern)
   })
 
   it('scopes itself to core modules', () => {
@@ -164,8 +171,51 @@ describe('no-node-network-outside-connector-sdk', () => {
   })
 })
 
+describe('no-node-http-outside-connector-sdk-and-core', () => {
+  const r = rule('no-node-http-outside-connector-sdk-and-core')
+  const pattern = matcher(r)
+  const exempt = new RegExp(r.from.pathNot as string)
+
+  it('catches node:http', () => {
+    expect('node:http').toMatch(pattern)
+    expect('http').toMatch(pattern)
+  })
+
+  it('catches nothing but http', () => {
+    for (const core of ['node:https', 'node:http2', 'node:net', 'node:fs']) {
+      expect(core, `${core} belongs to the other rule`).not.toMatch(pattern)
+    }
+  })
+
+  it('exempts apps/core, which listens rather than reaches out', () => {
+    // ★ apps/core composes its own server so the dashboard bundle and the API
+    // share one origin. One origin is what keeps the desktop shell a window
+    // rather than a second copy of the UI, and keeps CORS off core entirely.
+    expect('apps/core/src/server.ts').toMatch(exempt)
+    expect('apps/core/src/dashboard.ts').toMatch(exempt)
+  })
+
+  it('exempts the SDK, because that is where the allowlist is enforced', () => {
+    expect('packages/connector-sdk/src/egress.ts').toMatch(exempt)
+  })
+
+  it('exempts nothing else — including the packages closest to the edge', () => {
+    for (const path of [
+      'apps/cli/src/index.ts',
+      'apps/web/src/trpc.ts',
+      'packages/model-router/src/router.ts',
+      'packages/kernel/src/index.ts',
+      'packages/storage/src/database.ts',
+      'departments/operations/src/index.ts',
+      'connectors/open-meteo/src/index.ts',
+    ]) {
+      expect(path, `${path} must NOT be exempt`).not.toMatch(exempt)
+    }
+  })
+})
+
 describe('who may reach the network', () => {
-  const exempt = new RegExp(rule('no-node-network-outside-connector-sdk').from.pathNot as string)
+  const exempt = new RegExp(rule('no-node-sockets-outside-connector-sdk').from.pathNot as string)
 
   it('exempts the SDK, because that is where the allowlist is enforced', () => {
     expect('packages/connector-sdk/src/egress.ts').toMatch(exempt)
@@ -177,9 +227,14 @@ describe('who may reach the network', () => {
     expect('packages/agent-runtime/test/fixtures/reaches-for-the-network.cjs').toMatch(exempt)
   })
 
+  it('does not exempt apps/core from the socket ban', () => {
+    // ★ The http exemption is one module wide. apps/core still cannot open a
+    // raw socket, speak TLS directly, or use http2.
+    expect('apps/core/src/server.ts').not.toMatch(exempt)
+  })
+
   it('exempts nothing else — including the packages closest to the edge', () => {
     for (const path of [
-      'apps/core/src/server.ts',
       'packages/model-router/src/router.ts',
       'packages/kernel/src/index.ts',
       'connectors/example/src/index.ts',
@@ -189,9 +244,9 @@ describe('who may reach the network', () => {
     }
   })
 
-  it('applies the same exemption to both halves of the rule', () => {
+  it('applies the same exemption to the npm-client rule', () => {
     expect(rule('no-http-client-outside-connector-sdk').from.pathNot).toBe(
-      rule('no-node-network-outside-connector-sdk').from.pathNot,
+      rule('no-node-sockets-outside-connector-sdk').from.pathNot,
     )
   })
 })
@@ -270,7 +325,8 @@ describe('the rule set as a whole', () => {
       'no-node-sqlite-outside-storage',
       'no-ai-vendor-sdk-outside-model-router',
       'no-http-client-outside-connector-sdk',
-      'no-node-network-outside-connector-sdk',
+      'no-node-sockets-outside-connector-sdk',
+      'no-node-http-outside-connector-sdk-and-core',
       'departments-may-not-import-departments',
       'connectors-import-only-sdk-and-contracts',
       'contracts-imports-nothing-internal',
