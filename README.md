@@ -13,12 +13,15 @@ calendar, your code, your home, your notes, and your correspondence without repl
 
 ## Status
 
-**Her decisions are written down.** Milestones 1 through 3 are complete: FRIDAY has an event log, a
-Guardian that can refuse, and a record of everything it decides. **She does not run on a machine
-yet** — nothing installs or supervises her. That is Milestone 4.
+**She runs on your Mac, plans, and asks before she acts.** Milestones 0 through 5 are complete:
+FRIDAY installs and starts at login, records everything she does in a tamper-evident log, has a
+Guardian that can refuse, and can turn a request into a visible plan that stops for your approval.
+**She does not yet know anything about your life** — no tasks, no calendar, no real AI model. Her
+planner matches keywords, and says so.
 
 ```
 friday init                          prepare a machine for her
+friday ask "check my records"        a request, a visible plan, an explanation
 friday events tail                   watch the log, live
 friday verify                        confirm the record has not been altered
 friday status                        is she healthy?
@@ -26,12 +29,12 @@ friday status                        is she healthy?
 
 | | |
 |---|---|
-| Phase | Milestone 3 — Authority, shipped 2026-08-10 · **ready to begin M4** |
+| Phase | Milestone 6 — **Life Core**, next · M5 (Mind) closed 2026-08-24 · re-baselined 2026-09-24 |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
-| Architecture Decision Records | ✅ 35 |
+| Architecture Decision Records | ✅ 51 on `main` (0001–0051) |
 | Build tooling | ✅ pnpm workspaces · Turborepo · TypeScript strict · Biome · dependency-cruiser |
-| Testing | ✅ Vitest — 802 tests |
+| Testing | ✅ Vitest — 1,575 tests, counted 2026-09-23 |
 | Boundary enforcement | ✅ Verified firing, with regression tests |
 | CI pipeline | ✅ 5 staged gates, green on `main` |
 | **Event log** | ✅ Append-only, gapless, hash-chained — enforced by database triggers |
@@ -41,12 +44,15 @@ friday status                        is she healthy?
 | **System log** | ✅ Three-layer redaction, rotation inside a fixed budget |
 | **Guardian** | ✅ Composed at startup from rules on disk · fails closed · refuses an empty rule set |
 | **Approvals** | ✅ Requested, granted, declined, expired — each recorded as an event |
-| **Dashboard** | ✅ Read-only — live event stream and pending approvals |
+| **Dashboard** | ✅ Live events, plans, vitals, and approvals — `low` and `medium` answerable in the browser, higher risk shown but not answerable there ([ADR-0030](docs/adr/0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md)) |
 | **Startup self-check** | ✅ She asks her own permission, and will not start on a chain that does not verify |
-| **First-run provisioning** | ⚠ `friday init` — creation-only, never replaces a key. Built and tested; **never yet run against a real Keychain** — M4's first task |
-| Packaging, launchd, releases | ⬜ Milestone 4 |
-| Agents, plans, model routing | ⬜ Milestone 5 |
-| Mac app, connectors | ⬜ Milestone 6 |
+| **First-run provisioning** | ✅ `friday init` — creation-only, never replaces a key. Run against a real Keychain 2026-08-10 |
+| **Packaging, launchd, releases** | ✅ `v0.1.0` — installs, and starts at login |
+| **Plans and agents** | ✅ Visible plans, approval gates, explanations traced to events. Agents run in isolated worker threads |
+| **Model routing** | ⚠ Scaffolded — privacy routing and budgets are real, but **the only provider is a stand-in.** No real AI model is connected, by decision |
+| **Connectors** | ✅ Connector SDK and one real connector — weather, Open-Meteo, no account or key needed |
+| Mac app | ⏸ Paused until Today is useful — M11 |
+| Tasks, calendar, your day | ⬜ Not started — tasks are M6 |
 
 See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md) for what comes next and why in this order.
 
@@ -152,7 +158,7 @@ Full map: [Chapter 03 — Repository Structure](docs/01-bible/03-repository-stru
 | API | tRPC (internal), OpenAPI (external, later) |
 | Interface | React + Vite + Tailwind + Radix |
 | Shells | Tauri 2 — desktop and mobile |
-| AI | Vendor-neutral Model Router · Anthropic · OpenAI · local Ollama |
+| AI | Vendor-neutral Model Router — **no real provider yet**; Anthropic, OpenAI, and local Ollama are the candidates ([ADR-0008](docs/adr/0008-model-router.md)) |
 | Voice | whisper.cpp · Piper · openWakeWord — **all local** |
 | Quality | Vitest · Playwright · Biome · agent evals |
 
@@ -168,23 +174,34 @@ Reasoning and rejected alternatives: [Chapter 02](docs/01-bible/02-technology-st
 | M1 | Heartbeat | Event bus, database, logging — she records | ✅ 2026-08-07 |
 | M2 | Conscience | Guardian, approvals, audit — she can be told no | ✅ 2026-08-08 |
 | M3 | Authority | Rules on disk, decisions recorded, `friday init` | ✅ 2026-08-10 ⚠ |
-| M4 | **Installable** | Packaging, launchd, releases — **she runs on your Mac** | ◆ next |
-| M5 | Mind | Agents, Model Router, plans — she thinks | |
-| M6 | **Face** | Dashboard, Mac app, first connector — **first useful day** | |
-| M7 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | |
-| M8 | Self-Improvement | FRIDAY opens her first pull request | |
-| M9 | Reach | iPhone, notifications, voice | |
-| M10 | Breadth | Additional departments | |
+| M4 | **Installable** | Packaging, launchd, releases — **she runs on your Mac** | ✅ 2026-08-17 · `v0.1.0` |
+| M5 | Mind | Agents, Model Router, plans — she thinks | ✅ 2026-08-24 |
+| M6 | **Life Core** | Tasks end to end on a life-first Today — forgettable, protected, audited | ◆ next |
+| M7 | Context | Weather on Today, local calendar import, shifts, availability | |
+| M8 | Day Planning | A deterministic planner that explains every placement | |
+| M9 | AI | A real model provider, chosen on cost and privacy | |
+| M10 | Life Areas | Coursework, focus, notes, and later domains | |
+| M11 | Presence | Mac app, menu bar, hotkey, notifications | |
+| M12 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | |
+| M13 | Self-Improvement | FRIDAY opens her first pull request | |
+| M14 | Reach | iPhone, phone notifications, voice | |
+| M15 | Breadth | Additional departments | |
 
-**This chapter was re-baselined on 2026-08-10.** M3 delivered something the roadmap had not planned,
+**Re-baselined 2026-09-24 for Life Core.** FRIDAY becomes useful for your life before she becomes more
+present, more autonomous, or more AI-heavy: tasks first, then context, a deterministic day planner, and
+only then a real AI model. Native work is paused until Today is genuinely useful. Reasoning in
+[ADR-0053](docs/adr/0053-life-core-comes-before-presence-autonomy-and-ai.md); number map in
+[Chapter 39](docs/01-bible/39-roadmap.md#re-baselined-2026-09-24--life-core).
+
+**Re-baselined earlier, on 2026-08-10.** M3 delivered something the roadmap had not planned,
 and M4 changed from *Face* to *Installable* because *Face* depends on work that does not exist yet.
 Calendar targets past M4 are withdrawn until there is evidence to re-estimate from. Milestone numbers
 inside ADRs mean what they meant when written — the map is in
 [Chapter 39](docs/01-bible/39-roadmap.md#re-baselined-2026-08-10).
 
 **⚠ means the code and its tests shipped but the milestone's stated outcome was never demonstrated
-end to end.** M3's gap is that `friday init` has never run against a real Keychain. It is M4's first
-task, not an assumption.
+end to end at the time.** M3's gap was that `friday init` had never run against a real Keychain. M4
+closed it first, on 2026-08-10; the ⚠ stays on M3 because that is what was true when it shipped.
 
 ---
 
