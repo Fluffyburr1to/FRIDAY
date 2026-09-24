@@ -78,6 +78,8 @@ Decisions taken since, as implementation met the design:
 | [0049](0049-a-call-that-never-happened-is-never-a-success.md) | A call that never happened is never a success | accepted | low→**high** | [14](../01-bible/14-connector-framework.md) |
 | [0050](0050-revocation-is-a-credential-domain-operation.md) | Revocation is a credential-domain operation, never a Keychain delete | accepted | low→**high** | [14](../01-bible/14-connector-framework.md) |
 | [0051](0051-the-least-precise-location-that-answers-the-question.md) | The least precise location that answers the question | accepted | low | [14](../01-bible/14-connector-framework.md) |
+| 0052 | *Reserved* — a native shell is not evidence of a human ([closed PR #105](https://github.com/Fluffyburr1to/FRIDAY/pull/105)); may return at M11 | not merged | — | [07](../01-bible/07-desktop-strategy.md) |
+| [0053](0053-life-core-comes-before-presence-autonomy-and-ai.md) | Life Core comes before presence, autonomy, and AI | proposed | low | [39](../01-bible/39-roadmap.md) · [13](../01-bible/13-department-architecture.md) |
 
 ‡ **Amended before acceptance, not after.** Three of these were drafted on 2026-08-12 or later,
 reviewed on 2026-08-17, and **edited in the same change that accepted them** — 0039 gained a §0
