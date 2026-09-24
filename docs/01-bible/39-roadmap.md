@@ -76,6 +76,43 @@ pre-re-baseline numbers. They are charters rather than decision records, so they
 
 ---
 
+## Re-baselined 2026-09-24 — Life Core
+
+**The second re-baseline, and a change of direction rather than of dependency.** The owner decided
+that FRIDAY should be genuinely useful for managing your life before she becomes more present, more
+autonomous, or more AI-heavy. M6 changes from *Face* to **Life Core**, five milestones are inserted
+before the old M7, and native work pauses. The reasoning is
+[ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md).
+
+This is still a **re-scope, not a skip** under rule 1: nothing already delivered is undone, and
+nothing planned is dropped. Face's pieces are distributed rather than cancelled:
+
+| Face deliverable (as of 2026-08-10) | Now |
+|---|---|
+| `connector-sdk` + contract suite, first connector (weather) | **Delivered** under M6's old scope, kept. Weather reaches Today at M7 |
+| `apps/web` full dashboard, `packages/ui-kit` | **M6** — as a life-first home, with the HUD moved to a System section |
+| `departments/knowledge` (minimal) | **M10** — Life Areas |
+| `apps/desktop`, menu bar, hotkey, signing, `notifications`, Apple Developer | **M11** — Presence |
+| The done-when — *"what does my week look like?"* from the menu bar | **M11**, re-examined when Presence starts |
+
+### Milestone numbers in documents written between 2026-08-10 and 2026-09-24
+
+Read a number in an ADR through the [first map](#milestone-numbers-in-documents-written-before-this-date)
+if it was written before 2026-08-10, then through this one:
+
+| Written as | Now | Content |
+|---|---|---|
+| M6 | **M6 or M11** | Dashboard work → M6; shell, notifications, signing → M11 (table above) |
+| M7 | **M12** | Memory & Endurance |
+| M8 | **M13** | Self-Improvement |
+| M9 | **M14** | Reach |
+| M10 | **M15** | Breadth |
+
+**A review trigger that names an event fires on the event**, not on a number. ADR-0046's
+*"a calendar connector arrives"* fires at M7; ADR-0030's *"the Tauri shell ships"* fires at M11.
+
+---
+
 ## The arc
 
 Calendar targets beyond M4 are **withdrawn, not moved.** The original dates assumed 10–20 hours a
@@ -92,11 +129,12 @@ DELIVERED ─ 2026-08-06 → 2026-08-24
                        told no       decisions are     on your Mac      asks, and
                                      written down      · v0.1.0         explains
 
-PLANNED
-  M6 ──── M7 ────────── M8 ────────── M9 ───── M10
-  Face    Memory &      Self-         Reach    Breadth
-  ★ first Endurance     Improvement
-    useful day
+PLANNED — re-baselined 2026-09-24
+  M6 ──────── M7 ────── M8 ──────── M9 ── M10 ──── M11 ────── M12 ──── M13 ──── M14 ── M15
+  Life Core   Context   Day         AI    Life     Presence   Memory   Self-    Reach  Breadth
+  ★ useful    her day   Planning          Areas               & End.   Improv.
+    for your  has a     ★ she plans
+    life      shape       your day
 ```
 
 | # | Name | What exists at the end | Estimate | Status |
@@ -107,11 +145,20 @@ PLANNED
 | **M3** | **Authority** | Rules loaded from disk, decisions recorded, `friday init` | — | ✅ 2026-08-10 ⚠ |
 | **M4** | **Installable** | Packaging, launchd supervision, release machinery | 2–3 wks | ✅ 2026-08-17 · `v0.1.0` |
 | **M5** | **Mind** | Agents, Model Router, Chief of Staff, plans | 6–8 wks | ✅ 2026-08-24 |
-| **M6** | **Face** | Dashboard, Mac app, first connector — **first useful day** | 6–8 wks | |
-| **M7** | **Memory & Endurance** | Four-layer memory, always-on host, DR | 6–8 wks | |
-| **M8** | **Self-Improvement** | Engineering dept; FRIDAY's first PR | 6–10 wks | |
-| **M9** | **Reach** | iPhone, notifications, voice | 8–12 wks | |
-| **M10** | **Breadth** | Additional departments | Ongoing | |
+| **M6** | **Life Core** | Tasks end to end on a life-first Today — forgettable, protected, audited | — | ◆ next |
+| **M7** | **Context** | Weather on Today, local `.ics` import, shifts, availability | — | |
+| **M8** | **Day Planning** | A deterministic planner that explains every placement | — | |
+| **M9** | **AI** | A real model provider, chosen on cost and privacy | — | |
+| **M10** | **Life Areas** | Coursework, focus, notes, and later domains | — | |
+| **M11** | **Presence** | Mac app, menu bar, hotkey, notifications, signing | — | |
+| **M12** | **Memory & Endurance** | Four-layer memory, always-on host, DR | 6–8 wks | |
+| **M13** | **Self-Improvement** | Engineering dept; FRIDAY's first PR | 6–10 wks | |
+| **M14** | **Reach** | iPhone, notifications, voice | 8–12 wks | |
+| **M15** | **Breadth** | Additional departments | Ongoing | |
+
+M6–M11 carry no estimate: they were inserted on 2026-09-24, and estimates are set at each boundary
+against evidence, as they have been since M4. **Only M6 has a done-when**; each later one is written
+when it starts.
 
 M3 carries no estimate because it was never estimated — it was not on the roadmap. **⚠ marks a
 milestone whose code and tests shipped but whose done-when was never demonstrated end to end**; M3's
@@ -862,51 +909,91 @@ now is, and the answer is two-sided:
 
 ---
 
-## M6 — Face · 6–8 weeks · ★ the milestone that matters
+## M6 — Life Core · ★ the milestone that matters
 
-**Goal:** FRIDAY is useful. A day where you would miss her.
+**Goal:** FRIDAY is useful for your life, in one feature, completely. Re-scoped from *Face* on
+2026-09-24 by [ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md).
+
+**The smallest complete vertical slice, in this order:** task creation → persistence → Today →
+completion → audit trail → deletion and forgetting → API protection → tests. Tasks are the reference
+implementation every later life domain copies, so nothing is built for a second domain here.
+
+**Four decisions are owed before any Life Core code**, each its own ADR, each approved by you:
+
+| Decision | What it settles |
+|---|---|
+| **Personal data model** | Task changes as events, current state rebuilt from the log; which life data is `private`; how your own edits are recorded |
+| **Forgetting** | What `friday forget` deletes, what remains as proof, and what must not remain recoverable from the audit record |
+| **The life-first home** | Today as the home; the HUD moved to a System section; amends [ADR-0041](../adr/0041-one-hud-is-the-dashboard-grown-up.md) |
+| **API protection** | How `apps/core` tells you from any other local process before personal data flows through it |
 
 | Deliverable | Notes |
 |---|---|
-| `apps/web` full dashboard | All four layers ([Chapter 26](26-dashboard-architecture.md)) |
-| `apps/desktop` | Tauri, menu bar, global hotkey, signed and notarized |
-| `packages/ui-kit` | Shared component library |
-| `connector-sdk` + contract test suite | |
-| **First real connector** | **Weather** — [ADR-0048](../adr/0048-the-first-connector-is-weather.md). Calendar deferred, not rejected |
-| `departments/knowledge` (minimal) | Enough to answer questions about what the first connector returns |
-| `notifications` | Desktop notifications, urgency, quiet hours |
-| Apple Developer Program enrolled | ~$99/yr; needed for signing |
+| **Delivered under the old M6 scope** | `connector-sdk` + contract suite, and weather — [ADR-0048](../adr/0048-the-first-connector-is-weather.md). Kept |
+| `departments/productivity` | Tasks: create, edit, complete, forget |
+| `apps/web` life-first home | Today and tasks; the HUD moves to **System**, unchanged in substance |
+| `packages/ui-kit` | Only the components Today and tasks need |
+| `friday forget` | Built for tasks before the first task is stored |
+| Protected local API | Before the first task crosses it |
 
-**Done when:** you ask FRIDAY "what does my week look like?" from the menu bar, get a useful answer
-in under two seconds, and can click through to see exactly how she produced it.
+**Done when:** you create, edit, and complete a task from the dashboard; it survives a restart; it
+appears on Today with the reason it is ranked where it is; you can click through to the event that
+recorded it, and forget it — after which its content is unrecoverable while the record still proves
+nothing else changed; and none of it is reachable by an unauthenticated local process.
 
-**Why weather rather than calendar, decided 2026-08-24:** this chapter recommended Google Calendar
-from ratification, on the grounds that read-only access risks nothing irreversible.
-[ADR-0048](../adr/0048-the-first-connector-is-weather.md) supersedes that, because **reversibility
-was the wrong test.** The risk a *first* connector carries is disclosure, not destruction, and
-read-only bounds what FRIDAY can change rather than what she can see — a calendar names who you
-meet, when you are away from home, and who you are interviewing with.
-
-Weather exercises the same machinery: the egress allowlist, rate limiting, retry, the circuit
-breaker, health checks, and the shared conformance suite. **What it may not exercise is OAuth and
-the credential broker**, which was a real reason for choosing calendar, and that cost is recorded in
-ADR-0048 rather than glossed. Calendar is deferred on its own merits and
-[RFC-0002](../rfc/0002-the-first-connector.md) keeps its full contract for whenever it returns.
-
-**This is the point where the foundation-first decision pays off or does not.**
+**Deliberately not in M6:** calendar, weather on Today, any AI provider, the planner, the Mac app,
+notifications, and every domain but tasks.
 
 **Owed from earlier milestones:**
 
-- [ADR-0021](../adr/0021-the-cli-reads-the-event-log-in-process-until-m3.md) — move `status`,
-  `events tail`, and `verify` onto the API, keeping the in-process path as the documented fallback.
-  Deferred from M3; the dashboard is the second consumer that justifies the seam.
-- [ADR-0030](../adr/0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md) — the
-  Tauri shell can do Touch ID, so the browser restriction on high-risk approvals should be
-  re-examined rather than inherited. *"This is the trigger that matters."*
+- [ADR-0021](../adr/0021-the-cli-reads-the-event-log-in-process-until-m3.md) — moving the CLI's reads
+  onto the API. Examined in the API-protection ADR, because protecting the API changes how the CLI
+  reaches it.
+- [ADR-0029](../adr/0029-apps-core-begins-at-milestone-2-to-serve-the-dashboard.md)'s second trigger,
+  carried from M5 as a question: `apps/core` holding logic that is not composition. Productivity's
+  logic must land in its department, not in core.
+- [ADR-0030](../adr/0030-loopback-identifies-the-owners-machine-not-the-owners-presence.md)'s Touch ID
+  trigger **moves to M11** with the shell. ADR-0052, which answered it, was not accepted.
 
 ---
 
-## M7 — Memory & Endurance · 6–8 weeks
+## M7 — Context
+
+**Goal:** Today knows what your day already holds. Weather reaches Today; your calendar arrives by
+**local `.ics` import only** — no Google account, no OAuth, no remote subscription in this milestone.
+Shifts and availability follow. Calendar content is `private` until an ADR says otherwise, because
+[ADR-0048](../adr/0048-the-first-connector-is-weather.md)'s disclosure argument still holds. Done-when
+written when M7 starts.
+
+## M8 — Day Planning
+
+**Goal:** FRIDAY plans your day and can say why. A **deterministic** planner — prioritisation, free
+time, protected time, constraints — whose every placement is explained from recorded data. **No model
+is required or allowed to decide.** You can override any of it. Done-when written when M8 starts.
+
+## M9 — AI
+
+**Goal:** a real model provider, **chosen at the start of this milestone** on cost and privacy, behind
+the existing router. AI may interpret, phrase, classify, and suggest; it does not become the authority
+for scheduling or safety. Done-when written when M9 starts.
+
+## M10 — Life Areas
+
+**Goal:** the domains after tasks, one at a time, each copying Life Core's shape. Coursework and focus
+belong to **Productivity**; notes to **Knowledge**. Recipes, groceries, and household lists go to a
+**separate department** — Household is the candidate — if the scope supports one. Screenshot-to-
+assignment waits for M9. Done-when written when M10 starts.
+
+## M11 — Presence
+
+**Goal:** FRIDAY where you are. The Mac app, menu bar, global hotkey, notifications, launch at login,
+signing and notarization, and the Apple Developer fee. **The shell wraps a Today that is already
+useful**, rather than hiding one that is not. ADR-0030's Touch ID trigger is answered here. Done-when
+written when M11 starts; *"what does my week look like?" from the menu bar* is the first candidate.
+
+---
+
+## M12 — Memory & Endurance · 6–8 weeks
 
 **Goal:** FRIDAY remembers, and she survives.
 
@@ -943,7 +1030,7 @@ the annual verification reminder.
 
 ---
 
-## M8 — Self-Improvement · 6–10 weeks
+## M13 — Self-Improvement · 6–10 weeks
 
 **Goal:** FRIDAY proposes her first pull request. **This is the milestone you asked for.**
 
@@ -969,7 +1056,7 @@ with tests passing and a summary you can evaluate without reading code, and you 
 
 ---
 
-## M9 — Reach · 8–12 weeks
+## M14 — Reach · 8–12 weeks
 
 **Goal:** FRIDAY is with you when you are away from your desk.
 
@@ -992,18 +1079,18 @@ on your Mac and get a spoken answer in under two seconds.
 
 ---
 
-## M10 — Breadth · ongoing, 2028+
+## M15 — Breadth · ongoing
 
 Departments added **one at a time**, each fully complete before the next begins (risk R5).
 
 | Order | Department | Notes |
 |---|---|---|
-| 1 | **Productivity** | Tasks, scheduling, briefings |
-| 2 | **Communications** | Email — the first irreversible external actions |
-| 3 | **Home** | Physical world; Article III becomes literal |
-| 4 | **Finance** | **Read-only, permanently.** [Chapter 13](13-department-architecture.md) |
-| 5 | **Health** | Highest sensitivity; strictest defaults |
-| 6+ | Research, Entertainment, others | As wanted |
+| — | ~~Productivity~~ | **Moved to M6** by [ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md) |
+| 1 | **Communications** | Email — the first irreversible external actions |
+| 2 | **Home** | Physical world; Article III becomes literal |
+| 3 | **Finance** | **Read-only, permanently.** [Chapter 13](13-department-architecture.md) |
+| 4 | **Health** | Highest sensitivity; strictest defaults |
+| 5+ | Research, Entertainment, others | As wanted |
 
 Also in this phase, driven by need rather than schedule: the plugin system
 ([Chapter 15](15-plugin-system.md)), the external API ([Chapter 20](20-api-standards.md)), Windows
@@ -1015,17 +1102,18 @@ and Android, and a documentation site.
 
 | Milestone | Monthly | Notes |
 |---|---|---|
-| M0–M4 | **$0** | No AI calls yet. M4 needs no Apple Developer account — nothing is signed until M6. |
-| M5 | $10–30 | Development and eval usage begins |
-| M6 | $20–50 | + Apple Developer ($8/mo amortized) |
-| M7 | $25–60 | + backups ($1–3) |
-| M8 | $35–80 | FRIDAY's own model usage |
-| M9–M10 | $40–90 | Steady state |
+| M0–M5 | **$0** | No AI provider was connected; M5's router ran on a stand-in |
+| M6–M8 | **$0** | By [ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md), nothing before M9 may depend on a model |
+| M9 | **Decided at M9** | The provider choice sets this; no figure is estimated before it is made |
+| M11 | + Apple Developer ($8/mo amortized) | Signing moves here with the shell |
+| M12 | + backups ($1–3) | |
+| M13 | + FRIDAY's own model usage | |
 
-Comfortably inside your $50–200 band throughout, with the hard ceiling at $150 as a safety limit
-rather than a target ([Chapter 35](35-performance-goals.md)).
+The hard ceiling stays at $150 a month as a safety limit rather than a target
+([Chapter 35](35-performance-goals.md)). The per-milestone figures this table carried before
+2026-09-24 assumed provider spending from M5, which did not happen.
 
-Plus one-time: Apple Developer $99/yr from M6, and optionally a Mac Mini at M7 ($400–600).
+Plus one-time: Apple Developer $99/yr from M11, and optionally a Mac Mini at M12 ($400–600).
 
 ---
 
@@ -1059,8 +1147,9 @@ It will. Rules for changing it:
    described work nobody was doing and omitted work that was shipping. Added 2026-08-10, from
    experience.
 7. **Renumbering is allowed here and never in `docs/adr/`.** When a milestone is inserted, the map
-   in [Re-baselined 2026-08-10](#re-baselined-2026-08-10) is extended rather than the ADRs being
-   edited.
+   in [Re-baselined 2026-08-10](#re-baselined-2026-08-10), and after it the one in
+   [Re-baselined 2026-09-24](#re-baselined-2026-09-24--life-core), is extended rather than the ADRs
+   being edited.
 8. **A milestone is closed in this chapter on `main` before the next one starts, and the close-out
    is merged, not drafted.** M4's done-when was demonstrated and released while `main` still said
    the milestone was next, because its record sat uncommitted in a working tree for three days.
@@ -1091,7 +1180,7 @@ real and the output is invisible. **That risk has narrowed to one milestone.** T
 records what a test told her to record" and "she does something you wanted" was the whole of M5 and
 M6; M5 closed the first half. She now does a thing you asked for, end to end — the thing is checking
 her own records, which is useful to her rather than to you, and **everything that would make it
-useful to you is a connector, which is M6.** Every design decision here that looks slightly inefficient — the dashboard pulled forward,
+useful to you is Life Core, which is M6.** Every design decision here that looks slightly inefficient — the dashboard pulled forward,
 the demonstrable outcome required at every milestone, M4 being small enough to finish — exists to
 manage that. They are worth protecting when they seem like overhead.
 
@@ -1108,3 +1197,4 @@ manage that. They are worth protecting when they seem like overhead.
 | 2.3 | 2026-08-17 | M5's carried implementation risks recorded under rule 5, from the agent runtime: a runaway worker thread is not killed, worker isolation is not a security sandbox, and `resourceLimits` is unproven. The first is a **blocker on scheduling an agent unattended** rather than a note. |
 | 2.4 | 2026-08-24 | **M5 closed**, with its whole record brought onto `main` in one change under rule 8. The done-when demonstrated clause by clause through `friday ask` against the shipped manifest, the shipped rules, the real clerk and real SQLite. The four properties the milestone was actually defending recorded as **structural rather than procedural**, and the mutation-testing discipline recorded with the four tests that proved nothing until a mutation exposed them — including one design defect that only a continuity check over the event log could have found. Three known items carried out and named: **DAG concurrency deferred**, **`friday init` does not create the departments directory**, and **`operations.log.compact` stays `NOT_IMPLEMENTED`** by owner decision, because faking success on the capability that rewrites the record is the worst possible stub. ADR-0011's Temporal trigger answered by ADR-0046; ADR-0029's router-shape reassessment answered — the shape survived, and its **second** trigger fired and is carried into M6 as a question. M5's actual-versus-estimated recorded: seven days against 6–8 weeks, and why size in deliverables does not predict cost — **unspecified decisions do.** |
 | 2.5 | 2026-08-24 | **The first connector is weather, not calendar** ([ADR-0048](../adr/0048-the-first-connector-is-weather.md)). This chapter had recommended Google Calendar since ratification; the recommendation is superseded rather than corrected, because it was not wrong about calendar — it optimised for **reversibility** when the risk a first connector actually carries is **disclosure**. Recorded with its cost: weather may not exercise OAuth or the credential broker at all, which was a stated reason for calendar, so the broker may ship built but unvalidated by any real connector. Calendar is deferred rather than rejected and RFC-0002 keeps its full contract. [ADR-0047](../adr/0047-egress-hosts-are-exact-and-a-pattern-is-a-separate-decision.md) accepted in the same decision: exact egress hosts stay, and wildcards are **never** added for shared multi-tenant namespaces. Provider selection and location precision remain undecided and come back separately. |
+| 2.6 | 2026-09-24 | **Re-baselined for Life Core** ([ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md)). M6 changes from *Face* to **Life Core**, the smallest complete vertical slice of one life feature, with forgetting and API protection inside it rather than after it. Context, Day Planning, AI, Life Areas, and Presence are inserted as M7–M11, in that order by owner decision: **day planning is deterministic and comes before any AI provider.** Memory & Endurance, Self-Improvement, Reach, and Breadth become M12–M15, with a second number map. Face's pieces are distributed rather than dropped: the connector SDK and weather are kept as delivered; the shell, notifications, and signing move to Presence. Native work pauses; ADR-0052 was not accepted and #105 was closed unmerged. The cost table is corrected — it assumed provider spending from M5, which never happened. Only M6 has a done-when; the others are written when they start. |

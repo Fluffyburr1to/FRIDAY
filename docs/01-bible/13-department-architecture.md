@@ -175,15 +175,23 @@ Derived from the Long-Term Vision. Order reflects dependency and risk, not enthu
 
 | Department | Owns | Milestone | Notes |
 |---|---|---|---|
-| **Operations** | System health, backups, maintenance | M3 | First department. Exercises the framework with zero external risk. |
-| **Engineering** | FRIDAY's own code and improvements | M6 | The one you asked for. Full treatment in [Chapter 31](31-git-workflow.md). |
-| **Knowledge** | Notes, documents, research, recall | M5 | Exercises memory hardest |
-| **Productivity** | Calendar, tasks, scheduling | M7 | First department touching your real life |
-| **Communications** | Email, messaging | M7 | First irreversible external actions |
-| **Home** | Lights, climate, devices | M8 | Physical world; Article III becomes literal |
-| **Finance** | Balances, spending awareness | M8+ | **Read-only indefinitely.** See below. |
-| **Health** | Fitness, sleep, medical records | M8+ | Highest sensitivity; strictest defaults |
-| **Entertainment** | Media | M8+ | Low risk, low priority |
+| **Operations** | System health, backups, maintenance | M5 ✅ | First department. Exercises the framework with zero external risk. |
+| **Engineering** | FRIDAY's own code and improvements | M13 | The one you asked for. Full treatment in [Chapter 31](31-git-workflow.md). |
+| **Knowledge** | Notes, documents, research, recall | M10 | Exercises memory hardest |
+| **Productivity** | Tasks, calendar, scheduling, day planning, workload, focus, coursework | **M6** | First department touching your real life. **Not a catch-all** — see below |
+| **Communications** | Email, messaging | M15 | First irreversible external actions |
+| **Home** | Lights, climate, devices | M15 | Physical world; Article III becomes literal |
+| **Finance** | Balances, spending awareness | M15 | **Read-only indefinitely.** See below. |
+| **Health** | Fitness, sleep, medical records | M15 | Highest sensitivity; strictest defaults |
+| **Entertainment** | Media | M15 | Low risk, low priority |
+
+Milestones re-set 2026-09-24 by [ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md).
+Operations shipped at M5, not M3 as first planned.
+
+**Productivity is not a catch-all.** Recipes, groceries, and household lists belong to a separate
+department — **Household** is the candidate — decided at M10 if the scope supports one. There is no
+generic "Life" department: a department that owns everything personal owns nothing in particular, and
+its manifest stops describing a boundary.
 
 **Finance is read-only by design, indefinitely.** The Vision says "financial *awareness*," and I am
 reading that word literally and building the department to match. FRIDAY will show you balances,
@@ -274,3 +282,4 @@ requirements. Encapsulation is achieved instead by namespaced permissions
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-08-06 | Initial ratification |
+| 1.1 | 2026-09-24 | Catalogue milestones re-set by [ADR-0053](../adr/0053-life-core-comes-before-presence-autonomy-and-ai.md). **Productivity moves to M6** and its scope is written out; it is explicitly not a catch-all, and recipes, groceries, and household lists go to a separate department if the scope supports one. Knowledge moves to M10, Engineering to M13, and the remaining departments to Breadth (M15). Operations corrected to M5, where it shipped. |

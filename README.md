@@ -29,7 +29,7 @@ friday status                        is she healthy?
 
 | | |
 |---|---|
-| Phase | Milestone 6 — Face, **in progress** · M5 (Mind) closed 2026-08-24 |
+| Phase | Milestone 6 — **Life Core**, next · M5 (Mind) closed 2026-08-24 · re-baselined 2026-09-24 |
 | Founding documents | ✅ Ratified |
 | Project Bible | ✅ 41 chapters, ratified 2026-08-06 |
 | Architecture Decision Records | ✅ 51 on `main` (0001–0051) |
@@ -51,8 +51,8 @@ friday status                        is she healthy?
 | **Plans and agents** | ✅ Visible plans, approval gates, explanations traced to events. Agents run in isolated worker threads |
 | **Model routing** | ⚠ Scaffolded — privacy routing and budgets are real, but **the only provider is a stand-in.** No real AI model is connected, by decision |
 | **Connectors** | ✅ Connector SDK and one real connector — weather, Open-Meteo, no account or key needed |
-| Mac app | ⬜ In review, not merged |
-| Tasks, calendar, your day | ⬜ Not started |
+| Mac app | ⏸ Paused until Today is useful — M11 |
+| Tasks, calendar, your day | ⬜ Not started — tasks are M6 |
 
 See [Chapter 39 — Roadmap](docs/01-bible/39-roadmap.md) for what comes next and why in this order.
 
@@ -176,13 +176,24 @@ Reasoning and rejected alternatives: [Chapter 02](docs/01-bible/02-technology-st
 | M3 | Authority | Rules on disk, decisions recorded, `friday init` | ✅ 2026-08-10 ⚠ |
 | M4 | **Installable** | Packaging, launchd, releases — **she runs on your Mac** | ✅ 2026-08-17 · `v0.1.0` |
 | M5 | Mind | Agents, Model Router, plans — she thinks | ✅ 2026-08-24 |
-| M6 | **Face** | Dashboard, Mac app, first connector — **first useful day** | ◆ in progress |
-| M7 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | |
-| M8 | Self-Improvement | FRIDAY opens her first pull request | |
-| M9 | Reach | iPhone, notifications, voice | |
-| M10 | Breadth | Additional departments | |
+| M6 | **Life Core** | Tasks end to end on a life-first Today — forgettable, protected, audited | ◆ next |
+| M7 | Context | Weather on Today, local calendar import, shifts, availability | |
+| M8 | Day Planning | A deterministic planner that explains every placement | |
+| M9 | AI | A real model provider, chosen on cost and privacy | |
+| M10 | Life Areas | Coursework, focus, notes, and later domains | |
+| M11 | Presence | Mac app, menu bar, hotkey, notifications | |
+| M12 | Memory & Endurance | Four-layer memory, always-on host, disaster recovery | |
+| M13 | Self-Improvement | FRIDAY opens her first pull request | |
+| M14 | Reach | iPhone, phone notifications, voice | |
+| M15 | Breadth | Additional departments | |
 
-**This chapter was re-baselined on 2026-08-10.** M3 delivered something the roadmap had not planned,
+**Re-baselined 2026-09-24 for Life Core.** FRIDAY becomes useful for your life before she becomes more
+present, more autonomous, or more AI-heavy: tasks first, then context, a deterministic day planner, and
+only then a real AI model. Native work is paused until Today is genuinely useful. Reasoning in
+[ADR-0053](docs/adr/0053-life-core-comes-before-presence-autonomy-and-ai.md); number map in
+[Chapter 39](docs/01-bible/39-roadmap.md#re-baselined-2026-09-24--life-core).
+
+**Re-baselined earlier, on 2026-08-10.** M3 delivered something the roadmap had not planned,
 and M4 changed from *Face* to *Installable* because *Face* depends on work that does not exist yet.
 Calendar targets past M4 are withdrawn until there is evidence to re-estimate from. Milestone numbers
 inside ADRs mean what they meant when written — the map is in
